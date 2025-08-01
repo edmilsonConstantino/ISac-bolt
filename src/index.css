@@ -8,27 +8,27 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 248 250 252;
-    --foreground: 215 28% 17%;
+    --background: 42 78% 95%;
+    --foreground: 25 25% 15%;
 
-    --card: 255 255 255;
+    --card: 43 100% 98%;
     --card-foreground: 215 28% 17%;
 
-    --popover: 255 255 255;
-    --popover-foreground: 215 28% 17%;
+    --popover: 43 100% 98%;
+    --popover-foreground: 25 25% 15%;
 
-    --primary: 220 90% 56%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 220 80% 70%;
+    --primary: 25 88% 35%;
+    --primary-foreground: 43 100% 98%;
+    --primary-glow: 25 70% 55%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 220 90% 56%;
+    --secondary: 42 35% 88%;
+    --secondary-foreground: 25 88% 35%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 42 35% 88%;
+    --muted-foreground: 25 15% 45%;
 
     --accent: 43 96% 56%;
-    --accent-foreground: 215 28% 17%;
+    --accent-foreground: 25 25% 15%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -39,17 +39,17 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 220 90% 56%;
+    --border: 42 25% 85%;
+    --input: 42 25% 85%;
+    --ring: 25 88% 35%;
 
     --radius: 0.75rem;
 
     /* Oxford Theme Colors */
-    --oxford-navy: 220 100% 15%;
-    --oxford-blue: 220 90% 56%;
+    --oxford-navy: 25 88% 25%;
+    --oxford-blue: 25 88% 35%;
     --oxford-gold: 43 96% 56%;
-    --oxford-light: 220 20% 97%;
+    --oxford-light: 42 78% 95%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--oxford-blue)), hsl(var(--primary-glow)));
