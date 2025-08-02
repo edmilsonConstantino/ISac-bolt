@@ -66,6 +66,15 @@ export function SubmeterTrabalhos() {
 
   const handleSubmit = () => {
     if (!selectedAssignment) return;
+    
+    if (!submissionText.trim() && (!selectedFiles || selectedFiles.length === 0)) {
+      toast({
+        title: "Erro",
+        description: "Por favor, adicione texto ou anexe um arquivo.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setAssignments((prev) =>
       prev.map((assignment) =>

@@ -23,7 +23,7 @@ export function ChatIA() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
     const userMessage: Message = {
@@ -36,16 +36,50 @@ export function ChatIA() {
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer sk-2950136b937540f8befc698456b111dd'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an English learning assistant. Help students practice English with conversation, grammar corrections, and vocabulary suggestions. Always respond in a friendly and encouraging way.'
+            },
+            {
+              role: 'user',
+              content: inputMessage
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Great question! Let me help you with that. (DeepSeek API integration will be added here)",
+        content: data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem. Tente novamente.",
         isUser: false,
         timestamp: new Date(),
       };
+      
       setMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
+    } catch (error) {
+      console.error('Error calling DeepSeek API:', error);
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Desculpe, ocorreu um erro ao processar sua mensagem. Verifique sua conexão e tente novamente.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorResponse]);
+    }
   };
 
   return (

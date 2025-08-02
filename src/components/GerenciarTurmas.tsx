@@ -119,6 +119,24 @@ export function GerenciarTurmas() {
   };
 
   const handleSave = () => {
+    if (!formData.name || !formData.level || !formData.teacher || !formData.schedule || !formData.startDate || !formData.endDate || !formData.room) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+      toast({
+        title: "Erro",
+        description: "A data de fim deve ser posterior à data de início.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (editingClass) {
       setClasses((prev) =>
         prev.map((cls) =>

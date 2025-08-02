@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, Download, Search, Play, FileText, Headphones, Video, Image, Filter } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface Material {
   id: string;
@@ -24,6 +25,7 @@ interface Material {
 }
 
 export function BibliotecaDigital() {
+  const { toast } = useToast();
   const [materials, setMaterials] = useState<Material[]>([
     {
       id: "1",
@@ -119,6 +121,19 @@ export function BibliotecaDigital() {
   const categories = [...new Set(materials.map(m => m.category))];
   const levels = [...new Set(materials.map(m => m.level))];
 
+  const handleDownload = (material: Material) => {
+    // Simulate download
+    const link = document.createElement('a');
+    link.href = material.downloadUrl;
+    link.download = material.title;
+    link.click();
+    
+    toast({
+      title: "Download iniciado",
+      description: `Baixando ${material.title}...`,
+    });
+  };
+
   const MaterialCard = ({ material }: { material: Material }) => {
     const TypeIcon = getTypeIcon(material.type);
     
@@ -180,7 +195,7 @@ export function BibliotecaDigital() {
               </Dialog>
             )}
             
-            <Button size="sm" className="flex-1">
+            <Button size="sm" className="flex-1" onClick={() => handleDownload(material)}>
               <Download className="h-3 w-3 mr-1" />
               Download
             </Button>

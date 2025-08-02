@@ -85,6 +85,15 @@ export function GerenciarEstudantes() {
   };
 
   const handleSave = () => {
+    if (!formData.name || !formData.email || !formData.phone || !formData.class) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (editingStudent) {
       setStudents((prev) =>
         prev.map((s) =>
