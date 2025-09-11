@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,16 +37,14 @@ import { useClassData, useStudentData, useAssignmentData } from "../hooks/useDat
 import { Class, Student, Permission } from "../types";
 
 interface TeacherDashboardProps {
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
-  const [currentUser] = useState({
-    id: 1,
-    name: "Prof. Maria Santos",
-    email: "teacher@m007.com",
-    role: 'teacher' as const
-  });
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const displayName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : 'Docente';
+  const teacherId = user?.id ?? 0;
 
   // Hooks de dados
   const { classes, addClass, updateClass } = useClassData();
@@ -200,10 +199,21 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="font-medium">{currentUser.name}</p>
+                <p className="font-medium">{displayName}</p>
                 <p className="text-sm text-muted-foreground">Docente</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={onLogout}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={async () => {
+                  try {
+                    await logout();
+                    if (onLogout) onLogout();
+                  } catch (e) {
+                    console.error('Logout falhou', e);
+                  }
+                }}
+              >
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
@@ -214,7 +224,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-2">Bem-vindo, {currentUser.name}!</h2>
+          <h2 className="text-2xl font-bold mb-2">Bem-vindo, {displayName}!</h2>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-oxford-gold" />
@@ -591,12 +601,12 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         isCreating={false} // Professor nunca pode criar turmas
       />
 
-      <CreateAssignmentModal
+        <CreateAssignmentModal
         isOpen={createAssignmentModal}
         onClose={() => setCreateAssignmentModal(false)}
         onSave={handleCreateAssignment}
         availableClasses={classes}
-        teacherId={currentUser.id}
+          teacherId={teacherId}
       />
 
       <AttendanceModal
@@ -607,12 +617,12 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         getStudentsByClass={getStudentsByClass}
       />
 
-      <AnnouncementModal
+  <AnnouncementModal
         isOpen={announcementModal}
         onClose={() => setAnnouncementModal(false)}
         onSave={handleCreateAnnouncement}
         availableClasses={classes}
-        teacherId={currentUser.id}
+  teacherId={teacherId}
       />
 
       <UploadMaterialModal
@@ -620,7 +630,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         onClose={() => setUploadMaterialModal(false)}
         onSave={handleUploadMaterial}
         availableClasses={classes}
-        teacherId={currentUser.id}
+        teacherId={teacherId}
       />
 
       {gradeModal.classData && (

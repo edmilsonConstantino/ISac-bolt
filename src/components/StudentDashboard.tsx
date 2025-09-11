@@ -1,5 +1,5 @@
 // src/components/StudentDashboard.tsx (Código Atualizado)
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,22 +34,20 @@ import {
 import { useStudentData } from "../hooks/useData";
 import { usePaymentData } from "../hooks/usePaymentData";
 import { StudentFinanceModal } from "./shared/StudentFinanceModal";
+import { useAuthStore } from "@/store/authStore";
 
 interface StudentDashboardProps {
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 export function StudentDashboard({ onLogout }: StudentDashboardProps) {
-  // Simular o estudante logado (ID 1 = João Silva)
-  const currentStudentId = 1;
-  
-  const [currentUser] = useState({
-    id: currentStudentId,
-    name: "João Silva",
-    email: "joao.silva@email.com",
-    level: "Business English - A2",
-    progress: 75
-  });
+  // Dados do auth store (usuário logado)
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // Se não houver usuário, não mostramos dados pessoais
+  const currentStudentId = user?.id ?? undefined;
 
   // Hooks de dados compartilhados
   const { getStudentById } = useStudentData();
@@ -60,11 +58,12 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   // Dados do estudante atual
-  const studentData = getStudentById(currentStudentId);
+  const studentData = currentStudentId ? getStudentById(currentStudentId) : null;
+  const displayName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : 'Visitante';
   const paymentInfo = getStudentReadOnlyInfo( // ✅ Usar método específico para estudantes
-    currentStudentId, 
-    currentUser.name, 
-    currentUser.level
+    currentStudentId ?? 0,
+    displayName,
+    studentData?.level ?? '—'
   );
 
   const [grades] = useState([
@@ -165,10 +164,21 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="font-medium">{currentUser.name}</p>
-                <p className="text-sm text-muted-foreground">{currentUser.level}</p>
+                <p className="font-medium">{displayName}</p>
+                <p className="text-sm text-muted-foreground">{studentData?.level ?? '—'}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={onLogout}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={async () => {
+                  try {
+                    await logout();
+                    if (onLogout) onLogout();
+                  } catch (e) {
+                    console.error('Logout falhou', e);
+                  }
+                }}
+              >
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
@@ -179,18 +189,18 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-2">Bem-vindo, {currentUser.name}!</h2>
+          <h2 className="text-2xl font-bold mb-2">Bem-vindo, {displayName}!</h2>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 text-oxford-gold" />
-              <span className="font-medium">Turma: {currentUser.level}</span>
+              <span className="font-medium">Turma: {studentData?.level ?? '—'}</span>
             </div>
-            <div className="flex-1 max-w-xs">
+              <div className="flex-1 max-w-xs">
               <div className="flex justify-between text-sm mb-1">
                 <span>Progresso Geral</span>
-                <span>{currentUser.progress}%</span>
+                <span>{studentData?.progress ?? 0}%</span>
               </div>
-              <Progress value={currentUser.progress} className="h-2" />
+              <Progress value={studentData?.progress ?? 0} className="h-2" />
             </div>
           </div>
         </div>
@@ -310,7 +320,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Progresso</span>
-                      <span className="font-semibold text-blue-600">{currentUser.progress}%</span>
+                      <span className="font-semibold text-blue-600">{studentData?.progress ?? 0}%</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Ranking na Turma</span>

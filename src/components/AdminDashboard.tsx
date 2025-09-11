@@ -1,5 +1,6 @@
 // src/components/AdminDashboard.tsx (Atualizado com Modal de Perfil do Estudante)
 import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,16 +55,14 @@ import { Class, Student, Permission, PaymentMethod, User } from "../types";
 import { useSettingsData } from "@/hooks/UseSettingsData";
 
 interface AdminDashboardProps {
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
-  const [currentUser] = useState({
-    id: 2,
-    name: "Administrator",
-    email: "admin@m007.com",
-    role: 'admin' as const
-  });
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const displayName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : 'Admin';
+  const adminId = user?.id ?? 0;
 
   // Hooks de dados
   const { classes, addClass, updateClass, deleteClass } = useClassData();
@@ -463,10 +462,21 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="font-medium">{currentUser.name}</p>
+                <p className="font-medium">{displayName}</p>
                 <p className="text-sm text-muted-foreground">Super Admin</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={onLogout}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={async () => {
+                  try {
+                    await logout();
+                    if (onLogout) onLogout();
+                  } catch (e) {
+                    console.error('Logout falhou', e);
+                  }
+                }}
+              >
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>

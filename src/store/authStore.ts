@@ -23,7 +23,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  login: (credentials: { username: string; password: string }) => Promise<string>
+  login: (credentials: { username: string; password: string }) => Promise<'admin' | 'docente' | 'aluno' | null>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void
@@ -34,10 +34,19 @@ const API_BASE_URL = 'http://localhost:8000/api/account'
 
 const getCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith(`${name}=`))
-    ?.split('=')[1] || null;
+  // Usa regex para capturar corretamente o valor mesmo se contiver '=' e decodifica
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = document.cookie.match(new RegExp('(?:^|; )' + escapedName + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+// Parser JSON seguro: tenta parsear, se falhar retorna null
+const safeJson = async (res: Response): Promise<any | null> => {
+  try {
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -53,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
           return getCookie('csrftoken');
         },
 
-        login: async (credentials): Promise<string> => {
+  login: async (credentials): Promise<'admin' | 'docente' | 'aluno' | null> => {
           set({ isLoading: true, error: null });
           
           try {
@@ -83,8 +92,9 @@ export const useAuthStore = create<AuthState>()(
             });
 
             if (!loginResponse.ok) {
-              const errorData = await loginResponse.json();
-              throw new Error(errorData.detail || 'Erro ao fazer login');
+              const errorData = await safeJson(loginResponse);
+              const message = (errorData && (errorData.detail || errorData.message)) || `Erro ao fazer login (status ${loginResponse.status})`;
+              throw new Error(message);
             }
 
             // ✅ Aguarda para cookies serem processados
@@ -100,7 +110,7 @@ export const useAuthStore = create<AuthState>()(
             });
 
             if (profileResponse.ok) {
-              const userData = await profileResponse.json();
+              const userData = await safeJson(profileResponse);
               set({
                 user: userData,
                 isAuthenticated: true,
@@ -108,25 +118,21 @@ export const useAuthStore = create<AuthState>()(
                 error: null
               });
               
-              return userData.profile;
+              return userData?.profile ?? null;
             } else {
-              // ✅ Tenta alternativa: usa dados do login response
-              try {
-                const loginData = await loginResponse.json();
-                if (loginData.user) {
-                  set({
-                    user: loginData.user,
-                    isAuthenticated: true,
-                    isLoading: false,
-                    error: null
-                  });
-                  return loginData.user.profile;
-                }
-              } catch (e) {
-                // Continua com o erro original
+              // Tenta alternativa: usa dados do login response
+              const loginData = await safeJson(loginResponse);
+              if (loginData && loginData.user) {
+                set({
+                  user: loginData.user,
+                  isAuthenticated: true,
+                  isLoading: false,
+                  error: null
+                });
+                return loginData.user.profile ?? null;
               }
-              
-              throw new Error('Erro ao obter dados do usuário');
+
+              throw new Error(`Erro ao obter dados do usuário (profile status ${profileResponse.status})`);
             }
 
           } catch (error: any) {
@@ -182,7 +188,7 @@ export const useAuthStore = create<AuthState>()(
             });
 
             if (response.ok) {
-              const userData = await response.json();
+              const userData = await safeJson(response);
               set({
                 user: userData,
                 isAuthenticated: true,
