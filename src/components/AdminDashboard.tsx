@@ -1,10 +1,11 @@
-// src/components/AdminDashboard.tsx - CÓDIGO COMPLETO PARTE 1/2
+// src/components/AdminDashboard.tsx - CÓDIGO COMPLETO
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import studentService, { Student as APIStudent } from "@/services/studentService";
 import classService, { Class as APIClass } from "@/services/classService";
 import teacherService, { Teacher, CreateTeacherData } from "@/services/teacherService";
 import courseService, { Course as APICourse } from "@/services/courseService";
+import registrationService from '@/services/registrationService';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import { StudentProfileModal } from "./shared/StudentProfileModal";
 import CreateCourseModal from '@/components/shared/superadmin/CreateCourseModal';
 import { CourseList } from "./shared/superadmin/CourseList";
 import { RegistrationList, Registration } from "./shared/reusable/RegistrationList";
+
 
 // Types
 // Types
@@ -124,7 +126,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isTeacherProfileModalOpen, setIsTeacherProfileModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [isStudentProfileModalOpen, setIsStudentProfileModalOpen] = useState(false);
+  const [isStudentProfileModalOpen, setIsStudentProfileModal] = useState(false);
 
   // Estados para filtros
   const [paymentSearch, setPaymentSearch] = useState('');
@@ -222,6 +224,9 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
 setStudents(mappedStudents);
 console.log('✅ Estudantes mapeados:', mappedStudents.length);
+
+    // 5. 🆕 CARREGAR MATRÍCULAS (dependem de cursos, turmas e estudantes)
+    await loadRegistrations();
     
   } catch (error: any) {
     console.error("❌ Erro ao carregar dados:", error);
@@ -391,7 +396,57 @@ loadAllData();
     }
   };
 
-  // Handlers
+  // 📥 CARREGAR MATRÍCULAS DO BANCO
+const loadRegistrations = async () => {
+  try {
+    setIsLoadingRegistrations(true);
+    console.log('📥 Carregando matrículas do banco...');
+    const data = await registrationService.getAll();
+    console.log('✅ Matrículas carregadas da API:', data);
+    
+    // ✅ MAPEAR de INGLÊS (API) para PORTUGUÊS (estado local)
+    const mappedRegistrations: Registration[] = data.map((reg: any) => {
+      // Buscar nome do estudante
+      const student = students.find(s => s.id === reg.student_id);
+      const studentName = student?.name || reg.student_name || 'Estudante não encontrado';
+      
+      // Buscar nome do curso
+      const course = courses.find(c => c.codigo === reg.course_id);
+      const courseName = course?.nome || reg.course_name || 'Curso não encontrado';
+      
+      // Buscar nome da turma
+      const classItem = classes.find(c => c.id === reg.class_id);
+      const className = classItem?.nome || reg.class_name || '';
+      
+      return {
+        id: reg.id,
+        studentId: reg.student_id,
+        studentName: studentName,
+        studentCode: reg.enrollment_number,
+        courseId: reg.course_id,
+        courseName: courseName,
+        classId: reg.class_id,
+        className: className,
+        period: reg.period,
+        enrollmentDate: reg.enrollment_date,
+        status: reg.status || 'active',
+        paymentStatus: reg.payment_status || 'pending',
+        enrollmentFee: reg.enrollment_fee || 0,
+        monthlyFee: reg.monthly_fee || 0,
+        observations: reg.observations
+      };
+    });
+    
+    setRegistrations(mappedRegistrations);
+    console.log('✅ Matrículas mapeadas:', mappedRegistrations.length);
+    
+  } catch (error: any) {
+    console.error('❌ Erro ao carregar matrículas:', error);
+    toast.error('Erro ao carregar matrículas');
+  } finally {
+    setIsLoadingRegistrations(false);
+  }
+};
 
 
 
@@ -421,54 +476,46 @@ const handleEditRegistration = (registration: Registration) => {
   });
 };
 
-const handleSaveRegistration = (registrationData: Partial<Registration>) => {
+const handleSaveRegistration = async (registrationData: any) => {
   try {
-    console.log('💾 Salvando matrícula:', registrationData);
+    console.log('💾 Salvando matrícula (dados da API em inglês):', registrationData);
     
     if (registrationModal.isEditing && registrationModal.registrationData?.id) {
-      // Editar matrícula existente
-      setRegistrations(prev => prev.map(r => 
-        r.id === registrationModal.registrationData!.id 
-          ? { ...r, ...registrationData } as Registration
-          : r
-      ));
+      // ✅ EDITAR matrícula existente
+      await registrationService.update(registrationModal.registrationData.id, registrationData);
       toast.success('Matrícula atualizada com sucesso!');
     } else {
-      // Criar nova matrícula
-      const newRegistration: Registration = {
-        id: Date.now(),
-        studentId: registrationData.studentId!,
-        studentName: registrationData.studentName!,
-        studentCode: registrationData.studentCode!,
-        courseId: registrationData.courseId!,
-        courseName: registrationData.courseName!,
-        classId: registrationData.classId,
-        className: registrationData.className || '',
-        period: registrationData.period!,
-        enrollmentDate: registrationData.enrollmentDate!,
-        status: registrationData.status || 'active',
-        paymentStatus: registrationData.paymentStatus || 'pending',
-        enrollmentFee: registrationData.enrollmentFee || 0,
-        monthlyFee: registrationData.monthlyFee || 0,
-        observations: registrationData.observations
-      };
-      
-      setRegistrations(prev => [...prev, newRegistration]);
+      // ✅ CRIAR nova matrícula
+      console.log('📤 Enviando para API:', registrationData);
+      const result = await registrationService.create(registrationData);
+      console.log('✅ API retornou:', result);
       toast.success('Matrícula realizada com sucesso!');
     }
+    
+    // ✅ RECARREGAR LISTA DO BANCO
+    await loadRegistrations();
     
     setRegistrationModal({ isOpen: false, registrationData: null, isEditing: false });
     
   } catch (error: any) {
-    console.error('Erro ao salvar matrícula:', error);
-    toast.error('Erro ao salvar matrícula');
+    console.error('❌ Erro ao salvar matrícula:', error);
+    toast.error(error.message || 'Erro ao salvar matrícula');
   }
 };
 
-const handleDeleteRegistration = (registrationId: number) => {
+const handleDeleteRegistration = async (registrationId: number) => {
   if (confirm("Tem certeza que deseja cancelar esta matrícula?")) {
-    setRegistrations(prev => prev.filter(r => r.id !== registrationId));
-    toast.success("Matrícula cancelada com sucesso!");
+    try {
+      await registrationService.cancel(registrationId);
+      toast.success("Matrícula cancelada com sucesso!");
+      
+      // ✅ RECARREGAR LISTA DO BANCO
+      await loadRegistrations();
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao cancelar matrícula:', error);
+      toast.error('Erro ao cancelar matrícula');
+    }
   }
 };
 
@@ -1298,6 +1345,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
   registrationData={registrationModal.registrationData}
   isEditing={registrationModal.isEditing}
   onSave={handleSaveRegistration}
+  existingRegistrations={registrations} // ✅ ADICIONAR ESTA LINHA
 />
   </div>
 );
