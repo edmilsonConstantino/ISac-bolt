@@ -162,9 +162,9 @@ class RegistrationService {
  */
 async getCountByCourse(courseId: string): Promise<{ total: number; next_number: number }> {
   try {
-    const response = await apiClient.get<{ success: boolean; total: number; next_number: number }>(
-      `/api/registrations/count-by-course.php?course_id=${courseId}`
-    );
+  const response = await apiClient.get<{ success: boolean; total: number; next_number: number }>(
+   `/api/registrations/count-by-course.php?course_id=${courseId}`
+);
     
     return {
       total: response.data.total || 0,

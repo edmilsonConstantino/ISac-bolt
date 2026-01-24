@@ -24,7 +24,6 @@ export function useStudentData() {
     }
   };
 
-  // Atualizar estudante
   const updateStudent = async (id: number, updatedStudent: any) => {
     try {
       await axios.put(`${API_URL}/students/${id}/`, updatedStudent);
@@ -34,7 +33,6 @@ export function useStudentData() {
     }
   };
 
-  // Deletar estudante
   const deleteStudent = async (id: number) => {
     try {
       await axios.delete(`${API_URL}/students/${id}/`);

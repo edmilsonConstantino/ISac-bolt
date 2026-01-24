@@ -10,7 +10,7 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,
+  withCredentials: false, // ✅
 });
 
 // 🔐 Interceptor de REQUEST - Adiciona token JWT
@@ -31,7 +31,8 @@ apiClient.interceptors.request.use(
       console.log('Conteúdo do localStorage:', Object.keys(localStorage));
     }
     
-    if (token && config.headers) {
+    if (token) {
+      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
       console.log('✅ Header Authorization adicionado');
     } else {

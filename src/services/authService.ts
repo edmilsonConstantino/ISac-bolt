@@ -2,7 +2,7 @@
 import apiClient from './api';
 
 export interface LoginCredentials {
-  email: string;
+  identifier: string; // ← Aceita email OU enrollment_number
   senha: string;
 }
 
@@ -39,10 +39,13 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       console.log('\n🔄 === INICIANDO LOGIN ===');
-      console.log('📧 Email:', credentials.email);
+      console.log('📧 Identifier:', credentials.identifier);
       console.log('🔒 Senha fornecida:', credentials.senha ? 'SIM' : 'NÃO');
       
-      const response = await apiClient.post<LoginResponse>('/auth/login.php', credentials);
+      const response = await apiClient.post<LoginResponse>('/auth/login.php', {
+        identifier: credentials.identifier, // ← Pode ser email OU enrollment_number
+        senha: credentials.senha
+      });
       
       console.log('\n📦 === RESPOSTA DA API ===');
       console.log('Status:', response.status);

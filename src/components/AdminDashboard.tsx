@@ -24,14 +24,14 @@ import {
 import { ClassList } from "./shared/ClassList";
 import { StudentList } from "./shared/StudentList";
 import { TeacherList } from "./shared/TeacherList";
-import { PaymentList } from "./shared/PaymentList";
+import { PaymentList } from "./shared/superadmin/PaymentList";
 import { ClassModal } from "./shared/CreateClassModal";
 import { StudentModal } from "./shared/StudentModal";
 import { CreateStudentModal } from "./shared/CreateStudentModal";
 import { CreateTeacherModal } from "./shared/CreateTeacherModal";
 import { SelectStudentModal } from "./shared/SelectStudentModal";
 import { ReportsModal } from "./shared/ReportsModal";
-import { PaymentManagementModal } from "./shared/PaymentManagementModal";
+import { PaymentManagementModal } from "./shared/superadmin/PaymentManagementModal";
 import { GeneralSettingsModal } from "./shared/GeneralSettingsModal";
 import { TeacherProfileModal } from "./shared/TeacherProfileModal";
 import { StudentProfileModal } from "./shared/StudentProfileModal";
@@ -433,6 +433,8 @@ const loadRegistrations = async () => {
         paymentStatus: reg.payment_status || 'pending',
         enrollmentFee: reg.enrollment_fee || 0,
         monthlyFee: reg.monthly_fee || 0,
+        username: reg.username || '',        // ✅ ADICIONAR
+        password: reg.password || '',        // ✅ ADICIONAR
         observations: reg.observations
       };
     });
@@ -485,7 +487,7 @@ const handleSaveRegistration = async (registrationData: any) => {
       await registrationService.update(registrationModal.registrationData.id, registrationData);
       toast.success('Matrícula atualizada com sucesso!');
     } else {
-      // ✅ CRIAR nova matrícula
+      // ✅ Enviar direto, já está em inglês
       console.log('📤 Enviando para API:', registrationData);
       const result = await registrationService.create(registrationData);
       console.log('✅ API retornou:', result);
@@ -499,6 +501,7 @@ const handleSaveRegistration = async (registrationData: any) => {
     
   } catch (error: any) {
     console.error('❌ Erro ao salvar matrícula:', error);
+    console.error('❌ Dados enviados:', registrationData); 
     toast.error(error.message || 'Erro ao salvar matrícula');
   }
 };

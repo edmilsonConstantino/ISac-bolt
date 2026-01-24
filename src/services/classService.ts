@@ -26,12 +26,12 @@ export interface Class {
   updated_at?: string;
 }
 
-// Interface da API PHP (backend em português)
 interface TurmaAPI {
   id?: number;
-  codigo: string;
+  codigo?: string;        // agora pode ser opcional se backend gera
   nome: string;
-  disciplina: string;
+  curso_id: string;       // ✅ adicionar
+  // disciplina removida do create
   professor_id?: number | null;
   semestre?: string;
   ano_letivo: number;
@@ -49,6 +49,7 @@ interface TurmaAPI {
   observacoes?: string;
   status: 'ativo' | 'inativo' | 'concluido' | 'cancelado';
 }
+
 
 class ClassService {
   /**
@@ -73,6 +74,12 @@ class ClassService {
     if (data.subject) {
       mapped.disciplina = data.subject;
       console.log('✓ Disciplina:', data.subject);
+    }
+
+    // ✅ Adicionar curso_id
+    if (data.curso) {
+      (mapped as any).curso_id = data.curso;
+      console.log('✓ curso_id:', data.curso);
     }
 
     // ✅ Campos opcionais
@@ -151,6 +158,9 @@ class ClassService {
     } else {
       mapped.dias_semana = '';
     }
+
+    // Remove disciplina
+    delete (mapped as any).disciplina;
 
     console.log('✅ Mapeamento completo:', mapped);
     console.log('✅ Campos obrigatórios mapeados:', {
@@ -265,6 +275,9 @@ class ClassService {
       // ✅ Mapear React → API
       const apiData = this.mapReactToAPI(classData);
       
+      // 🚫 garantir que não vai disciplina em create
+      delete (apiData as any).disciplina;
+      
       // ✅ Garantir campos obrigatórios
       const dataToSend = {
         ...apiData,
@@ -284,6 +297,12 @@ class ClassService {
       console.log('   - nome:', dataToSend.nome, '✓');
       console.log('   - disciplina:', dataToSend.disciplina, '✓');
       console.log('═══════════════════════════════════════════');
+      
+      console.log('🚀 POST /api/turmas.php payload FINAL:', dataToSend);
+      console.log('🚀 Campos:', {
+        nome: dataToSend.nome,
+        curso_id: (dataToSend as any).curso_id
+      });
       
       const response = await apiClient.post('/api/turmas.php', dataToSend);
       
@@ -307,6 +326,21 @@ class ClassService {
                           'Erro ao criar turma';
       
       throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * ➕ Criar nova turma (via payload API direto)
+   */
+  async createAPI(payload: Partial<TurmaAPI>): Promise<any> {
+    try {
+      console.log('📤 CRIAR TURMA VIA API - Payload:', payload);
+      const response = await apiClient.post('/api/turmas.php', payload);
+      console.log('✅ Resposta da API:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ ERRO ao criar turma via API:', error.response?.data);
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Erro ao criar turma');
     }
   }
 

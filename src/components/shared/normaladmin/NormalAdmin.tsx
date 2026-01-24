@@ -17,13 +17,13 @@ import {
 import { ClassList } from "../TeacherComponents/ClassList";
 import { StudentList } from "../StudentList";
 import { TeacherList } from "../TeacherList";
-import { PaymentList } from "../PaymentList";
+import { PaymentList } from "../superadmin/PaymentList";
 import { ClassModal } from "../CreateClassModal";
 import { StudentModal } from "../StudentModal";
 import { CreateStudentModal } from "../CreateStudentModal";
 import { CreateTeacherModal } from "../CreateTeacherModal";
 import { ReportsModal } from "../ReportsModal";
-import { PaymentManagementModal } from "../PaymentManagementModal";
+import { PaymentManagementModal } from "../superadmin/PaymentManagementModal";
 import { TeacherProfileModal } from "../TeacherProfileModal";
 import { StudentProfileModal } from "../StudentProfileModal";
 

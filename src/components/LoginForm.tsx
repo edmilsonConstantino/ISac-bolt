@@ -9,7 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useNavigate } from "react-router-dom";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // ← Aceita email OU enrollment_number
   const [senha, setSenha] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error, clearError } = useAuthStore();
@@ -20,11 +20,11 @@ export function LoginForm() {
     e.stopPropagation();
     
     console.log('🚀 FORM SUBMETIDO!');
-    console.log('📧 Email:', email);
+    console.log('📧 Identifier:', identifier);
     console.log('🔑 Senha:', senha);
     
-    if (!email || !senha) {
-      alert('❌ Email ou senha vazios!\nEmail: ' + email + '\nSenha: ' + senha);
+    if (!identifier || !senha) {
+      alert('❌ Identifier ou senha vazios!\nIdentifier: ' + identifier + '\nSenha: ' + senha);
       return;
     }
     
@@ -32,10 +32,11 @@ export function LoginForm() {
     
     try {
       console.log('🔄 Chamando login...');
-      const userProfile = await login({ email, senha });
+      const userProfile = await login({ identifier, senha }); 
       console.log('✅ Login OK! Perfil:', userProfile);
       
-      alert('✅ Login bem-sucedido!\nPerfil: ' + userProfile);
+    console.log('✅ Login bem-sucedido! Perfil:', userProfile);
+
       
       switch (userProfile) {
         case 'admin':
@@ -157,7 +158,7 @@ export function LoginForm() {
             {/* Campo Email - Mobile */}
             <div className="space-y-2">
               <Label htmlFor="email-mobile" className="text-sm font-semibold text-[#004B87]">
-                Email
+                Email ou Código
               </Label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
@@ -165,10 +166,10 @@ export function LoginForm() {
                 </div>
                 <Input
                   id="email-mobile"
-                  type="email"
-                  placeholder="admin@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  placeholder="Email ou código de matrícula"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   className="h-14 pl-12 pr-4 text-base bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-[#F5821F] focus:ring-4 focus:ring-[#F5821F]/10 transition-all duration-300 placeholder:text-slate-400"
                   disabled={isLoading}
@@ -383,16 +384,16 @@ export function LoginForm() {
                   {/* Campo Email - Desktop */}
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
-                      Email
+                      Email ou Código
                     </Label>
                     <div className="relative group">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
                       <Input
                         id="email"
-                        type="email"
-                        placeholder="seu.email@isac.ac.mz"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        type="text"
+                        placeholder="Email ou código de matrícula"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
                         required
                         className="h-10 pl-10 pr-3 text-sm border-2 border-slate-200 rounded-lg focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all duration-300"
                         disabled={isLoading}

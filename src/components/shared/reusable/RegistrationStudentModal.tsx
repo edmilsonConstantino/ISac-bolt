@@ -71,8 +71,8 @@ export function RegistrationStudentModal({
     enrollmentFee: 0,
     monthlyFee: 0,
     observations: '',
-    usuario: '',
-    senha: ''
+    username: '',
+    password: ''
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -131,8 +131,8 @@ export function RegistrationStudentModal({
         enrollmentFee: 5000,
         monthlyFee: 2500,
         observations: '',
-        usuario: '',  // Explicitly reset to empty
-        senha: ''     // Explicitly reset to empty
+        username: '',  // Explicitly reset to empty
+        password: ''     // Explicitly reset to empty
       });
     }
     setFormErrors({});
@@ -187,8 +187,8 @@ export function RegistrationStudentModal({
     handleInputChange('studentId', student.id);
     handleInputChange('studentName', student.name || '');  // Changed from student.nome
     handleInputChange('studentCode', student.numero_matricula || `MAT${student.id}`);
-    handleInputChange('usuario', '');  // Reset credenciais
-    handleInputChange('senha', '');    // Reset credenciais
+    handleInputChange('username', '');  // Reset credenciais
+    handleInputChange('password', '');    // Reset credenciais
     setStudentSearch('');
   };
 
@@ -216,11 +216,11 @@ export function RegistrationStudentModal({
     if (!formData.courseId) {
       errors.courseId = 'Selecione um curso';
     }
-    if (!formData.usuario?.trim()) {
-      errors.usuario = 'Usuário é obrigatório';
+    if (!formData.username?.trim()) {
+      errors.username = 'Usuário é obrigatório';
     }
-    if (!formData.senha?.trim()) {
-      errors.senha = 'Senha é obrigatória';
+    if (!formData.password?.trim()) {
+      errors.password = 'Senha é obrigatória';
     }
     if (!formData.period) {
       errors.period = 'Período é obrigatório';
@@ -236,25 +236,38 @@ export function RegistrationStudentModal({
   // Salvar
   const handleSave = () => {
     if (validateForm()) {
-      // ✅ MAPEAR campos do frontend (português) para backend (inglês)
+      // ✅ MANTER ESTE MAPEAMENTO (não remover!)
       const mappedData = {
         student_id: formData.studentId,
         course_id: formData.courseId,
         class_id: formData.classId || null,
-        enrollment_number: formData.studentCode, // ✅ studentCode → enrollment_number
+        enrollment_number: formData.studentCode,
         period: formData.period,
         enrollment_date: formData.enrollmentDate,
         status: formData.status,
         payment_status: formData.paymentStatus,
         enrollment_fee: formData.enrollmentFee,
         monthly_fee: formData.monthlyFee,
-        username: formData.usuario, // ✅ usuario → username
-        password: formData.senha,   // ✅ senha → password
+        username: formData.username,  // ✅ já está em inglês
+        password: formData.password,  // ✅ já está em inglês
         observations: formData.observations
       };
       
-      console.log('💾 Dados mapeados para API (inglês):', mappedData);
-      onSave(mappedData);
+      // ✅ ADICIONAR ESTES LOGS:
+      console.log('📋 FormData ANTES do mapeamento:', formData);
+      console.log('📤 Dados DEPOIS do mapeamento:', mappedData);
+      console.log('✅ Validação dos campos obrigatórios:', {
+        student_id: mappedData.student_id,
+        course_id: mappedData.course_id,
+        enrollment_number: mappedData.enrollment_number,
+        period: mappedData.period,
+        enrollment_date: mappedData.enrollment_date,
+        username: mappedData.username,
+        password: mappedData.password
+      });
+      
+      console.log('💾 Dados mapeados para API:', mappedData);
+      onSave(mappedData); // ✅ Enviar mappedData, não formData
       toast.success(isEditing ? 'Matrícula atualizada!' : 'Matrícula realizada com sucesso!');
       onClose();
     } else {
@@ -353,12 +366,14 @@ export function RegistrationStudentModal({
         const studentCode = await generateStudentCode(formData.courseId, formData.courseName);
         
         // 🔐 GERAR CREDENCIAIS
-        const generateUsername = (name: string) => {
-          const names = name.toLowerCase().trim().split(' ');
-          const firstName = names[0];
-          const lastName = names[names.length - 1];
-          return `${firstName}.${lastName}`.replace(/[^a-z.]/g, '');
-        };
+const generateUsername = (name: string) => {
+  const names = name.toLowerCase().trim().split(' ');
+  const firstName = names[0];
+  const lastName = names[names.length - 1];
+  const timestamp = Date.now().toString().slice(-4);
+  // ✅ ADICIONAR timestamp ao final
+  return `${firstName}.${lastName}${timestamp}`.replace(/[^a-z.0-9]/g, '');
+};
 
         const generatePassword = () => {
           return Math.random().toString(36).slice(-8) + Math.random().toString(10).slice(-2);
@@ -368,8 +383,8 @@ export function RegistrationStudentModal({
         setFormData(prev => ({
           ...prev,
           studentCode: studentCode,
-          usuario: generateUsername(formData.studentName),
-          senha: generatePassword()
+          username: generateUsername(formData.studentName),
+          password: generatePassword()
         }));
         
         console.log('✅ Código gerado:', studentCode);
@@ -1041,18 +1056,18 @@ export function RegistrationStudentModal({
                           <User className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                           <Input
                             placeholder="usuario.estudante"
-                            value={formData.usuario || ''}
-                            onChange={(e) => handleInputChange('usuario', e.target.value)}
+                            value={formData.username || ''}
+                            onChange={(e) => handleInputChange('username', e.target.value)}
                             className={cn(
                               "h-12 pl-11 rounded-xl",
-                              formErrors.usuario && "border-red-500"
+                              formErrors.username && "border-red-500"
                             )}
                           />
                         </div>
-                        {formErrors.usuario && (
+                        {formErrors.username && (
                           <p className="text-xs text-red-600 flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
-                            {formErrors.usuario}
+                            {formErrors.username}
                           </p>
                         )}
                       </div>
@@ -1067,11 +1082,11 @@ export function RegistrationStudentModal({
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
-                            value={formData.senha || ''}
-                            onChange={(e) => handleInputChange('senha', e.target.value)}
+                            value={formData.password || ''}
+                            onChange={(e) => handleInputChange('password', e.target.value)}
                             className={cn(
                               "h-12 pl-11 pr-10 rounded-xl",
-                              formErrors.senha && "border-red-500"
+                              formErrors.password && "border-red-500"
                             )}
                           />
                           <button
@@ -1082,17 +1097,17 @@ export function RegistrationStudentModal({
                             {showPassword ? <X className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                           </button>
                         </div>
-                        {formErrors.senha && (
+                        {formErrors.password && (
                           <p className="text-xs text-red-600 flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
-                            {formErrors.senha}
+                            {formErrors.password}
                           </p>
                         )}
                       </div>
                     </div>
 
                     {/* Preview Visual das Credenciais */}
-                    {formData.usuario && formData.senha && formData.studentCode && (
+                    {formData.username && formData.password && formData.studentCode && (
                       <div className="mt-6 p-5 bg-white border-2 border-[#F5821F]/30 rounded-xl shadow-md">
                         <div className="flex items-center gap-2 mb-3">
                           <Sparkles className="h-4 w-4 text-[#F5821F]" />
@@ -1110,13 +1125,13 @@ export function RegistrationStudentModal({
                           <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
                             <span className="text-xs text-slate-600 font-medium">Usuário:</span>
                             <span className="text-sm font-mono font-bold text-[#004B87]">
-                              {formData.usuario}
+                              {formData.username}
                             </span>
                           </div>
                           <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
                             <span className="text-xs text-slate-600 font-medium">Senha:</span>
                             <span className="text-sm font-mono font-bold text-[#F5821F]">
-                              {showPassword ? formData.senha : '••••••••'}
+                              {showPassword ? formData.password : '••••••••'}
                             </span>
                           </div>
                         </div>

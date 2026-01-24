@@ -19,6 +19,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Categoria, Nivel } from '@/types/CategoryTypes';
+import categoriaService from '@/services/categoriaService';
 
 interface Module {
   id: string;
@@ -31,7 +33,9 @@ interface Course {
   id?: number;
   nome: string;
   codigo: string;
-  tipo_curso: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
+  categoria_id?: number;        // ✨ NOVO
+  categoria?: Categoria;        // ✨ NOVO
+  tipo_curso?: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao'; // manter
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
   mensalidade: number;
@@ -41,6 +45,7 @@ interface Course {
   status: 'ativo' | 'inativo';
   observacoes?: string;
   modulos?: Module[];
+  niveis?: Nivel[];             // ✨ NOVO
   data_criacao?: string;
 }
 
@@ -75,9 +80,26 @@ export default function CreateCourseModal({
     carga_horaria: 0
   });
 
+  // ADICIONAR DEPOIS DOS ESTADOS EXISTENTES (antes do formData):
+  // ✨ NOVOS ESTADOS PARA CATEGORIAS E NÍVEIS
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<Categoria | null>(null);
+  const [niveis, setNiveis] = useState<Nivel[]>([]);
+  const [editingNivelId, setEditingNivelId] = useState<number | null>(null);
+  const [showNivelForm, setShowNivelForm] = useState(false);
+  const [nivelFormData, setNivelFormData] = useState<Nivel>({
+    nivel: 1,
+    nome: '',
+    descricao: '',
+    duracao_meses: 4,
+    ordem: 1,
+    prerequisito_nivel_id: null
+  });
+
   const [formData, setFormData] = useState<Course>({
     nome: '',
     codigo: '',
+    categoria_id: undefined,     // ✨ ADICIONAR
     tipo_curso: '' as any,
     duracao_valor: 0,
     regime: 'laboral',
@@ -87,17 +109,25 @@ export default function CreateCourseModal({
     permite_bolsa: true,
     status: 'ativo',
     observacoes: '',
-    modulos: []
+    modulos: [],
+    niveis: []                   // ✨ ADICIONAR
   });
 
   useEffect(() => {
     if (isEditing && courseData) {
       setFormData(courseData);
       setModules(courseData.modulos || []);
+      setNiveis(courseData.niveis || []);              // ✨ ADICIONAR
+      
+      // ✨ ADICIONAR - Setar categoria selecionada
+      if (courseData.categoria) {
+        setCategoriaSelecionada(courseData.categoria);
+      }
     } else {
       setFormData({
         nome: '',
         codigo: '',
+        categoria_id: undefined,                       // ✨ ADICIONAR
         tipo_curso: '' as any,
         duracao_valor: 0,
         regime: 'laboral',
@@ -107,14 +137,19 @@ export default function CreateCourseModal({
         permite_bolsa: true,
         status: 'ativo',
         observacoes: '',
-        modulos: []
+        modulos: [],
+        niveis: []                                     // ✨ ADICIONAR
       });
       setModules([]);
+      setNiveis([]);                                   // ✨ ADICIONAR
+      setCategoriaSelecionada(null);                   // ✨ ADICIONAR
     }
     setErrors({});
     setModuleErrors({});
     setShowModuleForm(false);
     setEditingModuleId(null);
+    setShowNivelForm(false);                          // ✨ ADICIONAR
+    setEditingNivelId(null);                          // ✨ ADICIONAR
     setActiveTab('info');
   }, [isEditing, courseData, isOpen]);
 
@@ -144,8 +179,15 @@ export default function CreateCourseModal({
     if (!formData.nome.trim()) newErrors.nome = 'Nome do curso é obrigatório';
     if (!formData.codigo.trim()) newErrors.codigo = 'Código do curso é obrigatório';
     else if (formData.codigo.length < 3) newErrors.codigo = 'Código deve ter no mínimo 3 caracteres';
-    if (!formData.tipo_curso) newErrors.tipo_curso = 'Selecione o tipo de curso';
-    if (formData.duracao_valor <= 0) newErrors.duracao_valor = 'Duração deve ser maior que 0';
+    
+    // ✅ VALIDAR categoria_id ao invés de tipo_curso
+    if (!formData.categoria_id) newErrors.categoria_id = 'Selecione a categoria do curso';
+    
+    // ✅ VALIDAR duração apenas se categoria NÃO tem níveis
+    if (!categoriaSelecionada?.tem_niveis && formData.duracao_valor <= 0) {
+      newErrors.duracao_valor = 'Duração deve ser maior que 0';
+    }
+    
     if (formData.mensalidade < 0) newErrors.mensalidade = 'Mensalidade não pode ser negativa';
     if (formData.taxa_matricula < 0) newErrors.taxa_matricula = 'Taxa de matrícula não pode ser negativa';
 
@@ -219,6 +261,168 @@ export default function CreateCourseModal({
     toast.success('Módulo removido!');
   };
 
+  // ============================================================
+  // ✨ NOVAS FUNÇÕES PARA NÍVEIS
+  // ============================================================
+
+  const handleAddNivel = () => {
+    const proximoNivel = niveis.length + 1;
+    setNivelFormData({
+      nivel: proximoNivel,
+      nome: `Nível ${proximoNivel}`,
+      descricao: '',
+      duracao_meses: 4,
+      ordem: proximoNivel,
+      prerequisito_nivel_id: niveis.length > 0 ? niveis[niveis.length - 1].id : null
+    });
+    setEditingNivelId(null);
+    setShowNivelForm(true);
+  };
+
+  const handleEditNivel = (nivel: Nivel) => {
+    setNivelFormData(nivel);
+    setEditingNivelId(nivel.id || null);
+    setShowNivelForm(true);
+  };
+
+  const handleSaveNivel = () => {
+    if (!nivelFormData.nome.trim()) {
+      toast.error('Nome do nível é obrigatório');
+      return;
+    }
+
+    if (nivelFormData.duracao_meses <= 0) {
+      toast.error('Duração deve ser maior que 0');
+      return;
+    }
+
+    if (editingNivelId) {
+      setNiveis(prev => prev.map(n => (n.id || n.nivel) === editingNivelId ? nivelFormData : n));
+      toast.success('Nível atualizado!');
+    } else {
+      const novoNivel = { ...nivelFormData, id: Date.now() };
+      setNiveis(prev => [...prev, novoNivel]);
+      toast.success('Nível adicionado!');
+    }
+
+    setShowNivelForm(false);
+    setNivelFormData({
+      nivel: 1,
+      nome: '',
+      descricao: '',
+      duracao_meses: 4,
+      ordem: 1,
+      prerequisito_nivel_id: null
+    });
+  };
+
+  const handleCancelNivel = () => {
+    setShowNivelForm(false);
+    setEditingNivelId(null);
+    setNivelFormData({
+      nivel: 1,
+      nome: '',
+      descricao: '',
+      duracao_meses: 4,
+      ordem: 1,
+      prerequisito_nivel_id: null
+    });
+  };
+
+  const handleDeleteNivel = (nivelId: number) => {
+    setNiveis(prev => prev.filter(n => (n.id || n.nivel) !== nivelId));
+    toast.success('Nível removido!');
+  };
+
+  const handleNivelChange = (field: keyof Nivel, value: any) => {
+    setNivelFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-MZ', {
+      style: 'currency',
+      currency: 'MZN',
+      minimumFractionDigits: 0
+    }).format(value);
+  };
+
+  const getTotalCargaHoraria = () => {
+    return modules.reduce((sum, module) => sum + module.carga_horaria, 0);
+  };
+
+  const getTotalDuracaoNiveis = () => {
+    return niveis.reduce((sum, nivel) => sum + nivel.duracao_meses, 0);
+  };
+
+  const validateAndNext = () => {
+    if (activeTab === 'info' && !validateForm()) {
+      toast.error("Preencha os campos obrigatórios");
+      return;
+    }
+    const tabs: ('info' | 'modulos' | 'controle')[] = ['info', 'modulos', 'controle'];
+    const nextIndex = tabs.indexOf(activeTab) + 1;
+    if (nextIndex < tabs.length) setActiveTab(tabs[nextIndex]);
+  };
+
+  // ✨ NOVA FUNÇÃO - Carregar categorias
+  const carregarCategorias = async () => {
+    try {
+      const result = await categoriaService.listarCategorias();
+      setCategorias(result);
+    } catch (error: any) {
+      console.error('Erro ao carregar categorias:', error);
+      toast.error('Erro ao carregar categorias');
+    }
+  };
+
+  useEffect(() => {
+    // MODIFICAR O useEffect EXISTENTE
+    if (isEditing && courseData) {
+      setFormData(courseData);
+      setModules(courseData.modulos || []);
+      setNiveis(courseData.niveis || []);              // ✨ ADICIONAR
+      
+      // ✨ ADICIONAR - Setar categoria selecionada
+      if (courseData.categoria) {
+        setCategoriaSelecionada(courseData.categoria);
+      }
+    } else {
+      setFormData({
+        nome: '',
+        codigo: '',
+        categoria_id: undefined,                       // ✨ ADICIONAR
+        tipo_curso: '' as any,
+        duracao_valor: 0,
+        regime: 'laboral',
+        mensalidade: 0,
+        taxa_matricula: 0,
+        propina_fixa: true,
+        permite_bolsa: true,
+        status: 'ativo',
+        observacoes: '',
+        modulos: [],
+        niveis: []                                     // ✨ ADICIONAR
+      });
+      setModules([]);
+      setNiveis([]);                                   // ✨ ADICIONAR
+      setCategoriaSelecionada(null);                   // ✨ ADICIONAR
+    }
+    setErrors({});
+    setModuleErrors({});
+    setShowModuleForm(false);
+    setEditingModuleId(null);
+    setShowNivelForm(false);                          // ✨ ADICIONAR
+    setEditingNivelId(null);                          // ✨ ADICIONAR
+    setActiveTab('info');
+  }, [isEditing, courseData, isOpen]);
+
+  // ✨ NOVO useEffect - Carregar categorias quando modal abrir
+  useEffect(() => {
+    if (isOpen) {
+      carregarCategorias();
+    }
+  }, [isOpen]);
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       toast.error('Preencha todos os campos obrigatórios corretamente');
@@ -228,7 +432,11 @@ export default function CreateCourseModal({
 
     setIsLoading(true);
     try {
-      const courseWithModules = { ...formData, modulos: modules };
+      const courseWithModules = { 
+        ...formData, 
+        modulos: modules,
+        niveis: niveis        // ✨ ADICIONAR
+      };
       await onSave(courseWithModules);
       toast.success(isEditing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!');
       onClose();
@@ -262,28 +470,6 @@ export default function CreateCourseModal({
         return newErrors;
       });
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN',
-      minimumFractionDigits: 0
-    }).format(value);
-  };
-
-  const getTotalCargaHoraria = () => {
-    return modules.reduce((sum, module) => sum + module.carga_horaria, 0);
-  };
-
-  const validateAndNext = () => {
-    if (activeTab === 'info' && !validateForm()) {
-      toast.error("Preencha os campos obrigatórios");
-      return;
-    }
-    const tabs: ('info' | 'modulos' | 'controle')[] = ['info', 'modulos', 'controle'];
-    const nextIndex = tabs.indexOf(activeTab) + 1;
-    if (nextIndex < tabs.length) setActiveTab(tabs[nextIndex]);
   };
 
   return (
@@ -432,32 +618,48 @@ export default function CreateCourseModal({
 
                         <div className="space-y-2">
                           <Label className="text-slate-600 font-semibold ml-1">
-                            Tipo de Curso <span className="text-red-500">*</span>
+                            Categoria do Curso <span className="text-red-500">*</span>
                           </Label>
                           <Select
-                            value={formData.tipo_curso}
-                            onValueChange={(value: any) => {
-                              handleChange('tipo_curso', value);
-                              if (value === 'tecnico' || value === 'tecnico_profissional') handleChange('duracao_valor', 6);
-                              else if (value === 'tecnico_superior') handleChange('duracao_valor', 2);
-                              else if (value === 'curta_duracao') handleChange('duracao_valor', 3);
+                            value={formData.categoria_id?.toString()}
+                            onValueChange={(value) => {
+                              const categoriaId = parseInt(value);
+                              handleChange('categoria_id', categoriaId);
+                              
+                              // Encontrar categoria selecionada
+                              const cat = categorias.find(c => c.id === categoriaId);
+                              setCategoriaSelecionada(cat || null);
+                              
+                              // Limpar níveis se categoria não tem níveis
+                              if (cat && !cat.tem_niveis) {
+                                setNiveis([]);
+                              }
                             }}
                             disabled={isLoading}
                           >
-                            <SelectTrigger className={cn("h-12 rounded-xl", errors.tipo_curso && "border-red-500")}>
-                              <SelectValue placeholder="Selecione o tipo" />
+                            <SelectTrigger className={cn("h-12 rounded-xl", errors.categoria_id && "border-red-500")}>
+                              <SelectValue placeholder="Selecione a categoria" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="tecnico">📅 Curso Técnico (1-12 meses)</SelectItem>
-                              <SelectItem value="tecnico_superior">📚 Técnico Superior (1-3 anos)</SelectItem>
-                              <SelectItem value="tecnico_profissional">🎓 Técnico Profissional (1-12 meses)</SelectItem>
-                              <SelectItem value="curta_duracao">⚡ Curta Duração (1-6 meses)</SelectItem>
+                              {categorias.map(cat => (
+                                <SelectItem key={cat.id} value={cat.id.toString()}>
+                                  {cat.nome} {cat.tem_niveis && '📊 (com níveis)'}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
-                          {errors.tipo_curso && (
+                          {errors.categoria_id && (
                             <p className="text-xs text-red-600 flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
-                              {errors.tipo_curso}
+                              {errors.categoria_id}
+                            </p>
+                          )}
+                          {categoriaSelecionada && (
+                            <p className="text-xs text-slate-500">
+                              {categoriaSelecionada.tem_niveis 
+                                ? '✨ Esta categoria permite criar níveis (ex: Nível 1, 2, 3...)'
+                                : '📌 Curso sem níveis - duração única'
+                              }
                             </p>
                           )}
                         </div>
@@ -475,22 +677,42 @@ export default function CreateCourseModal({
                     </div>
 
                     <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">
-                          {formData.tipo_curso === 'tecnico_superior' ? 'Anos' : 'Meses'}
-                        </Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={formData.duracao_valor || ''}
-                          onChange={(e) => handleChange('duracao_valor', parseInt(e.target.value) || 0)}
-                          className={cn("h-12 rounded-xl", errors.duracao_valor && "border-red-500")}
-                          disabled={isLoading}
-                        />
-                        {errors.duracao_valor && (
-                          <p className="text-xs text-red-600">{errors.duracao_valor}</p>
-                        )}
-                      </div>
+                      {/* MOSTRAR DURAÇÃO APENAS SE CATEGORIA NÃO TEM NÍVEIS */}
+                      {!categoriaSelecionada?.tem_niveis && (
+                        <div className="space-y-2">
+                          <Label className="text-slate-600 font-semibold ml-1">
+                            Duração (meses)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={formData.duracao_valor || ''}
+                            onChange={(e) => handleChange('duracao_valor', parseInt(e.target.value) || 0)}
+                            className={cn("h-12 rounded-xl", errors.duracao_valor && "border-red-500")}
+                            disabled={isLoading}
+                          />
+                          {errors.duracao_valor && (
+                            <p className="text-xs text-red-600">{errors.duracao_valor}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* MOSTRAR TOTAL DE DURAÇÃO SE TEM NIVEIS */}
+                      {categoriaSelecionada?.tem_niveis && niveis.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-slate-600 font-semibold ml-1">
+                            Duração Total
+                          </Label>
+                          <Input
+                            value={`${getTotalDuracaoNiveis()} meses (${niveis.length} níveis)`}
+                            disabled
+                            className="h-12 bg-purple-50 text-purple-700 font-semibold rounded-xl"
+                          />
+                          <p className="text-xs text-purple-600">
+                            Calculado automaticamente com base nos níveis
+                          </p>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label className="text-slate-600 font-semibold ml-1">Regime</Label>
@@ -589,16 +811,175 @@ export default function CreateCourseModal({
               {/* ABA: MÓDULOS */}
               {activeTab === 'modulos' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                  
+                  {/* ============================================ */}
+                  {/* SEÇÃO DE NÍVEIS (SE CATEGORIA TEM NÍVEIS)   */}
+                  {/* ============================================ */}
+                  {categoriaSelecionada?.tem_niveis && (
+                    <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
+                            <BookMarked className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-700">Níveis do Curso</h3>
+                            {niveis.length > 0 && (
+                              <span className="text-xs text-purple-600">
+                                {niveis.length} {niveis.length === 1 ? 'nível' : 'níveis'} • {getTotalDuracaoNiveis()} meses totais
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {!showNivelForm && (
+                          <Button
+                            size="sm"
+                            onClick={handleAddNivel}
+                            disabled={isLoading}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Adicionar Nível
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* FORMULÁRIO DE NÍVEL */}
+                      {showNivelForm && (
+                        <div className="p-4 bg-purple-50 rounded-2xl border-2 border-purple-200 space-y-4 mb-4">
+                          <h4 className="font-semibold text-purple-800">
+                            {editingNivelId ? 'Editar Nível' : 'Novo Nível'}
+                          </h4>
+
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="Nº Nível"
+                                value={nivelFormData.nivel || ''}
+                                onChange={(e) => handleNivelChange('nivel', parseInt(e.target.value) || 1)}
+                              />
+                              <Input
+                                placeholder="Nome (ex: Básico)"
+                                value={nivelFormData.nome}
+                                onChange={(e) => handleNivelChange('nome', e.target.value)}
+                                className="col-span-2"
+                              />
+                            </div>
+
+                            <Textarea
+                              placeholder="Descrição do nível (opcional)"
+                              value={nivelFormData.descricao || ''}
+                              onChange={(e) => handleNivelChange('descricao', e.target.value)}
+                              rows={2}
+                              className="resize-none"
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs text-slate-600">Duração (meses)</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={nivelFormData.duracao_meses || ''}
+                                  onChange={(e) => handleNivelChange('duracao_meses', parseInt(e.target.value) || 4)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-slate-600">Ordem de Execução</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={nivelFormData.ordem || ''}
+                                  onChange={(e) => handleNivelChange('ordem', parseInt(e.target.value) || 1)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={handleCancelNivel}>
+                              Cancelar
+                            </Button>
+                            <Button size="sm" onClick={handleSaveNivel} className="bg-purple-600 hover:bg-purple-700">
+                              <Save className="h-4 w-4 mr-1" />
+                              {editingNivelId ? 'Atualizar' : 'Adicionar'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* LISTA DE NÍVEIS */}
+                      {niveis.length > 0 ? (
+                        <div className="space-y-2">
+                          {niveis.map((nivel) => (
+                            <div
+                              key={nivel.id || nivel.nivel}
+                              className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-purple-300 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
+                                      Nível {nivel.nivel}
+                                    </span>
+                                    <h4 className="font-semibold text-slate-800">{nivel.nome}</h4>
+                                  </div>
+                                  {nivel.descricao && (
+                                    <p className="text-sm text-slate-600 mt-1">{nivel.descricao}</p>
+                                  )}
+                                  <p className="text-sm text-slate-600 mt-2">
+                                    ⏱️ {nivel.duracao_meses} meses • Ordem: {nivel.ordem}
+                                  </p>
+                                </div>
+                                {!showNivelForm && (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleEditNivel(nivel)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Edit2 className="h-4 w-4 text-blue-600" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDeleteNivel(nivel.id || nivel.nivel)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : !showNivelForm && (
+                        <div className="text-center py-12 text-slate-400">
+                          <BookMarked className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                          <p className="text-sm">Nenhum nível adicionado</p>
+                          <p className="text-xs mt-1">Clique em "Adicionar Nível" para começar</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ============================================ */}
+                  {/* SEÇÃO DE MÓDULOS (MANTÉM IGUAL)             */}
+                  {/* ============================================ */}
                   <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
+                        <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
                           <BookMarked className="h-5 w-5" />
                         </div>
                         <div>
                           <h3 className="font-bold text-slate-700">Módulos do Curso</h3>
                           {modules.length > 0 && (
-                            <span className="text-xs text-purple-600">
+                            <span className="text-xs text-blue-600">
                               {modules.length} {modules.length === 1 ? 'módulo' : 'módulos'} • {getTotalCargaHoraria()}h totais
                             </span>
                           )}
@@ -609,7 +990,7 @@ export default function CreateCourseModal({
                           size="sm"
                           onClick={handleAddModule}
                           disabled={isLoading}
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Adicionar
@@ -617,10 +998,10 @@ export default function CreateCourseModal({
                       )}
                     </div>
 
-                    {/* Formulário de Módulo */}
+                    {/* FORMULÁRIO DE MÓDULO (MANTÉM IGUAL) */}
                     {showModuleForm && (
-                      <div className="p-4 bg-purple-50 rounded-2xl border-2 border-purple-200 space-y-4 mb-4">
-                        <h4 className="font-semibold text-purple-800">
+                      <div className="p-4 bg-blue-50 rounded-2xl border-2 border-blue-200 space-y-4 mb-4">
+                        <h4 className="font-semibold text-blue-800">
                           {editingModuleId ? 'Editar Módulo' : 'Novo Módulo'}
                         </h4>
 
@@ -655,7 +1036,7 @@ export default function CreateCourseModal({
                           <Button variant="outline" size="sm" onClick={handleCancelModule}>
                             Cancelar
                           </Button>
-                          <Button size="sm" onClick={handleSaveModule} className="bg-purple-600 hover:bg-purple-700">
+                          <Button size="sm" onClick={handleSaveModule} className="bg-blue-600 hover:bg-blue-700">
                             <Save className="h-4 w-4 mr-1" />
                             {editingModuleId ? 'Atualizar' : 'Adicionar'}
                           </Button>
@@ -663,19 +1044,19 @@ export default function CreateCourseModal({
                       </div>
                     )}
 
-                    {/* Lista de Módulos */}
+                    {/* LISTA DE MÓDULOS (MANTÉM IGUAL) */}
                     {modules.length > 0 ? (
                       <div className="space-y-2">
                         {modules.map((module) => (
                           <div
                             key={module.id}
-                            className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-purple-300 transition-colors"
+                            className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-300 transition-colors"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-semibold text-slate-800">{module.nome_modulo}</h4>
-                                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono">
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono">
                                     {module.codigo_modulo}
                                   </span>
                                 </div>
@@ -714,6 +1095,16 @@ export default function CreateCourseModal({
                       </div>
                     )}
                   </div>
+
+                  {/* AVISO SE NÃO SELECIONOU CATEGORIA */}
+                  {!categoriaSelecionada && (
+                    <div className="p-6 bg-yellow-50 border-2 border-yellow-200 rounded-2xl text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 text-yellow-600" />
+                      <p className="text-sm text-yellow-800 font-semibold">
+                        Selecione uma categoria na aba "Configurações" primeiro
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -797,17 +1188,32 @@ export default function CreateCourseModal({
                         <span className="text-sm font-mono font-semibold text-[#F5821F]">{formData.codigo || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-slate-600">Tipo:</span>
-                        <span className="text-sm font-semibold">{formData.tipo_curso?.replace('_', ' ') || '-'}</span>
+                        <span className="text-sm text-slate-600">Categoria:</span>
+                        <span className="text-sm font-semibold text-[#004B87]">
+                          {categoriaSelecionada?.nome || '-'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-slate-600">Duração:</span>
-                        <span className="text-sm font-semibold">{formData.duracao_valor} {formData.tipo_curso === 'tecnico_superior' ? 'anos' : 'meses'}</span>
+                        <span className="text-sm font-semibold">
+                          {categoriaSelecionada?.tem_niveis && niveis.length > 0
+                            ? `${getTotalDuracaoNiveis()} meses (${niveis.length} níveis)`
+                            : `${formData.duracao_valor} meses`
+                          }
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-slate-600">Mensalidade:</span>
                         <span className="text-sm font-semibold text-green-600">{formatCurrency(formData.mensalidade)}</span>
                       </div>
+                      {niveis.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-slate-600">Níveis:</span>
+                          <span className="text-sm font-semibold text-purple-600">
+                            {niveis.length} níveis ({getTotalDuracaoNiveis()} meses)
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-sm text-slate-600">Módulos:</span>
                         <span className="text-sm font-semibold text-purple-600">{modules.length} módulos ({getTotalCargaHoraria()}h)</span>

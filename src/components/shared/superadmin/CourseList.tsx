@@ -36,7 +36,9 @@ interface Course {
   id?: number;
   nome: string;
   codigo: string;
-  tipo_curso: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
+  categoria_id?: number;        // ✨ ADICIONAR
+  categoria?: Categoria;        // ✨ ADICIONAR
+  tipo_curso?: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao'; // manter
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
   mensalidade: number;
@@ -45,6 +47,7 @@ interface Course {
   permite_bolsa: boolean;
   status: 'ativo' | 'inativo';
   observacoes?: string;
+  niveis?: Nivel[];             // ✨ ADICIONAR
   data_criacao?: string;
 }
 
@@ -290,6 +293,14 @@ export function CourseList({
                         <div>
                           <div className="font-semibold text-[#004B87]">{course.nome}</div>
                           <div className="text-sm text-[#F5821F] font-medium">{course.codigo}</div>
+                          <span className="text-xs text-slate-500">
+                            {course.categoria?.nome || 'Sem categoria'}
+                          </span>
+                          {course.niveis && course.niveis.length > 0 && (
+                            <span className="text-xs text-purple-600">
+                              {course.niveis.length} níveis
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

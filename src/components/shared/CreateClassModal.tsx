@@ -42,7 +42,6 @@ export function ClassModal({
   const [formData, setFormData] = useState<Partial<Class>>({
     name: '',
     description: '',
-    subject: '',
     curso: '',
     code: '',
     schedule: 'laboral',
@@ -119,7 +118,6 @@ export function ClassModal({
       setFormData({
         name: '',
         description: '',
-        subject: '',
         curso: '',
         code: '',
         schedule: 'laboral',
@@ -146,6 +144,27 @@ export function ClassModal({
     }
   }, [formData.curso, isCreating]);
 
+  // Regerar name e code quando os cursos carregarem
+  useEffect(() => {
+    if (!isCreating) return;
+    if (!formData.curso) return;
+    if (cursosDisponiveis.length === 0) return;
+
+    // garantir código
+    const novoCodigo = gerarCodigoTurma(formData.curso);
+    if (novoCodigo && formData.code !== novoCodigo) {
+      setFormData(prev => ({ ...prev, code: novoCodigo }));
+    }
+
+    // garantir nome (se não estiver em modo editável)
+    if (!nomeEditavel) {
+      const nomeGerado = gerarNomeTurma(formData.curso, formData.schedule || 'laboral');
+      if (nomeGerado && formData.name !== nomeGerado) {
+        setFormData(prev => ({ ...prev, name: nomeGerado }));
+      }
+    }
+  }, [cursosDisponiveis, formData.curso, formData.schedule, isCreating, nomeEditavel]);
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' }));
@@ -156,6 +175,7 @@ export function ClassModal({
     const errors: Record<string, string> = {};
     
     if (!formData.curso) errors.curso = 'Selecione um curso';
+    if (!formData.name?.trim()) errors.name = 'Nome da turma é obrigatório';
     if (!formData.code?.trim()) errors.code = 'Código da turma é obrigatório';
     if (!formData.start_date) errors.start_date = 'Data de início é obrigatória';
     if (!formData.duration) errors.duration = 'Duração é obrigatória';
@@ -170,39 +190,23 @@ export function ClassModal({
       const duracaoMeses = formData.duration ? 
         parseInt(formData.duration.toString().replace(/[^0-9]/g, '')) || 6 : 6;
 
-      const statusMap: Record<string, string> = {
-        'active': 'ativo',
-        'inactive': 'inativo',
-        'completed': 'concluido'
+      const dadosReact: Partial<Class> = {
+        code: formData.code,
+        name: formData.name,
+        curso: formData.curso,          // <-- vem do seletor
+        room: formData.room || undefined,
+        capacity: formData.capacity || 30,
+        start_date: formData.start_date || undefined,
+        end_date: formData.end_date || undefined,
+        description: formData.description || undefined,
+        status: formData.status || 'active',
+        duration: duracaoMeses.toString(),
+        schedule: formData.schedule || 'laboral'
       };
 
-      const cursoNome = cursoSelecionado?.nome || 'Curso';
-
-      const dadosParaAPI = {
-        codigo: formData.code,
-        nome: formData.name,
-        disciplina: cursoNome,
-        curso_id: formData.curso,
-        sala: formData.room || null,
-        capacidade_maxima: formData.capacity || 30,
-        data_inicio: formData.start_date || null,
-        data_fim: formData.end_date || null,
-        observacoes: formData.description || null,
-        status: statusMap[formData.status as string] || 'ativo',
-        duracao_meses: duracaoMeses,
-        ano_letivo: new Date().getFullYear(),
-        horario_inicio: '00:00:00',
-        horario_fim: '00:00:00',
-        dias_semana: formData.schedule || 'laboral',
-        semestre: null,
-        professor_id: null,
-        carga_horaria: null,
-        creditos: null
-      };
+      console.log('📤 Enviando (React shape) para onSave:', dadosReact);
       
-      console.log('📤 Salvando turma:', dadosParaAPI);
-      
-      onSave(dadosParaAPI);
+      onSave(dadosReact);
       onClose();
     } else {
       console.error('❌ Validação falhou:', formErrors);
