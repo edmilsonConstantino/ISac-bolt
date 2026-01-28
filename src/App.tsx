@@ -7,8 +7,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { StudentDashboard } from "@/components/StudentDashboard";
-import { TeacherDashboard } from "@/components/TeacherDashboard";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { StudentDashboard } from "@/components/Students/StudentDashboard";
+import { TeacherDashboard } from "@/components/Teachers/TeacherDashboard";
 import { AdminDashboard } from "@/components/AdminDashboard";
 import { NormalAdmin } from "@/components/shared/normaladmin/NormalAdmin";
 import { useAuthStore } from "@/store/authStore";
@@ -166,6 +168,8 @@ const App = () => (
           <Route path="/login" element={<Index />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           
           {/* ========== DASHBOARD DO ALUNO ========== */}
           <Route 

@@ -85,14 +85,18 @@ apiClient.interceptors.response.use(
           refresh_token: refreshToken,
         });
 
-        const { access_token } = response.data;
-        
+        const tokenData = response.data.data ?? response.data;
+        const { access_token, refresh_token: new_refresh_token } = tokenData;
+
         if (!access_token) {
           throw new Error('Novo access_token não recebido');
         }
-        
+
         console.log('✅ Novo token recebido');
         localStorage.setItem('access_token', access_token);
+        if (new_refresh_token) {
+          localStorage.setItem('refresh_token', new_refresh_token);
+        }
 
         // Retry request original com novo token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;

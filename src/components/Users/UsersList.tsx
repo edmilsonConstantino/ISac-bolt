@@ -26,8 +26,8 @@ import {
 } from "lucide-react";
 import { Permission } from "@/types";
 import { CreateUserModal } from "./CreateUserModal";
-import { UserCredentialsModal } from "./UserCredentialsModal";
-import { UserAccessHistoryModal } from "./UserAccessHistoryModal";
+import { UserCredentialsModal } from "@/components/shared/UserCredentialsModal";
+import { UserAccessHistoryModal } from "@/components/shared/UserAccessHistoryModal";
 
 export interface SystemUser {
   id: number;

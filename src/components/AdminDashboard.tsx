@@ -14,35 +14,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RegistrationStudentModal } from "./shared/reusable/RegistrationStudentModal";
 import { Input } from "@/components/ui/input";
 import {
-  Users, BookOpen, DollarSign, Settings, UserPlus, GraduationCap,
-  LogOut, Shield, BarChart3, AlertTriangle, CheckCircle, TrendingUp,
-  Search, Receipt, Eye, Trash2, Mail, Phone, X, Menu, ChevronLeft,
-  ChevronRight, Home, FileText, MessageCircle
+  Users, BookOpen, DollarSign, UserPlus, GraduationCap,
+  LogOut, Shield, BarChart3, AlertTriangle, TrendingUp,
+  FileText, MessageCircle
 } from "lucide-react";
 
 // Import dos componentes compartilhados
-import { ClassList } from "./shared/ClassList";
-import { StudentList } from "./shared/StudentList";
-import { TeacherList } from "./shared/TeacherList";
-import { PaymentList } from "./shared/superadmin/PaymentList";
+import { ClassList } from "./Classes/ClassList";
+import { StudentList } from "./Students/StudentList";
+import { TeacherList } from "./Teachers/TeacherList";
+import { PaymentList } from "./Payments/PaymentList";
 import { ClassModal } from "./shared/CreateClassModal";
-import { StudentModal } from "./shared/StudentModal";
-import { CreateStudentModal } from "./shared/CreateStudentModal";
-import { CreateTeacherModal } from "./shared/CreateTeacherModal";
+import { StudentModal } from "./Students/StudentModal";
+import { CreateStudentModal } from "./Students/CreateStudentModal";
+import { CreateTeacherModal } from "./Teachers/CreateTeacherModal";
 import { SelectStudentModal } from "./shared/SelectStudentModal";
 import { ReportsModal } from "./shared/ReportsModal";
-import { PaymentManagementModal } from "./shared/superadmin/PaymentManagementModal";
+import { PaymentManagementModal } from "./Payments/PaymentManagementModal";
 import { GeneralSettingsModal } from "./shared/GeneralSettingsModal";
-import { TeacherProfileModal } from "./shared/TeacherProfileModal";
-import { StudentProfileModal } from "./shared/StudentProfileModal";
-import { StudentPaymentManagementModal } from "./shared/StudentPaymentManagementModal";
+import { TeacherProfileModal } from "./Teachers/TeacherProfileModal";
+import { StudentProfileModal } from "./Students/StudentProfileModal";
 import CreateCourseModal from '@/components/shared/superadmin/CreateCourseModal';
 import { CourseList } from "./shared/superadmin/CourseList";
 import { RegistrationList, Registration } from "./shared/reusable/RegistrationList";
-import { UsersList, SystemUser } from "./shared/UsersList";
+import { UsersList, SystemUser } from "@/components/Users/UsersList";
 import { GradesList, Grade } from "./shared/GradesList";
 import { LaunchGradesModal } from "./shared/LaunchGradesModal";
-import { StudentPaymentDetailsModal } from "./shared/StudentPaymentDetailsModal";
+import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
+import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 
 
 // Types
@@ -62,7 +61,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const displayName = user ? user.nome : 'Admin';
 
   // ✅ Estados de navegação
-const [activeView, setActiveView] = useState<'dashboard' | 'students' | 'teachers' | 'classes' | 'courses' | 'payments' | 'registrations' | 'users' | 'grades'>('dashboard');  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeView, setActiveView] = useState<AdminView>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // ✅ Estados de dados REAIS
   const [students, setStudents] = useState<Student[]>([]);
@@ -124,8 +124,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
-    studentId: 0,
-    paymentData: null as any
+    studentId: 0
   });
 
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
@@ -153,19 +152,6 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   // Estados para usuários e notas
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [gradesData, setGradesData] = useState<Grade[]>([]);
-
-  // Menu items para sidebar
-const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'students', label: 'Estudantes', icon: GraduationCap },
-    { id: 'registrations', label: 'Matrículas', icon: FileText },
-  { id: 'teachers', label: 'Docentes', icon: Users },
-  { id: 'classes', label: 'Turmas', icon: BookOpen },
-  { id: 'courses', label: 'Cursos', icon: BookOpen },
-  { id: 'payments', label: 'Pagamentos', icon: DollarSign },
-  { id: 'users', label: 'Usuários', icon: Shield },
-  { id: 'grades', label: 'Notas', icon: BarChart3 },
-];
 
   // ✅ Verificar autenticação ao montar
   useEffect(() => {
@@ -896,31 +882,9 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       return;
     }
 
-    // Mock payment data
-    const mockPaymentData = {
-      studentId: student.id,
-      studentName: student.name,
-      courseId: 1,
-      courseName: student.className || "Curso não especificado",
-      monthlyFee: 25000,
-      totalPaid: 150000,
-      totalDebt: 50000,
-      advanceBalance: 0,
-      totalFines: 5000,
-      payments: Array.from({ length: 12 }, (_, i) => ({
-        month: ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][i],
-        monthNumber: i + 1,
-        amount: 25000,
-        status: i < 6 ? "paid" : i < 8 ? "pending" : "overdue" as "paid" | "pending" | "overdue",
-        paidDate: i < 6 ? `2024-${String(i + 1).padStart(2, '0')}-15` : undefined,
-        fine: i >= 8 ? 2500 : 0
-      }))
-    };
-
     setPaymentModal({
       isOpen: true,
-      studentId,
-      paymentData: mockPaymentData
+      studentId
     });
   };
 
@@ -977,103 +941,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
   <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
     {/* ========== SIDEBAR LATERAL ========== */}
-    <aside
-      className={`${
-        isSidebarOpen ? 'w-72' : 'w-20'
-      } bg-gradient-to-b from-[#004B87] via-[#003868] to-[#002850] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl relative z-50`}
-    >
-      {/* Logo e Header */}
-      <div className="p-6 border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!isSidebarOpen && 'justify-center'}`}>
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-xl blur-md opacity-75"></div>
-              <div className="relative h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
-                <img src="/image.png" alt="ISAC" className="h-full w-full object-contain" />
-              </div>
-            </div>
-            {isSidebarOpen && (
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-[#F5821F] to-[#FF9933] bg-clip-text text-transparent">
-                  ISAC
-                </h1>
-                <p className="text-xs text-slate-300">Portal Admin</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Menu Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        <div className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeView === item.id;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveView(item.id as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white shadow-lg'
-                    : 'text-slate-200 hover:bg-white/10'
-                } ${!isSidebarOpen && 'justify-center'}`}
-              >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {isSidebarOpen && (
-                  <span className="font-medium text-sm">{item.label}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Bottom Info */}
-      <div className="p-3 border-t border-white/10">
-        {isSidebarOpen ? (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setGeneralSettingsModal(true)}
-              className="h-10 w-10 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg flex-shrink-0"
-              title="Configurações"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <div className="flex-1 px-2 py-3 bg-white/5 rounded-lg">
-              <p className="text-xs text-slate-400">Sistema Acadêmico ISAC</p>
-              <p className="text-xs text-slate-500 mt-1">Versão 1.0.0</p>
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setGeneralSettingsModal(true)}
-            className="w-full h-12 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg"
-            title="Configurações"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="absolute -right-3 top-24 bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white rounded-full p-1.5 shadow-lg hover:shadow-xl transition-all duration-200"
-      >
-        {isSidebarOpen ? (
-          <ChevronLeft className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
-      </button>
-    </aside>
+    <AdminSidebar
+      activeView={activeView}
+      setActiveView={setActiveView}
+      isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen={setIsSidebarOpen}
+      onOpenSettings={() => setGeneralSettingsModal(true)}
+    />
 
     {/* ========== MAIN CONTENT ========== */}
     <main className="flex-1 overflow-y-auto">
@@ -1487,7 +1361,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     {paymentModal.isOpen && paymentModal.studentId > 0 && (
       <PaymentManagementModal
         isOpen={paymentModal.isOpen}
-        onClose={() => setPaymentModal({ ...paymentModal, isOpen: false })}
+        onClose={() => setPaymentModal({ isOpen: false, studentId: 0 })}
         studentPaymentInfo={getStudentPaymentInfo(
           paymentModal.studentId,
           students.find(s => s.id === paymentModal.studentId)?.name || '',
@@ -1556,18 +1430,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         isOpen={launchGradesModal.isOpen}
         onClose={handleCloseLaunchGrades}
         classInfo={launchGradesModal.classInfo}
-      />
-    )}
-
-    {paymentModal.isOpen && paymentModal.paymentData && (
-      <StudentPaymentManagementModal
-        isOpen={paymentModal.isOpen}
-        onClose={() => setPaymentModal({ isOpen: false, studentId: 0, paymentData: null })}
-        studentData={paymentModal.paymentData}
-        onSavePayment={(data) => {
-          console.log("Payment saved:", data);
-          toast.success("Pagamento registrado!");
-        }}
       />
     )}
 

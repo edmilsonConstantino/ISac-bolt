@@ -15,17 +15,17 @@ import {
 
 // Import dos componentes compartilhados
 import { ClassList } from "../TeacherComponents/ClassList";
-import { StudentList } from "../StudentList";
-import { TeacherList } from "../TeacherList";
-import { PaymentList } from "../superadmin/PaymentList";
+import { StudentList } from "../../Students/StudentList";
+import { TeacherList } from "../../Teachers/TeacherList";
+import { PaymentList } from "../../Payments/PaymentList";
 import { ClassModal } from "../CreateClassModal";
-import { StudentModal } from "../StudentModal";
-import { CreateStudentModal } from "../CreateStudentModal";
-import { CreateTeacherModal } from "../CreateTeacherModal";
+import { StudentModal } from "../../Students/StudentModal";
+import { CreateStudentModal } from "../../Students/CreateStudentModal";
+import { CreateTeacherModal } from "../../Teachers/CreateTeacherModal";
 import { ReportsModal } from "../ReportsModal";
-import { PaymentManagementModal } from "../superadmin/PaymentManagementModal";
-import { TeacherProfileModal } from "../TeacherProfileModal";
-import { StudentProfileModal } from "../StudentProfileModal";
+import { PaymentManagementModal } from "../../Payments/PaymentManagementModal";
+import { TeacherProfileModal } from "../../Teachers/TeacherProfileModal";
+import { StudentProfileModal } from "../../Students/StudentProfileModal";
 
 // Types
 import { Class, Student, Permission, PaymentMethod } from "../../../types";

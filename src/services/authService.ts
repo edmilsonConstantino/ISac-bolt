@@ -119,15 +119,43 @@ class AuthService {
   }
 
   /**
-   * 🚪 Fazer logout
+   * Fazer logout (revoga tokens no backend antes de limpar localStorage)
    */
-  logout(): void {
-    console.log('👋 Fazendo logout e limpando tokens...');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('auth-storage');
-    console.log('✅ Logout completo');
+  async logout(): Promise<void> {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        await apiClient.post('/auth/logout.php');
+      }
+    } catch (error) {
+      // Mesmo com erro no backend, limpar localStorage
+      console.error('Erro ao revogar tokens no backend:', error);
+    } finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('auth-storage');
+    }
+  }
+
+  /**
+   * Solicitar recuperacao de senha
+   */
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post('/auth/forgot-password.php', { email });
+    return response.data;
+  }
+
+  /**
+   * Redefinir senha com token
+   */
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post('/auth/reset-password.php', {
+      token,
+      password,
+      confirm_password: confirmPassword,
+    });
+    return response.data;
   }
 
   /**

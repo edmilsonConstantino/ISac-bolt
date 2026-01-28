@@ -699,12 +699,12 @@ export function ClassModal({
               
               <div className="flex gap-3">
                 {activeTab !== 'details' ? (
-                  <Button 
-                    onClick={validateAndNext}
-                    className="bg-[#004B87] text-white hover:bg-[#003A6B] px-8 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-lg shadow-blue-200"
-                  >
-                    Próximo Passo <ChevronRight className="h-4 w-4" />
-                  </Button>
+                <Button 
+  onClick={validateAndNext}
+  className="bg-[#F5821F] text-white hover:bg-[#E07318] px-8 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-lg shadow-orange-200"
+>
+  Próximo Passo <ChevronRight className="h-4 w-4" />
+</Button>
                 ) : (
                   permissions.canEdit && (
                     <Button 

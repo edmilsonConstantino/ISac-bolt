@@ -21,17 +21,17 @@ import {
   Menu,
   X
 } from "lucide-react";
-import { StudentList } from "./shared/StudentList";
-import { ClassModal } from "./shared/CreateClassModal";
-import { StudentModal } from "./shared/StudentModal";
-import { CreateAssignmentModal } from "./shared/CreateAssignmentModal";
-import { AttendanceModal } from "./shared/AttendanceModal";
-import { AnnouncementModal } from "./shared/AnnouncementModal";
-import { UploadMaterialModal } from "./shared/UploadMaterialModal";
-import { GradeManagementModal } from "./shared/GradeManagementModal";
-import { ClassList } from "./shared/TeacherComponents/ClassList";
-import { useClassData, useStudentData, useAssignmentData } from "../hooks/useData";
-import { Class, Student, Permission } from "../types";
+import { StudentList } from "@/components/Students/StudentList";
+import { ClassModal } from "@/components/shared/CreateClassModal";
+import { StudentModal } from "@/components/Students/StudentModal";
+import { CreateAssignmentModal } from "@/components/shared/CreateAssignmentModal";
+import { AttendanceModal } from "@/components/shared/AttendanceModal";
+import { AnnouncementModal } from "@/components/shared/AnnouncementModal";
+import { UploadMaterialModal } from "@/components/shared/UploadMaterialModal";
+import { GradeManagementModal } from "@/components/shared/GradeManagementModal";
+import { ClassList } from "@/components/Classes/ClassList";
+import { useClassData, useStudentData, useAssignmentData } from "@/hooks/useData";
+import { Class, Student, Permission } from "@/types";
 
 interface TeacherDashboardProps {
   onLogout?: () => void;

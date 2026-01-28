@@ -18,26 +18,14 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log('🚀 FORM SUBMETIDO!');
-    console.log('📧 Identifier:', identifier);
-    console.log('🔑 Senha:', senha);
-    
-    if (!identifier || !senha) {
-      alert('❌ Identifier ou senha vazios!\nIdentifier: ' + identifier + '\nSenha: ' + senha);
-      return;
-    }
-    
-    clearError();
-    
-    try {
-      console.log('🔄 Chamando login...');
-      const userProfile = await login({ identifier, senha }); 
-      console.log('✅ Login OK! Perfil:', userProfile);
-      
-    console.log('✅ Login bem-sucedido! Perfil:', userProfile);
 
-      
+    if (!identifier || !senha) return;
+
+    clearError();
+
+    try {
+      const userProfile = await login({ identifier, senha });
+
       switch (userProfile) {
         case 'admin':
           navigate('/admin/dashboard', { replace: true });
@@ -55,11 +43,7 @@ export function LoginForm() {
           navigate('/dashboard', { replace: true });
       }
     } catch (error: any) {
-      console.error('❌ ERRO:', error);
-      
-      alert('❌ ERRO NO LOGIN!\n\n' + 
-            'Mensagem: ' + (error.message || 'Erro desconhecido') + '\n\n' +
-            'Verifique o console (F12) para mais detalhes');
+      // Erro já é tratado pelo authStore (set error)
     }
   };
 
@@ -216,6 +200,7 @@ export function LoginForm() {
             <div className="flex items-center justify-end pt-1">
               <button
                 type="button"
+                onClick={() => navigate('/forgot-password')}
                 className="text-sm text-[#F5821F] hover:text-[#E07318] font-semibold transition-colors duration-300"
               >
                 Esqueceu a senha?
@@ -438,6 +423,7 @@ export function LoginForm() {
                   <div className="flex items-center justify-end">
                     <button
                       type="button"
+                      onClick={() => navigate('/forgot-password')}
                       className="text-xs text-[#F5821F] hover:text-[#004B87] font-medium transition-colors"
                     >
                       Esqueceu a senha?

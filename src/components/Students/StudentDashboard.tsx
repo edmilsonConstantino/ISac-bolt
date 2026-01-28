@@ -31,9 +31,9 @@ import {
 } from "lucide-react";
 
 // Import dos hooks compartilhados
-import { useStudentData } from "../hooks/useData";
-import { usePaymentData } from "../hooks/usePaymentData";
-import { StudentFinanceModal } from "./shared/StudentFinanceModal";
+import { useStudentData } from "@/hooks/useData";
+import { usePaymentData } from "@/hooks/usePaymentData";
+import { StudentFinanceModal } from "@/components/Students/StudentFinanceModal";
 import { useAuthStore } from "@/store/authStore";
 
 interface StudentDashboardProps {

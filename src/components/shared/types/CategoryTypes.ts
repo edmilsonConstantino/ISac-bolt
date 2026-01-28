@@ -1,18 +1,29 @@
 /**
  * ============================================================
- * TIPOS PARA CATEGORIAS E NÍVEIS DE CURSOS
+ * TYPES FOR COURSE CATEGORIES AND LEVELS
  * ============================================================
- * Define as interfaces para trabalhar com categorias e níveis
+ * Defines interfaces for working with categories and levels
+ *
+ * NOTE: Backend uses English field names, frontend displays PT labels
  */
 
 export interface Categoria {
   id: number;
-  nome: string;
-  descricao?: string;
-  tem_niveis: boolean;
-  status: 'ativo' | 'inativo';
+  name: string;
+  description?: string;
+  has_levels: boolean;
+  level_type?: 'numbered' | 'named';
+  predefined_levels?: string[];
+  status: 'active' | 'inactive';
   created_at?: string;
   updated_at?: string;
+}
+
+export interface NivelModulo {
+  id: string;
+  nome_modulo: string;
+  codigo_modulo: string;
+  carga_horaria: number;
 }
 
 export interface Nivel {
@@ -24,16 +35,19 @@ export interface Nivel {
   duracao_meses: number;
   ordem: number;
   prerequisito_nivel_id?: number | null;
+  modulos?: NivelModulo[];
   status?: 'ativo' | 'inativo';
   created_at?: string;
   updated_at?: string;
 }
 
 export interface CategoriaFormData {
-  nome: string;
-  descricao?: string;
-  tem_niveis: boolean;
-  status: 'ativo' | 'inativo';
+  name: string;
+  description?: string;
+  has_levels: boolean;
+  level_type?: 'numbered' | 'named';
+  predefined_levels?: string[];
+  status: 'active' | 'inactive';
 }
 
 export interface NivelFormData {
