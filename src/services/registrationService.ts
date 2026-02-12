@@ -158,23 +158,39 @@ class RegistrationService {
     }
   }
   /**
- * 🔢 Get student count by course (for enrollment number generation)
- */
-async getCountByCourse(courseId: string): Promise<{ total: number; next_number: number }> {
-  try {
-  const response = await apiClient.get<{ success: boolean; total: number; next_number: number }>(
-   `/api/registrations/count-by-course.php?course_id=${courseId}`
-);
-    
-    return {
-      total: response.data.total || 0,
-      next_number: response.data.next_number || 1
-    };
-  } catch (error: any) {
-    console.error('Error getting course count:', error);
-    return { total: 0, next_number: 1 };
+   * 🔢 Get next enrollment number for course (for enrollment number generation)
+   * Returns: { total, next_number, prefix, year, suggested_code }
+   * Formato: {CODIGO_CURSO}{ANO}{NUMERO_SEQUENCIAL} ex: INGM202601
+   */
+  async getCountByCourse(courseId: string): Promise<{
+    total: number;
+    next_number: number;
+    prefix?: string;
+    year?: string;
+    suggested_code?: string;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        total: number;
+        next_number: number;
+        prefix?: string;
+        year?: string;
+        suggested_code?: string;
+      }>(`/api/registrations/count-by-course.php?course_id=${courseId}`);
+
+      return {
+        total: response.data.total || 0,
+        next_number: response.data.next_number || 1,
+        prefix: response.data.prefix,
+        year: response.data.year,
+        suggested_code: response.data.suggested_code,
+      };
+    } catch (error: any) {
+      console.error('Error getting course count:', error);
+      return { total: 0, next_number: 1 };
+    }
   }
-}
 }
 
 export default new RegistrationService();

@@ -7,12 +7,14 @@ export interface Teacher {
   nome: string;
   email: string;
   telefone?: string;
+  genero?: 'M' | 'F';
   especialidade?: string;
   data_nascimento?: string;
   endereco?: string;
+  cursos?: string;
+  turnos?: string;
   tipo_contrato: 'tempo_integral' | 'meio_periodo' | 'freelancer' | 'substituto';
   data_inicio: string;
-  salario?: number;
   contato_emergencia?: string;
   observacoes?: string;
   status: 'ativo' | 'inativo';
@@ -23,13 +25,17 @@ export interface Teacher {
 export interface CreateTeacherData {
   nome: string;
   email: string;
+  username?: string;
+  password?: string;
   telefone?: string;
+  genero?: string;
   especialidade?: string;
   data_nascimento?: string;
   endereco?: string;
+  cursos?: string;
+  turnos?: string;
   tipo_contrato: string;
   data_inicio: string;
-  salario?: number;
   contato_emergencia?: string;
   observacoes?: string;
   status?: string;

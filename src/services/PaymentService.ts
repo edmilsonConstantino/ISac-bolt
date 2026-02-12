@@ -1,7 +1,34 @@
 // src/services/PaymentService.ts
 import api from "./api";
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
 
 export type StudentPaymentStatus = "paid" | "partial" | "reversed";
+
+export interface PaymentPlan {
+  id: number;
+  student_id: number;
+  student_name: string;
+  curso_id: string;
+  course_name: string;
+  month_reference: string;
+  due_date: string;
+  amount_due: number;
+  status: 'pending' | 'paid' | 'overdue' | 'partial';
+  total_paid: number;
+  penalty: number;
+  total_due_with_penalty: number;
+}
+
+export interface Payment {
+  id: number;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: string;
+  reference: string;
+  status: string;
+}
 
 export interface StudentPayment {
   id: number;
@@ -69,7 +96,7 @@ type ListParams = {
   status?: StudentPaymentStatus;
 };
 
-const PaymentService = {
+class PaymentService {
   // LISTAR pagamentos
   async list(params?: ListParams): Promise<StudentPayment[]> {
     const res = await api.get<ListPaymentsResponse>("/student-payments/index.php", {
@@ -81,7 +108,7 @@ const PaymentService = {
     }
 
     return res.data.data || [];
-  },
+  }
 
   // CRIAR pagamento (mensalidade ou matrícula)
   async create(payload: CreateStudentPaymentPayload): Promise<CreatePaymentResponse> {
@@ -92,7 +119,7 @@ const PaymentService = {
     }
 
     return res.data;
-  },
+  }
 
   // ATUALIZAR status do pagamento (ex: reversed)
   async updateStatus(paymentId: number, status: StudentPaymentStatus): Promise<{ success: boolean; message?: string }> {
@@ -106,7 +133,7 @@ const PaymentService = {
     }
 
     return res.data;
-  },
+  }
 
   // DELETE (se o teu delete.php usa soft delete ou remove)
   async delete(paymentId: number): Promise<{ success: boolean; message?: string }> {
@@ -120,7 +147,85 @@ const PaymentService = {
     }
 
     return res.data;
-  },
-};
+  }
 
-export default PaymentService;
+  // Buscar estudantes para modal de pagamento
+  async getStudentsForPayment(filters?: { search?: string; status?: string }) {
+    const response = await axios.get(`${API_URL}/students.php`, {
+      params: filters,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data;
+  }
+
+  // Buscar planos de pagamento de um estudante
+  async getPaymentPlans(studentId: string): Promise<PaymentPlan[]> {
+    const response = await axios.get(`${API_URL}/student-payment-plans/index.php?student_id=${studentId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data?.data || [];
+  }
+
+  // Gerar plano de pagamento após matrícula
+  async generatePaymentPlan(registrationId: number): Promise<PaymentPlan> {
+    const response = await axios.post(`${API_URL}/student-payment-plans/generate.php`, {
+      registration_id: registrationId,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data;
+  }
+
+  // Buscar todos os pagamentos
+  async getAllPayments(filters?: { status?: string; studentId?: string }) {
+    const response = await axios.get(`${API_URL}/student-payments/index.php`, {
+      params: filters,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data;
+  }
+
+  // Registrar pagamento
+  async recordPayment(
+    planId: string,
+    paymentData: {
+      amount: number;
+      paymentDate: string;
+      paymentMethod: string;
+      reference: string;
+    }
+  ): Promise<Payment> {
+    const response = await axios.post(`${API_URL}/student-payments/create.php`, {
+      planId,
+      ...paymentData,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data;
+  }
+
+  // Atualizar status de pagamento
+  async updatePaymentStatus(paymentId: string, status: string) {
+    const response = await axios.patch(`${API_URL}/student-payments/update-status.php`, {
+      id: paymentId,
+      status,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    return response.data;
+  }
+}
+
+export default new PaymentService();

@@ -12,6 +12,7 @@ export interface Categoria {
   name: string;
   description?: string;
   has_levels: boolean;
+  duration_months?: number | null;  // Default duration for courses in this category (can be overridden)
   level_type?: 'numbered' | 'named';
   predefined_levels?: string[];
   status: 'active' | 'inactive';
@@ -45,6 +46,7 @@ export interface CategoriaFormData {
   name: string;
   description?: string;
   has_levels: boolean;
+  duration_months?: number | null;  // Default duration for courses in this category
   level_type?: 'numbered' | 'named';
   predefined_levels?: string[];
   status: 'active' | 'inactive';

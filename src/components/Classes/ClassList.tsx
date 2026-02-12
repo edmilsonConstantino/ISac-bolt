@@ -419,11 +419,11 @@ export function ClassList({
                 <div className="h-2 bg-gradient-to-r from-[#004B87] to-[#0066B3]"></div>
                 
                 <CardContent className="p-4">
-                  {/* Cabeçalho com Avatar e Ações */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
+                  {/* Cabeçalho com Avatar e Ações - CORRIGIDO */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       {/* Avatar */}
-                      <div className="relative">
+                      <div className="relative flex-shrink-0">
                         <div className="h-11 w-11 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-full flex items-center justify-center shadow-lg">
                           <BookOpen className="h-5 w-5 text-white" />
                         </div>
@@ -437,13 +437,13 @@ export function ClassList({
                         }`}></div>
                       </div>
 
-                      {/* Nome e Status */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-[#004B87] truncate leading-tight">
+                      {/* Nome e Status - Com truncate forçado */}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h3 className="font-bold text-sm text-[#004B87] truncate leading-tight" title={displayName}>
                           {displayName}
                         </h3>
                         {code && (
-                          <p className="text-[10px] text-slate-500 truncate">{code}</p>
+                          <p className="text-[10px] text-slate-500 truncate" title={code}>{code}</p>
                         )}
                         <Badge 
                           variant={getStatusColor(classItem.status || 'ativa')}
@@ -454,12 +454,12 @@ export function ClassList({
                       </div>
                     </div>
 
-                    {/* Botão de Configurações */}
+                    {/* Botão de Configurações - SEMPRE FIXO */}
                     {permissions.canEdit && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-[#004B87] border-2 border-slate-200 hover:border-[#004B87] transition-all duration-200"
+                        className="h-8 w-8 flex-shrink-0 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-[#004B87] border-2 border-slate-200 hover:border-[#004B87] transition-all duration-200"
                         onClick={() => onManageClass(classItem)}
                         title="Configurações da turma"
                       >
@@ -541,17 +541,17 @@ export function ClassList({
                       )}
                     </div>
 
-                    {/* Segunda linha: Lançar Notas (se aplicável) */}
-                    {(currentUserRole === 'teacher' || currentUserRole === 'admin') && onLaunchGrades && (
+                    {/* Segunda linha: Lançar/Ver Notas */}
+                    {(currentUserRole === 'teacher' || currentUserRole === 'admin' || currentUserRole === 'academic_admin') && onLaunchGrades && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="w-full h-9 text-[11px] justify-center border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white transition-all font-medium px-2"
                         onClick={() => onLaunchGrades(classItem)}
-                        title="Lançar notas dos alunos"
+                        title={currentUserRole === 'academic_admin' ? "Ver notas dos alunos" : "Lançar notas dos alunos"}
                       >
                         <BookOpen className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-                        <span className="truncate">Lançar Notas</span>
+                        <span className="truncate">{currentUserRole === 'academic_admin' ? 'Ver Notas' : 'Lançar Notas'}</span>
                       </Button>
                     )}
                   </div>

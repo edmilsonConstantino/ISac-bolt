@@ -27,8 +27,12 @@ apiClient.interceptors.request.use(
     if (token) {
       console.log('Token (30 chars):', token.substring(0, 30) + '...');
     } else {
-      console.error('❌ PROBLEMA: Token não encontrado!');
-      console.log('Conteúdo do localStorage:', Object.keys(localStorage));
+      // Só alertar se NÃO for rota de autenticação (login/register não precisam de token)
+      const isAuthRoute = config.url && (config.url.includes('login') || config.url.includes('register') || config.url.includes('forgot') || config.url.includes('reset'));
+      if (!isAuthRoute) {
+        console.error('❌ PROBLEMA: Token não encontrado!');
+        console.log('Conteúdo do localStorage:', Object.keys(localStorage));
+      }
     }
     
     if (token) {

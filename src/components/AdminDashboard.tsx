@@ -23,6 +23,7 @@ import {
 import { ClassList } from "./Classes/ClassList";
 import { StudentList } from "./Students/StudentList";
 import { TeacherList } from "./Teachers/TeacherList";
+import { AdminTopBar } from "./shared/AdminTopBar";
 import { PaymentList } from "./Payments/PaymentList";
 import { ClassModal } from "./shared/CreateClassModal";
 import { StudentModal } from "./Students/StudentModal";
@@ -43,6 +44,8 @@ import { LaunchGradesModal } from "./shared/LaunchGradesModal";
 import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
 import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
+import { PaymentsDashboard } from "./shared/PaymentsDashboard";
+import { ClassSettingsModal } from "./Classes/ClassSettingsModal";
 
 
 // Types
@@ -95,6 +98,11 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     isCreating: false
   });
 
+  const [classSettingsModal, setClassSettingsModal] = useState({
+    isOpen: false,
+    classData: null as any
+  });
+
   const [createStudentModal, setCreateStudentModal] = useState({
     isOpen: false,
     preSelectedClassId: 0,
@@ -132,7 +140,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isTeacherProfileModalOpen, setIsTeacherProfileModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [isStudentProfileModalOpen, setIsStudentProfileModal] = useState(false);
+  const [isStudentProfileModalOpen, setIsStudentProfileModalOpen] = useState(false);
 
   const [launchGradesModal, setLaunchGradesModal] = useState({
     isOpen: false,
@@ -203,6 +211,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
       name: t.nome,
       email: t.email,
       phone: t.telefone || '',
+      genero: t.genero,
       classes: 0,
       students: 0,
       status: t.status === 'ativo' ? 'active' : 'inactive',
@@ -210,9 +219,10 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
       contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
         t.tipo_contrato === 'meio_periodo' ? 'part-time' :
           t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+      cursos: t.cursos || '',
+      turnos: t.turnos || '',
       experience: t.observacoes || '',
-      qualifications: t.observacoes || '',
-      salary: t.salario || 0
+      qualifications: t.observacoes || ''
     }));
     setTeacherStats(mappedTeachers);
 
@@ -507,7 +517,7 @@ const handleEditRegistration = (registration: Registration) => {
 const handleSaveRegistration = async (registrationData: any) => {
   try {
     console.log('💾 Salvando matrícula (dados da API em inglês):', registrationData);
-    
+
     if (registrationModal.isEditing && registrationModal.registrationData?.id) {
       // ✅ EDITAR matrícula existente
       await registrationService.update(registrationModal.registrationData.id, registrationData);
@@ -517,18 +527,46 @@ const handleSaveRegistration = async (registrationData: any) => {
       console.log('📤 Enviando para API:', registrationData);
       const result = await registrationService.create(registrationData);
       console.log('✅ API retornou:', result);
-      toast.success('Matrícula realizada com sucesso!');
+
+      // ✅ GERAR PLANO DE PAGAMENTOS AUTOMATICAMENTE
+      if (result && result.id) {
+        try {
+          const token = localStorage.getItem('auth_token');
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
+
+          const planResponse = await fetch(`${API_URL}/student-payment-plans/generate.php`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ registration_id: result.id })
+          });
+
+          const planResult = await planResponse.json();
+
+          if (planResult.success) {
+            console.log('✅ Plano de pagamentos gerado:', planResult);
+          } else {
+            console.warn('⚠️ Não foi possível gerar plano de pagamentos:', planResult.message);
+          }
+        } catch (planError) {
+          console.warn('⚠️ Erro ao gerar plano de pagamentos (matrícula criada):', planError);
+        }
+      }
     }
-    
+
     // ✅ RECARREGAR LISTA DO BANCO
     await loadRegistrations();
-    
-    setRegistrationModal({ isOpen: false, registrationData: null, isEditing: false });
-    
+
+    // ✅ NÃO fechar o modal aqui - deixar o RegistrationStudentModal mostrar
+    // o modal de sucesso primeiro e fechar quando o usuário clicar
+
   } catch (error: any) {
     console.error('❌ Erro ao salvar matrícula:', error);
-    console.error('❌ Dados enviados:', registrationData); 
+    console.error('❌ Dados enviados:', registrationData);
     toast.error(error.message || 'Erro ao salvar matrícula');
+    throw error; // Re-throw para que o modal saiba que houve erro
   }
 };
 
@@ -565,7 +603,9 @@ const handleDeleteRegistration = async (registrationId: number) => {
         tipo_contrato: updatedTeacher.contractType === 'full-time' ? 'tempo_integral' :
           updatedTeacher.contractType === 'part-time' ? 'meio_periodo' :
             updatedTeacher.contractType === 'freelance' ? 'freelancer' : 'substituto',
-        salario: updatedTeacher.salary,
+        cursos: updatedTeacher.cursos,
+        turnos: updatedTeacher.turnos,
+        genero: updatedTeacher.genero,
         observacoes: `${updatedTeacher.qualifications}\n\n${updatedTeacher.experience}`.trim()
       };
 
@@ -673,7 +713,7 @@ const handleDeleteRegistration = async (registrationId: number) => {
   };
 
   const handleManageClass = (classItem: Class) => {
-    setClassModal({ isOpen: true, classData: classItem, isCreating: false });
+    setClassSettingsModal({ isOpen: true, classData: classItem });
   };
 
   const handleCreateClass = () => {
@@ -797,6 +837,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         name: t.nome,
         email: t.email,
         phone: t.telefone || '',
+        genero: t.genero,
         classes: 0,
         students: 0,
         status: t.status === 'ativo' ? 'active' : 'inactive',
@@ -804,9 +845,10 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
           t.tipo_contrato === 'meio_periodo' ? 'part-time' :
             t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+        cursos: t.cursos || '',
+        turnos: t.turnos || '',
         experience: t.observacoes || '',
-        qualifications: t.observacoes || '',
-        salary: t.salario || 0
+        qualifications: t.observacoes || ''
       }));
       setTeacherStats(mappedTeachers);
       toast.success("Professor cadastrado com sucesso!");
@@ -951,68 +993,18 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
     {/* ========== MAIN CONTENT ========== */}
     <main className="flex-1 overflow-y-auto">
-      {/* Top Bar */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="px-8 py-4 flex items-center justify-between">
-          {/* Alinhamento à Esquerda: Título e Subtítulo */}
-          <div className="flex items-center gap-4">
-            {/* Ícone de Branding sutil para combinar com o menu lateral */}
-            <div className="h-10 w-10 bg-gradient-to-br from-[#004B87] to-[#003366] rounded-lg shadow-md flex items-center justify-center">
-                <span className="text-xl font-bold text-white">iS</span>
-            </div>
-            <div>
-                <h2 className="text-2xl font-bold text-slate-800">
-                {menuItems.find(m => m.id === activeView)?.label || 'Dashboard'}
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                Gerencie estudantes, docentes, turmas e cursos da instituição
-                </p>
-            </div>
-          </div>
-
-          {/* Alinhamento à Direita: User Info/Status/Logout */}
-          <div className="flex items-center gap-4">
-            
-            {/* Botão de Status Online com Efeito Sutil de Destaque */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-200 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer">
-              <div className="h-2.5 w-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-emerald-700 font-semibold">Online</span>
-            </div>
-
-            {/* Cartão de Informação do Utilizador Estilizado */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border-2 border-[#004B87]/20 shadow-md">
-              {/* Avatar com o gradiente da marca */}
-              <div className="h-9 w-9 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-full flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0 text-lg">
-                {displayName.charAt(0)}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-slate-800">{displayName}</span>
-                <span className="text-xs text-slate-500">Super Admin</span>
-              </div>
-
-              {/* Botão de Logout Integrado no mesmo card */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={async () => {
-                  try {
-                    await logout();
-                    if (onLogout) onLogout();
-                  } catch (e) {
-                    console.error('Logout falhou', e);
-                  }
-                }}
-                className="text-red-500 hover:text-white hover:bg-red-600 rounded-lg transition-colors ml-2"
-                title="Sair do Sistema"
-              >
-                <LogOut className="h-5 w-5" />
-              </Button>
-
-            </div>
-
-          </div>
-        </div>
-      </header>
+      <AdminTopBar
+  activeView={activeView}
+  displayName={displayName}
+  onLogout={async () => {
+    try {
+      await logout();
+      if (onLogout) onLogout();
+    } catch (e) {
+      console.error('Logout falhou', e);
+    }
+  }}
+/>
 
 
       {/* Dashboard Content */}
@@ -1274,6 +1266,12 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     onEditRegistration={handleEditRegistration}
     onDeleteRegistration={handleDeleteRegistration}
     onAddRegistration={handleAddRegistration}
+    onViewStudentProfile={(studentId) => {
+      const student = students.find(s => s.id === studentId);
+      if (student) {
+        handleViewStudentProfile(student);
+      }
+    }}
   />
 </TabsContent>
 
@@ -1292,12 +1290,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           </TabsContent>
 
           <TabsContent value="payments" className="mt-0">
-            <PaymentList
-              students={students}
-              onOpenPaymentModal={handleOpenPaymentModal}
-              formatCurrency={formatCurrency}
-              getStudentPaymentInfo={getStudentPaymentInfo}
-            />
+            <PaymentsDashboard />
           </TabsContent>
 
           <TabsContent value="users" className="mt-0">
@@ -1366,6 +1359,17 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       isCreating={classModal.isCreating}
     />
 
+    <ClassSettingsModal
+      isOpen={classSettingsModal.isOpen}
+      onClose={() => setClassSettingsModal({ isOpen: false, classData: null })}
+      classData={classSettingsModal.classData}
+      currentUserRole="admin"
+      onClassUpdated={() => {
+        loadClasses();
+        loadCourses();
+      }}
+    />
+
     <CreateStudentModal
       isOpen={createStudentModal.isOpen}
       onClose={() => setCreateStudentModal({ isOpen: false, preSelectedClassId: 0, preSelectedClassName: "" })}
@@ -1379,6 +1383,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       isOpen={createTeacherModal}
       onClose={() => setCreateTeacherModal(false)}
       onSave={handleCreateTeacher}
+      availableClasses={classes}
     />
 
     <ReportsModal
@@ -1406,6 +1411,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       onClose={handleCloseTeacherProfileModal}
       teacher={selectedTeacher}
       onSave={handleSaveTeacherProfile}
+      availableClasses={classes}
     />
 
     <StudentProfileModal

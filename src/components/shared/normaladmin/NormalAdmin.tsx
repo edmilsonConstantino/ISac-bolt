@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import studentService, { Student as APIStudent } from "@/services/studentService";
+import classService from "@/services/classService";
 import teacherService, { Teacher, CreateTeacherData } from "@/services/teacherService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 
 // Import dos componentes compartilhados
-import { ClassList } from "../TeacherComponents/ClassList";
+import { ClassList } from "../../Classes/ClassList";
 import { StudentList } from "../../Students/StudentList";
 import { TeacherList } from "../../Teachers/TeacherList";
 import { PaymentList } from "../../Payments/PaymentList";
@@ -26,6 +27,9 @@ import { ReportsModal } from "../ReportsModal";
 import { PaymentManagementModal } from "../../Payments/PaymentManagementModal";
 import { TeacherProfileModal } from "../../Teachers/TeacherProfileModal";
 import { StudentProfileModal } from "../../Students/StudentProfileModal";
+import { SelectStudentModal } from "../SelectStudentModal";
+import { LaunchGradesModal } from "../LaunchGradesModal";
+import { ClassSettingsModal } from "../../Classes/ClassSettingsModal";
 
 // Types
 import { Class, Student, Permission, PaymentMethod } from "../../../types";
@@ -69,10 +73,26 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     isCreating: false
   });
 
+  const [classSettingsModal, setClassSettingsModal] = useState({
+    isOpen: false,
+    classData: null as any
+  });
+
   const [createStudentModal, setCreateStudentModal] = useState({
     isOpen: false,
     preSelectedClassId: 0,
     preSelectedClassName: ""
+  });
+
+  const [selectStudentModal, setSelectStudentModal] = useState({
+    isOpen: false,
+    turmaId: 0,
+    cursoId: ''
+  });
+
+  const [launchGradesModal, setLaunchGradesModal] = useState({
+    isOpen: false,
+    classInfo: null as { id: number; name: string; course: string } | null
   });
 
   const [createTeacherModal, setCreateTeacherModal] = useState(false);
@@ -123,6 +143,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
           name: t.nome,
           email: t.email,
           phone: t.telefone || '',
+          genero: t.genero,
           classes: 0,
           students: 0,
           status: t.status === 'ativo' ? 'active' : 'inactive',
@@ -130,9 +151,10 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
           contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
             t.tipo_contrato === 'meio_periodo' ? 'part-time' :
               t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+          cursos: t.cursos || '',
+          turnos: t.turnos || '',
           experience: t.observacoes || '',
-          qualifications: t.observacoes || '',
-          salary: t.salario || 0
+          qualifications: t.observacoes || ''
         }));
         setTeacherStats(mappedTeachers);
 
@@ -156,6 +178,10 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
           notes: ''
         }));
         setStudents(mappedStudents);
+
+        // Carregar turmas
+        const classesData = await classService.getAll();
+        setClasses(classesData);
 
       } catch (error: any) {
         console.error("❌ Erro ao carregar dados:", error);
@@ -188,6 +214,15 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   const getStudentsByClass = (classId: number) => {
     return students.filter(s => s.classId === classId);
+  };
+
+  const loadClasses = async () => {
+    try {
+      const data = await classService.getAll();
+      setClasses(data);
+    } catch (error) {
+      console.error("Erro ao carregar turmas:", error);
+    }
   };
 
   const addClass = (classData: Omit<Class, 'id'>) => {
@@ -277,7 +312,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         tipo_contrato: updatedTeacher.contractType === 'full-time' ? 'tempo_integral' :
           updatedTeacher.contractType === 'part-time' ? 'meio_periodo' :
             updatedTeacher.contractType === 'freelance' ? 'freelancer' : 'substituto',
-        salario: updatedTeacher.salary,
+        cursos: updatedTeacher.cursos,
+        turnos: updatedTeacher.turnos,
+        genero: updatedTeacher.genero,
         observacoes: `${updatedTeacher.qualifications}\n\n${updatedTeacher.experience}`.trim()
       };
 
@@ -359,7 +396,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   };
 
   const handleManageClass = (classItem: Class) => {
-    setClassModal({ isOpen: true, classData: classItem, isCreating: false });
+    setClassSettingsModal({ isOpen: true, classData: classItem });
   };
 
   const handleCreateClass = () => {
@@ -416,6 +453,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         name: t.nome,
         email: t.email,
         phone: t.telefone || '',
+        genero: t.genero,
         classes: 0,
         students: 0,
         status: t.status === 'ativo' ? 'active' : 'inactive',
@@ -423,9 +461,10 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
           t.tipo_contrato === 'meio_periodo' ? 'part-time' :
             t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+        cursos: t.cursos || '',
+        turnos: t.turnos || '',
         experience: t.observacoes || '',
-        qualifications: t.observacoes || '',
-        salary: t.salario || 0
+        qualifications: t.observacoes || ''
       }));
       setTeacherStats(mappedTeachers);
       toast.success("Professor cadastrado com sucesso!");
@@ -440,10 +479,21 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   };
 
   const handleAddStudentToClass = (classItem: Class) => {
-    setCreateStudentModal({
+    setSelectStudentModal({
       isOpen: true,
-      preSelectedClassId: classItem.id,
-      preSelectedClassName: classItem.name
+      turmaId: classItem.id || 0,
+      cursoId: (classItem as any).curso || ''
+    });
+  };
+
+  const handleLaunchGrades = (classItem: Class) => {
+    setLaunchGradesModal({
+      isOpen: true,
+      classInfo: {
+        id: classItem.id,
+        name: (classItem as any).nome || classItem.name || 'Turma',
+        course: (classItem as any).disciplina || (classItem as any).subject || 'Curso'
+      }
     });
   };
 
@@ -784,7 +834,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
                 onCreateClass={handleCreateClass}
                 onDeleteClass={handleDeleteClass}
                 onAddStudentToClass={handleAddStudentToClass}
-                onAddStudent={handleOpenCreateStudentModal}
+                onLaunchGrades={handleLaunchGrades}
               />
             </TabsContent>
 
@@ -825,6 +875,26 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         isCreating={classModal.isCreating}
       />
 
+      <ClassSettingsModal
+        isOpen={classSettingsModal.isOpen}
+        onClose={() => setClassSettingsModal({ isOpen: false, classData: null })}
+        classData={classSettingsModal.classData}
+        currentUserRole="academic_admin"
+        onClassUpdated={loadClasses}
+      />
+
+      <SelectStudentModal
+        isOpen={selectStudentModal.isOpen}
+        onClose={() => setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' })}
+        turmaId={selectStudentModal.turmaId}
+        cursoId={selectStudentModal.cursoId}
+        onStudentsAdded={() => {
+          setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' });
+          toast.success('Estudantes adicionados com sucesso!');
+          loadClasses();
+        }}
+      />
+
       <CreateStudentModal
         isOpen={createStudentModal.isOpen}
         onClose={() => setCreateStudentModal({ isOpen: false, preSelectedClassId: 0, preSelectedClassName: "" })}
@@ -838,6 +908,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         isOpen={createTeacherModal}
         onClose={() => setCreateTeacherModal(false)}
         onSave={handleCreateTeacher}
+        availableClasses={classes}
       />
 
       <ReportsModal
@@ -865,6 +936,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         onClose={handleCloseTeacherProfileModal}
         teacher={selectedTeacher}
         onSave={handleSaveTeacherProfile}
+        availableClasses={classes}
       />
 
       <StudentProfileModal
@@ -874,6 +946,14 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         currentUserRole="academic_admin"
         onSave={handleSaveStudentProfile}
       />
+
+      {launchGradesModal.classInfo && (
+        <LaunchGradesModal
+          isOpen={launchGradesModal.isOpen}
+          onClose={() => setLaunchGradesModal({ isOpen: false, classInfo: null })}
+          classInfo={launchGradesModal.classInfo}
+        />
+      )}
     </div>
   );
 }

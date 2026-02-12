@@ -74,7 +74,14 @@ class StudentService {
    */
   async getAll(): Promise<Student[]> {
     try {
-      const response = await apiClient.get<Student[]>('/api/students.php');
+      const response = await apiClient.get<{ success: boolean; data: Student[] } | Student[]>('/api/students.php');
+
+      // API retorna { success: true, data: [...] }
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        return Array.isArray(response.data.data) ? response.data.data : [];
+      }
+
+      // Fallback para array directo (caso o formato mude)
       return Array.isArray(response.data) ? response.data : [];
     } catch (error: any) {
       console.error('Error fetching students:', error);

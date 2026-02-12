@@ -14,6 +14,7 @@ import {
   MessageCircle,
   CheckCircle2,
   ClipboardCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,7 @@ const buildInitialFormData = (): RegistrationFormData => ({
   courseName: "",
   classId: undefined,
   className: "",
+  turno: undefined, // ✅ Turno obrigatório para avançar
   period: generateCurrentPeriod(),
   enrollmentDate: new Date().toISOString().split("T")[0],
   status: "pending", // ✅ Pendente até pagar taxa obrigatória
@@ -113,6 +115,7 @@ export function RegistrationStudentModal({
   const [studentSearch, setStudentSearch] = useState("");
   const [showChatPrompt, setShowChatPrompt] = useState(false);
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const [formData, setFormData] = useState<RegistrationFormData>(buildInitialFormData);
   const [formErrors, setFormErrors] = useState<RegistrationFormErrors>({});
@@ -298,6 +301,12 @@ export function RegistrationStudentModal({
   // Validation
   // (Removida validação de username/password - credenciais são geradas na INSCRIÇÃO)
   // -----------------------------
+
+  // Verificar se a taxa de matrícula foi paga
+  const enrollmentFee = Number(formData.enrollmentFee || 0);
+  const paidAmount = Number(formData.paidAmount || 0);
+  const isEnrollmentPaid = paidAmount >= enrollmentFee && enrollmentFee > 0;
+
   const validateForm = (): boolean => {
     const errors: RegistrationFormErrors = {};
 
@@ -307,19 +316,28 @@ export function RegistrationStudentModal({
     if (!formData.period) errors.period = "Período é obrigatório";
     if (!formData.enrollmentDate) errors.enrollmentDate = "Data de matrícula é obrigatória";
 
+    // ✅ VALIDAÇÃO DE PAGAMENTO OBRIGATÓRIO
+    if (!isEnrollmentPaid) {
+      errors.payment = "A taxa de matrícula deve ser paga para confirmar a matrícula";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   // Validação por tab - retorna mensagem de erro ou null se válido
+  // ATUALIZADO: Tipo de matrícula e turno são obrigatórios no CourseTab
   const validateTab = (tabId: RegistrationModalTab): string | null => {
     switch (tabId) {
       case "student":
-        if (!formData.registrationType) return "Selecione o tipo de inscrição primeiro";
+        // StudentTab: apenas seleção do estudante
         if (!formData.studentId || formData.studentId === 0) return "Selecione um estudante primeiro";
         return null;
       case "course":
+        // CourseTab: curso + tipo de matrícula + turno (TODOS OBRIGATÓRIOS)
         if (!formData.courseId) return "Selecione um curso primeiro";
+        if (!formData.registrationType) return "Selecione o tipo de matrícula";
+        if (!formData.turno) return "Selecione o turno (manhã, tarde ou noite)";
         return null;
       case "payment":
         if (!formData.enrollmentFee || Number(formData.enrollmentFee) <= 0) return "Defina a taxa de matrícula";
@@ -383,6 +401,12 @@ export function RegistrationStudentModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    // ✅ Verificar pagamento primeiro
+    if (!isEnrollmentPaid) {
+      toast.error("A taxa de matrícula deve ser paga para confirmar a matrícula");
+      return;
+    }
+
     if (!validateForm()) {
       toast.error("Preencha todos os campos obrigatórios");
       setActiveTab("student");
@@ -416,8 +440,7 @@ export function RegistrationStudentModal({
     setIsSaving(true);
     try {
       await onSave(mappedData as any);
-      toast.success(isEditing ? "Matrícula atualizada!" : "Matrícula realizada com sucesso!");
-      // Mostrar prompt de recibo após salvar com sucesso
+      // Mostrar modal de sucesso após salvar (sem toast duplicado)
       setShowReceiptPrompt(true);
     } catch (error: any) {
       console.error("Erro ao salvar matrícula:", error);
@@ -498,8 +521,12 @@ export function RegistrationStudentModal({
   // UI
   // -----------------------------
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+    <Dialog open={isOpen} onOpenChange={() => setShowCancelConfirm(true)}>
+      <DialogContent
+        className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white"
+        preventOutsideClose={true}
+        hideCloseButton={true}
+      >
         <div className="flex h-[650px]">
           {/* SIDEBAR (por enquanto no pai) */}
           <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
@@ -594,7 +621,6 @@ export function RegistrationStudentModal({
                   courses={courses}
                   classes={classes}
                   filteredClasses={filteredClasses}
-                  selectedCourse={selectedCourse}
                   isLoadingCourses={isLoadingCourses}
                   isLoadingClasses={isLoadingClasses}
                   existingRegistrations={existingRegistrations}
@@ -602,6 +628,22 @@ export function RegistrationStudentModal({
                   onSelectClass={handleSelectClass}
                   onChangeField={onChangeField}
                   formatCurrency={formatCurrency}
+                  isPreSelected={Boolean(preSelectedStudentId)}
+                  getStudentCourseHistory={(studentId, courseId) => {
+                    // Verificar histórico do estudante no curso
+                    // Por enquanto, verifica nas existingRegistrations
+                    const hasHistory = existingRegistrations.some(
+                      (reg) => reg.studentId === studentId && reg.courseId === courseId
+                    );
+
+                    // TODO: Implementar API para buscar módulos reprovados
+                    // Por enquanto, retorna sem módulos reprovados
+                    return {
+                      hasHistory,
+                      hasFailedModules: false,
+                      failedModules: [],
+                    };
+                  }}
                 />
               )}
 
@@ -629,7 +671,7 @@ export function RegistrationStudentModal({
             <footer className="px-10 py-6 border-t border-slate-100 bg-white flex justify-between items-center">
               <Button
                 variant="ghost"
-                onClick={onClose}
+                onClick={() => setShowCancelConfirm(true)}
                 className="text-slate-400 hover:text-slate-600 font-bold uppercase text-[11px] tracking-widest"
               >
                 Cancelar
@@ -644,23 +686,36 @@ export function RegistrationStudentModal({
                     Próximo Passo <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 px-10 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-xl shadow-green-500/30 disabled:opacity-70"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        {isEditing ? "Atualizar Matrícula" : "Confirmar Matrícula"}
-                      </>
+                  <div className="flex flex-col items-end gap-2">
+                    {/* Aviso de pagamento pendente */}
+                    {!isEnrollmentPaid && (
+                      <p className="text-xs text-red-500 font-medium">
+                        ⚠️ Confirme o pagamento da taxa para finalizar
+                      </p>
                     )}
-                  </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving || !isEnrollmentPaid}
+                      className={cn(
+                        "px-10 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed",
+                        isEnrollmentPaid
+                          ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-green-500/30"
+                          : "bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-slate-300/30"
+                      )}
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          {isEditing ? "Atualizar Matrícula" : "Confirmar Matrícula"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
             </footer>
@@ -678,13 +733,13 @@ export function RegistrationStudentModal({
             {showReceiptPrompt && (
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-lg w-full">
-                  {/* Header verde de sucesso */}
-                  <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-6 text-white text-center">
+                  {/* Header azul de sucesso */}
+                  <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-8 py-6 text-white text-center">
                     <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="h-10 w-10 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold mb-1">Matrícula Concluída!</h3>
-                    <p className="text-green-100 text-sm">O estudante foi matriculado com sucesso</p>
+                    <p className="text-blue-100 text-sm">O estudante foi matriculado com sucesso no curso <strong>{formData.courseName}</strong></p>
                   </div>
 
                   {/* Conteúdo */}
@@ -712,12 +767,10 @@ export function RegistrationStudentModal({
                       <Button
                         variant="outline"
                         onClick={() => {
-                          // Auto-print quando fechar sem clicar em imprimir
-                          handlePrintReceipt();
                           setShowReceiptPrompt(false);
                           onClose();
                         }}
-                        className="flex-1 h-12 border-2"
+                        className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400"
                       >
                         Concluído
                       </Button>
@@ -727,7 +780,7 @@ export function RegistrationStudentModal({
                           setShowReceiptPrompt(false);
                           onClose();
                         }}
-                        className="flex-1 h-12 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold"
+                        className="flex-1 h-12 bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003A6B] hover:to-[#005599] text-white font-bold"
                       >
                         <Printer className="h-4 w-4 mr-2" />
                         Imprimir Recibo
@@ -770,6 +823,58 @@ export function RegistrationStudentModal({
                     >
                       Enviar
                     </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CANCEL CONFIRMATION MODAL */}
+            {showCancelConfirm && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full animate-in zoom-in-95 duration-200">
+                  {/* Header com ícone de alerta */}
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 text-white">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-7 w-7 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold">Cancelar Matrícula</h3>
+                        <p className="text-amber-100 text-sm">Os dados não salvos serão perdidos</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Conteúdo */}
+                  <div className="p-6">
+                    <p className="text-slate-600 text-center mb-6">
+                      Tem certeza que deseja cancelar o processo de matrícula?
+                      {formData.studentName && (
+                        <span className="block mt-2 text-slate-800 font-medium">
+                          Estudante: <strong>{formData.studentName}</strong>
+                        </span>
+                      )}
+                    </p>
+
+                    {/* Botões */}
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowCancelConfirm(false)}
+                        className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 font-bold"
+                      >
+                        Não, Continuar
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowCancelConfirm(false);
+                          onClose();
+                        }}
+                        className="flex-1 h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold"
+                      >
+                        Sim, Cancelar
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -16,7 +16,12 @@ import {
   Search,
   Calendar,
   Grid3x3,
-  LayoutList
+  LayoutList,
+  Key,
+  CreditCard,
+  CheckCircle2,
+  XCircle,
+  Download
 } from "lucide-react";
 import { Student, Permission } from "../../types";
 
@@ -179,60 +184,73 @@ export function StudentList({
               {filteredStudents.map((student) => (
                 <Card 
                   key={student.id} 
-                  className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md overflow-hidden bg-white"
+                  className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-md overflow-hidden bg-white rounded-2xl"
                 >
-                  <div className="h-2 bg-gradient-to-r from-[#004B87] to-[#0066B3]"></div>
-                  
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
+                  {/* Barra superior gradiente duplo */}
+                  <div className="h-1.5 bg-gradient-to-r from-[#004B87] via-[#F5821F] to-[#FF9933]" />
+
+                  <CardContent className="p-5">
+                    {/* Header: avatar + nome + delete */}
+                    <div className="flex items-start gap-3 mb-4">
+                      {/* Avatar */}
                       <div className="relative flex-shrink-0">
-                        <div className="h-12 w-12 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-full flex items-center justify-center shadow-md">
-                          <span className="text-white font-bold text-lg">
+                        <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center shadow-md">
+                          <span className="text-white font-bold text-base">
                             {getInitial(student.name)}
                           </span>
                         </div>
-                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                          student.status === "active" ? "bg-green-500" : "bg-red-500"
-                        }`}></div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${
+                          student.status === "active" ? "bg-emerald-500" : "bg-slate-300"
+                        }`} />
                       </div>
 
+                      {/* Nome + badge */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-[#004B87] truncate leading-tight" title={student.name || 'Sem nome'}>
+                        <h3 className="font-bold text-sm text-[#004B87] truncate leading-tight mb-1" title={student.name || 'Sem nome'}>
                           {student.name || 'Sem nome'}
                         </h3>
-                        <Badge 
-                          variant={student.status === "active" ? "default" : "destructive"}
-                          className="text-[10px] mt-1 h-5"
+                        <Badge
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border-0 ${
+                            student.status === "active"
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
                         >
-                          {student.status === "active" ? "Ativo" : "Inativo"}
+                          {student.status === "active" ? "✓ Activo" : "Inactivo"}
                         </Badge>
                       </div>
+
+                      {/* Botão delete */}
+                      {permissions.canDelete && onDeleteStudent && (
+                        <button
+                          onClick={() => onDeleteStudent(student.id)}
+                          className="flex-shrink-0 h-7 w-7 rounded-lg bg-red-50 hover:bg-red-500 text-red-400 hover:text-white flex items-center justify-center transition-all duration-200"
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
 
-                    <div className="space-y-1.5 mb-3 bg-slate-50/50 rounded-lg p-2.5 border border-slate-100">
+                    {/* Dados do estudante */}
+                    <div className="bg-slate-50 rounded-xl p-3 space-y-2.5 mb-4 border border-slate-100">
                       <div className="flex items-center gap-2 text-xs">
-                        <div className="h-6 w-6 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Mail className="h-3 w-3 text-[#F5821F]" />
-                        </div>
-                        <span className="truncate text-slate-700" title={student.email || 'Sem email'}>
+                        <Mail className="h-3 w-3 text-[#F5821F] flex-shrink-0" />
+                        <span className="truncate text-slate-600" title={student.email || 'Sem email'}>
                           {student.email || 'Sem email'}
                         </span>
                       </div>
 
                       {student.phone && (
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="h-6 w-6 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Phone className="h-3 w-3 text-[#F5821F]" />
-                          </div>
-                          <span className="text-slate-700">{student.phone}</span>
+                          <Phone className="h-3 w-3 text-[#F5821F] flex-shrink-0" />
+                          <span className="text-slate-600">{student.phone}</span>
                         </div>
                       )}
 
                       {showClassInfo && (
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="h-6 w-6 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="h-3 w-3 text-[#F5821F]" />
-                          </div>
+                          <BookOpen className="h-3 w-3 text-[#F5821F] flex-shrink-0" />
                           <span className="font-medium text-slate-700 truncate" title={student.className || 'Sem turma'}>
                             {student.className || 'Sem turma'}
                           </span>
@@ -240,51 +258,47 @@ export function StudentList({
                       )}
 
                       {student.enrollmentDate && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="h-6 w-6 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Calendar className="h-3 w-3 text-[#F5821F]" />
+                        <>
+                          <div className="h-px bg-slate-200" />
+                          <div className="flex items-center gap-2 text-xs">
+                            <Calendar className="h-3 w-3 text-[#F5821F] flex-shrink-0" />
+                            <span className="text-slate-600">
+                              {new Date(student.enrollmentDate).toLocaleDateString('pt-MZ')}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-slate-600">
-                            Matrícula: {new Date(student.enrollmentDate).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
+                        </>
                       )}
                     </div>
 
+                    {/* Métricas (nota + presença) */}
                     {(student.grade || student.attendance) && (
-                      <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="grid grid-cols-2 gap-2 mb-4">
                         {student.grade && (
-                          <div className="text-center p-2 bg-blue-50 rounded-lg">
-                            <div className="text-xl font-bold text-[#004B87]">
-                              {student.grade.toFixed(1)}
-                            </div>
-                            <div className="text-[10px] text-slate-600 mt-0.5">Média</div>
+                          <div className="text-center p-2.5 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="text-xl font-bold text-[#004B87]">{student.grade.toFixed(1)}</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5 font-medium">Média</div>
                           </div>
                         )}
                         
                         {student.attendance && (
-                          <div className="text-center p-2 bg-green-50 rounded-lg">
-                            <div className="text-xl font-bold text-green-600">
-                              {student.attendance}%
-                            </div>
-                            <div className="text-[10px] text-slate-600 mt-0.5">Presença</div>
+                          <div className="text-center p-2.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                            <div className="text-xl font-bold text-emerald-600">{student.attendance}%</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5 font-medium">Presença</div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-2.5 border-t border-slate-100">
+                    {/* Botões de ação */}
+                    <div className="flex gap-2">
                       {permissions.canViewDetails && (onViewStudent || onViewStudentProfile) && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
-                          className="flex-1 h-9 text-xs border-2 border-[#004B87] text-[#004B87] hover:bg-[#004B87] hover:text-white transition-all"
+                          className="flex-1 h-9 text-xs border-2 border-[#004B87]/20 text-[#004B87] hover:bg-[#004B87] hover:text-white hover:border-[#004B87] transition-all font-semibold rounded-xl"
                           onClick={() => {
-                            if (onViewStudentProfile) {
-                              onViewStudentProfile(student);
-                            } else if (onViewStudent) {
-                              onViewStudent(student);
-                            }
+                            if (onViewStudentProfile) onViewStudentProfile(student);
+                            else if (onViewStudent) onViewStudent(student);
                           }}
                         >
                           <Eye className="h-3.5 w-3.5 mr-1.5" />
@@ -293,26 +307,14 @@ export function StudentList({
                       )}
 
                       {permissions.canEdit && onEditStudent && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
-                          className="flex-1 h-9 text-xs border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white transition-all"
+                          className="flex-1 h-9 text-xs border-2 border-[#F5821F]/30 text-[#F5821F] hover:bg-[#F5821F] hover:text-white hover:border-[#F5821F] transition-all font-semibold rounded-xl"
                           onClick={() => onEditStudent(student)}
                         >
                           <Edit className="h-3.5 w-3.5 mr-1.5" />
                           Editar
-                        </Button>
-                      )}
-
-                      {permissions.canDelete && onDeleteStudent && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-9 w-9 border-2 border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
-                          onClick={() => onDeleteStudent(student.id)}
-                          title="Remover"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
@@ -326,13 +328,23 @@ export function StudentList({
           {viewMode === "list" && (
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
               {/* Header da Tabela */}
-              <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white px-6 py-4">
-                <div className="grid grid-cols-12 gap-4 items-center font-semibold text-sm">
-                  <div className="col-span-4">Estudante</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-3">Contato</div>
-                  <div className="col-span-2">Turma</div>
-                  <div className="col-span-1 text-right">Ações</div>
+              <div className="bg-slate-50 border-b-2 border-slate-200 px-6 py-4">
+                <div className="grid grid-cols-12 gap-4 items-center">
+                  <div className="col-span-4">
+                    <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Estudante</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Status</span>
+                  </div>
+                  <div className="col-span-3">
+                    <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Contato</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Turma</span>
+                  </div>
+                  <div className="col-span-1 text-right">
+                    <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Ações</span>
+                  </div>
                 </div>
               </div>
 
@@ -346,14 +358,14 @@ export function StudentList({
                     {/* Estudante */}
                     <div className="col-span-4 flex items-center gap-3">
                       <div className="relative flex-shrink-0">
-                        <div className="h-12 w-12 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-full flex items-center justify-center shadow-md">
-                          <span className="text-white font-bold text-lg">
+                        <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-full flex items-center justify-center shadow-md">
+                          <span className="text-white font-bold text-base">
                             {getInitial(student.name)}
                           </span>
                         </div>
-                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                          student.status === "active" ? "bg-green-500" : "bg-red-500"
-                        }`}></div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${
+                          student.status === "active" ? "bg-emerald-500" : "bg-slate-300"
+                        }`} />
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-bold text-sm text-slate-800 truncate" title={student.name || 'Sem nome'}>
@@ -399,7 +411,7 @@ export function StudentList({
                       {permissions.canViewDetails && (onViewStudent || onViewStudentProfile) && (
                         <Button 
                           size="icon"
-                          className="h-10 w-10 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-lg shadow-md"
+                          className="h-10 w-10 bg-[#004B87] hover:bg-[#003868] text-white rounded-lg shadow-md"
                           onClick={() => {
                             if (onViewStudentProfile) onViewStudentProfile(student);
                             else if (onViewStudent) onViewStudent(student);

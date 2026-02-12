@@ -1,6 +1,7 @@
 // src/components/shared/registration-student-modal/tabs/CourseTab.tsx
+// ATUALIZADO: Tipo de matrícula determinado dinamicamente após selecionar curso
 
-import { useState, useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,11 @@ import {
   Sun,
   Sunset,
   Moon,
+  UserPlus,
+  RefreshCw,
+  BookMarked,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 import type {
   ClassDTO,
@@ -22,6 +28,20 @@ import type {
   RegistrationFormErrors,
   Turno,
 } from "../types/registrationModal.types";
+
+// Tipos de matrícula disponíveis
+type RegistrationType = 'new' | 'renewal' | 'module';
+
+interface RegistrationTypeOption {
+  id: RegistrationType;
+  label: string;
+  description: string;
+  icon: typeof UserPlus;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+}
 
 interface CourseTabProps {
   // estado do form
@@ -47,6 +67,17 @@ interface CourseTabProps {
 
   // utils
   formatCurrency: (value: number) => string;
+
+  // Histórico do estudante no curso (para determinar tipo de matrícula)
+  // Retorna: { hasHistory: boolean, hasFailedModules: boolean, failedModules?: string[] }
+  getStudentCourseHistory?: (studentId: number, courseId: string) => {
+    hasHistory: boolean;
+    hasFailedModules: boolean;
+    failedModules?: Array<{ id: string; nome: string }>;
+  };
+
+  // Se veio da inscrição (força tipo "new")
+  isPreSelected?: boolean;
 }
 
 // Opções de turno
@@ -54,6 +85,40 @@ const TURNO_OPTIONS: { value: Turno; label: string; icon: typeof Sun; color: str
   { value: "manha", label: "Manhã", icon: Sun, color: "from-yellow-400 to-orange-400" },
   { value: "tarde", label: "Tarde", icon: Sunset, color: "from-orange-400 to-red-400" },
   { value: "noite", label: "Noite", icon: Moon, color: "from-indigo-500 to-purple-600" },
+];
+
+// Opções de tipo de matrícula
+const REGISTRATION_TYPES: RegistrationTypeOption[] = [
+  {
+    id: 'new',
+    label: 'Novo Estudante',
+    description: 'Primeira matrícula neste curso',
+    icon: UserPlus,
+    color: 'from-green-500 to-emerald-600',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-300',
+    textColor: 'text-green-700'
+  },
+  {
+    id: 'renewal',
+    label: 'Renovação',
+    description: 'Estudante já matriculado anteriormente',
+    icon: RefreshCw,
+    color: 'from-blue-500 to-cyan-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    textColor: 'text-blue-700'
+  },
+  {
+    id: 'module',
+    label: 'Por Módulo',
+    description: 'Matrícula em módulos específicos (reprovação)',
+    icon: BookMarked,
+    color: 'from-purple-500 to-violet-600',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-300',
+    textColor: 'text-purple-700'
+  },
 ];
 
 export function CourseTab({
@@ -69,27 +134,60 @@ export function CourseTab({
   onSelectClass,
   onChangeField,
   formatCurrency,
+  getStudentCourseHistory,
+  isPreSelected = false,
 }: CourseTabProps) {
-  // Estado local para turno selecionado
-  const [selectedTurno, setSelectedTurno] = useState<Turno | null>(null);
+  // Usar turno do formData (não mais local state)
+  const selectedTurno = (formData.turno as Turno) || null;
 
-  // ✅ FILTRAR CURSOS - Remover cursos onde estudante já está matriculado
-  const availableCourses = courses.filter((course) => {
-    // Se não selecionou estudante ou período, mostrar todos
-    if (!formData.studentId || !formData.period) return true;
+  // ✅ FILTRAR CURSOS - Mostrar todos os cursos (não filtrar por matrícula ativa)
+  // O sistema vai determinar o tipo de matrícula baseado no histórico
+  const availableCourses = courses;
 
-    // Verificar se estudante JÁ está matriculado neste curso neste período
-    const alreadyEnrolled = existingRegistrations.some(
-      (reg) =>
-        reg.studentId === formData.studentId &&
-        reg.courseId === course.codigo &&
-        reg.period === formData.period &&
-        (reg.status === "active" || reg.status === "suspended")
-    );
+  // Determinar tipos de matrícula disponíveis baseado no histórico
+  const availableRegistrationTypes = useMemo(() => {
+    if (!formData.studentId || !formData.courseId) return [];
 
-    // ❌ NÃO mostrar se já matriculado
-    return !alreadyEnrolled;
-  });
+    // Se veio da inscrição, força tipo "new"
+    if (isPreSelected) {
+      return REGISTRATION_TYPES.filter(t => t.id === 'new');
+    }
+
+    // Verificar histórico do estudante no curso selecionado
+    const history = getStudentCourseHistory?.(formData.studentId, formData.courseId);
+
+    if (!history || !history.hasHistory) {
+      // Primeira vez no curso - só pode ser "Novo"
+      return REGISTRATION_TYPES.filter(t => t.id === 'new');
+    }
+
+    // Já tem histórico no curso
+    const types: RegistrationTypeOption[] = [];
+
+    // Sempre pode renovar se já tem histórico
+    types.push(REGISTRATION_TYPES.find(t => t.id === 'renewal')!);
+
+    // Se tem módulos reprovados, pode fazer matrícula por módulo
+    if (history.hasFailedModules && history.failedModules && history.failedModules.length > 0) {
+      types.push(REGISTRATION_TYPES.find(t => t.id === 'module')!);
+    }
+
+    return types;
+  }, [formData.studentId, formData.courseId, getStudentCourseHistory, isPreSelected]);
+
+  // Obter módulos reprovados para exibição
+  const failedModules = useMemo(() => {
+    if (!formData.studentId || !formData.courseId || !getStudentCourseHistory) return [];
+    const history = getStudentCourseHistory(formData.studentId, formData.courseId);
+    return history?.failedModules || [];
+  }, [formData.studentId, formData.courseId, getStudentCourseHistory]);
+
+  // Auto-selecionar tipo de matrícula quando só tem uma opção
+  useEffect(() => {
+    if (availableRegistrationTypes.length === 1 && !formData.registrationType) {
+      onChangeField('registrationType', availableRegistrationTypes[0].id);
+    }
+  }, [availableRegistrationTypes, formData.registrationType, onChangeField]);
 
   // Filtrar turmas por curso E turno selecionado
   const turmasFiltradasPorTurno = useMemo(() => {
@@ -107,10 +205,15 @@ export function CourseTab({
 
   // Handler para selecionar turno
   const handleSelectTurno = (turno: Turno) => {
-    setSelectedTurno(turno);
+    onChangeField("turno", turno);
     // Limpar turma selecionada ao mudar turno
     onChangeField("classId", undefined);
     onChangeField("className", "");
+  };
+
+  // Handler para selecionar tipo de matrícula
+  const handleSelectRegistrationType = (type: RegistrationType) => {
+    onChangeField('registrationType', type);
   };
 
   return (
@@ -187,8 +290,117 @@ export function CourseTab({
         )}
       </section>
 
+      {/* Tipo de Matrícula (aparece após selecionar curso) */}
+      {formData.courseId && availableRegistrationTypes.length > 0 && (
+        <section>
+          <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 block">
+            Tipo de Matrícula <span className="text-red-500">*</span>
+          </Label>
+
+          {/* Info sobre o histórico */}
+          {availableRegistrationTypes.length === 1 && availableRegistrationTypes[0].id === 'new' && !isPreSelected && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl mb-4 flex items-start gap-2">
+              <Info className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-green-700">
+                Este estudante nunca foi matriculado neste curso. O tipo de matrícula é <strong>Novo Estudante</strong>.
+              </p>
+            </div>
+          )}
+
+          {availableRegistrationTypes.length > 1 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl mb-4 flex items-start gap-2">
+              <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-700">
+                Este estudante já possui histórico neste curso. Escolha o tipo de matrícula adequado.
+              </p>
+            </div>
+          )}
+
+          <div className={cn(
+            "grid gap-3",
+            availableRegistrationTypes.length === 1 ? "grid-cols-1 max-w-md" : "grid-cols-1 md:grid-cols-2"
+          )}>
+            {availableRegistrationTypes.map((type) => {
+              const Icon = type.icon;
+              const isSelected = formData.registrationType === type.id;
+
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  onClick={() => handleSelectRegistrationType(type.id)}
+                  disabled={availableRegistrationTypes.length === 1}
+                  className={cn(
+                    "relative p-4 rounded-xl border-2 transition-all duration-200 text-left group",
+                    isSelected
+                      ? `${type.borderColor} ${type.bgColor} shadow-lg`
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md",
+                    availableRegistrationTypes.length === 1 && "cursor-default"
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute -top-2 -right-2">
+                      <div className={`h-5 w-5 bg-gradient-to-br ${type.color} rounded-full flex items-center justify-center shadow-md`}>
+                        <CheckCircle2 className="h-3 w-3 text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "h-10 w-10 rounded-lg flex items-center justify-center transition-all",
+                      isSelected
+                        ? `bg-gradient-to-br ${type.color} shadow-md`
+                        : "bg-slate-100 group-hover:bg-slate-200"
+                    )}>
+                      <Icon className={cn(
+                        "h-5 w-5",
+                        isSelected ? "text-white" : "text-slate-600"
+                      )} />
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className={cn(
+                        "font-bold text-sm mb-0.5",
+                        isSelected ? type.textColor : "text-slate-800"
+                      )}>
+                        {type.label}
+                      </h3>
+                      <p className={cn(
+                        "text-xs leading-relaxed",
+                        isSelected ? type.textColor : "text-slate-500"
+                      )}>
+                        {type.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mostrar módulos reprovados se tipo for "module" */}
+          {formData.registrationType === 'module' && failedModules.length > 0 && (
+            <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+              <Label className="text-xs font-bold uppercase tracking-wider text-purple-700 mb-3 block">
+                Módulos Disponíveis para Matrícula (Reprovados)
+              </Label>
+              <div className="space-y-2">
+                {failedModules.map((mod) => (
+                  <div key={mod.id} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-100">
+                    <BookMarked className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm text-slate-700">{mod.nome}</span>
+                    <span className="text-xs text-purple-500 font-mono ml-auto">{mod.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Turno e Turma */}
-      {formData.courseId ? (
+      {formData.courseId && formData.registrationType ? (
         <>
           {/* Seleção de Turno */}
           <section>

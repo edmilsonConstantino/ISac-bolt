@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   FileText,
   Plus,
   Search,
@@ -22,7 +22,9 @@ import {
   XCircle,
   Pause,
   Trophy,
-  User
+  User,
+  Printer,
+  UserCircle
 } from "lucide-react";
 import { Permission } from "../../types";
 
@@ -61,17 +63,21 @@ interface RegistrationListProps {
   onDeleteRegistration?: (registrationId: number) => void;
   onAddRegistration?: () => void;
   onRenewRegistration?: (registration: Registration) => void;
+  onViewStudentProfile?: (studentId: number) => void;
+  onPrintReceipt?: (registration: Registration) => void;
 }
 
-export function RegistrationList({ 
-  registrations, 
-  permissions, 
+export function RegistrationList({
+  registrations,
+  permissions,
   currentUserRole,
   onViewRegistration,
   onEditRegistration,
   onDeleteRegistration,
   onAddRegistration,
-  onRenewRegistration
+  onRenewRegistration,
+  onViewStudentProfile,
+  onPrintReceipt
 }: RegistrationListProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,6 +132,84 @@ export function RegistrationList({
       currency: 'MZN',
       minimumFractionDigits: 0
     }).format(value);
+  };
+
+  // Função para imprimir recibo de matrícula
+  const handlePrintReceipt = (registration: Registration) => {
+    if (onPrintReceipt) {
+      onPrintReceipt(registration);
+      return;
+    }
+
+    // Fallback - imprimir recibo padrão
+    const receiptContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Recibo de Matrícula - ${registration.studentName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #004B87; padding-bottom: 20px; }
+          .header h1 { color: #004B87; margin: 0; font-size: 28px; }
+          .header p { color: #666; margin: 5px 0; }
+          .section { margin: 30px 0; }
+          .section h2 { color: #004B87; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #F5821F; padding-bottom: 5px; }
+          .info-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+          .info-row strong { color: #333; }
+          .total { background: #f8f9fa; padding: 15px; margin-top: 20px; border-left: 4px solid #F5821F; }
+          .footer { margin-top: 50px; text-align: center; color: #666; font-size: 12px; }
+          .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+          .badge-active { background: #dcfce7; color: #166534; }
+          .badge-paid { background: #dcfce7; color: #166534; }
+          .badge-pending { background: #fef9c3; color: #854d0e; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ISAC - Instituto Superior de Artes e Cultura</h1>
+          <p>Recibo de Matrícula</p>
+          <p>Data de Emissão: ${new Date().toLocaleDateString('pt-PT')}</p>
+        </div>
+
+        <div class="section">
+          <h2>Dados do Estudante</h2>
+          <div class="info-row"><span><strong>Nome:</strong></span><span>${registration.studentName}</span></div>
+          <div class="info-row"><span><strong>Código de Matrícula:</strong></span><span>${registration.studentCode}</span></div>
+        </div>
+
+        <div class="section">
+          <h2>Dados do Curso</h2>
+          <div class="info-row"><span><strong>Curso:</strong></span><span>${registration.courseName}</span></div>
+          <div class="info-row"><span><strong>Turma:</strong></span><span>${registration.className || 'Não atribuída'}</span></div>
+          <div class="info-row"><span><strong>Período:</strong></span><span>${registration.period}</span></div>
+          <div class="info-row"><span><strong>Data de Matrícula:</strong></span><span>${new Date(registration.enrollmentDate).toLocaleDateString('pt-PT')}</span></div>
+          <div class="info-row"><span><strong>Status:</strong></span><span class="badge badge-active">${registration.status === 'active' ? 'Matriculado' : registration.status}</span></div>
+        </div>
+
+        <div class="section">
+          <h2>Dados Financeiros</h2>
+          <div class="info-row"><span><strong>Taxa de Matrícula:</strong></span><span>${formatCurrency(registration.enrollmentFee)}</span></div>
+          <div class="info-row"><span><strong>Mensalidade:</strong></span><span>${formatCurrency(registration.monthlyFee)}</span></div>
+          <div class="info-row"><span><strong>Status de Pagamento:</strong></span><span class="badge ${registration.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending'}">${registration.paymentStatus === 'paid' ? 'Pago' : registration.paymentStatus === 'pending' ? 'Pendente' : 'Atrasado'}</span></div>
+          <div class="total">
+            <strong>Total:</strong> ${formatCurrency(registration.enrollmentFee + registration.monthlyFee)}
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Este documento comprova a matrícula do estudante no curso indicado.</p>
+          <p>Gerado em ${new Date().toLocaleString('pt-PT')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(receiptContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   return (
@@ -306,23 +390,39 @@ export function RegistrationList({
                     
                     <CardContent className="p-5">
                       {/* Header com Estudante */}
-                      <div className="flex items-start gap-3 mb-4 pb-4 border-b border-slate-100">
-                        <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-                          <span className="text-white font-bold text-lg">
-                            {registration.studentName.charAt(0).toUpperCase()}
-                          </span>
+                     {/* Header com Estudante */}
+                      <div className="flex items-start justify-between gap-2 mb-4 pb-4 border-b border-slate-100">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <span className="text-white font-bold text-lg">
+                              {registration.studentName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm text-[#004B87] truncate" title={registration.studentName}>
+                              {registration.studentName}
+                            </h3>
+                            <p className="text-xs text-slate-500 font-mono mt-0.5">
+                              {registration.studentCode}
+                            </p>
+                            <Badge className={`text-[10px] mt-1.5 ${paymentInfo.bg} ${paymentInfo.color} border-0`}>
+                              {paymentInfo.label}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-sm text-[#004B87] truncate" title={registration.studentName}>
-                            {registration.studentName}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-mono mt-0.5">
-                            {registration.studentCode}
-                          </p>
-                          <Badge className={`text-[10px] mt-1.5 ${paymentInfo.bg} ${paymentInfo.color} border-0`}>
-                            {paymentInfo.label}
-                          </Badge>
-                        </div>
+
+                        {/* Botão Cancelar - Ícone no canto superior direito */}
+                        {permissions.canDelete && onDeleteRegistration && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 flex-shrink-0 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-2 border-red-200 hover:border-red-300 transition-all duration-200"
+                            onClick={() => onDeleteRegistration(registration.id)}
+                            title="Cancelar matrícula"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
 
                       {/* Informações da Matrícula */}
@@ -381,40 +481,44 @@ export function RegistrationList({
                       </div>
 
                       {/* Ações */}
-                      <div className="flex gap-2 pt-3 border-t border-slate-100">
-                        {permissions.canViewDetails && onViewRegistration && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="flex-1 h-9 text-xs border-2 border-[#004B87] text-[#004B87] hover:bg-[#004B87] hover:text-white transition-all"
-                            onClick={() => onViewRegistration(registration)}
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1.5" />
-                            Ver
-                          </Button>
-                        )}
+                      <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
+                        {/* Linha 1: Ver Perfil e Baixar Recibo */}
+                        <div className="flex gap-2">
+                          {onViewStudentProfile && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 h-9 text-xs border-2 border-purple-300 text-purple-600 hover:bg-purple-600 hover:text-white transition-all"
+                              onClick={() => onViewStudentProfile(registration.studentId)}
+                              title="Ver Perfil do Estudante"
+                            >
+                              <UserCircle className="h-3.5 w-3.5 mr-1.5" />
+                              Perfil
+                            </Button>
+                          )}
 
-                        {permissions.canEdit && onEditRegistration && (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
-                            className="flex-1 h-9 text-xs border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white transition-all"
+                            className="flex-1 h-9 text-xs border-2 border-green-300 text-green-600 hover:bg-green-600 hover:text-white transition-all"
+                            onClick={() => handlePrintReceipt(registration)}
+                            title="Baixar Recibo de Matrícula"
+                          >
+                            <Printer className="h-3.5 w-3.5 mr-1.5" />
+                            Recibo
+                          </Button>
+                        </div>
+
+                        {/* Linha 2: Apenas Editar */}
+                        {permissions.canEdit && onEditRegistration && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full h-9 text-xs border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white transition-all"
                             onClick={() => onEditRegistration(registration)}
                           >
                             <Edit className="h-3.5 w-3.5 mr-1.5" />
                             Editar
-                          </Button>
-                        )}
-
-                        {permissions.canDelete && onDeleteRegistration && (
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            className="h-9 w-9 border-2 border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
-                            onClick={() => onDeleteRegistration(registration.id)}
-                            title="Cancelar Matrícula"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -510,34 +614,45 @@ export function RegistrationList({
                       </div>
 
                       {/* Ações */}
-                      <div className="col-span-1 flex justify-end gap-2">
-                        {permissions.canViewDetails && onViewRegistration && (
-                          <Button 
+                      <div className="col-span-1 flex justify-end gap-1">
+                        {onViewStudentProfile && (
+                          <Button
                             size="icon"
-                            className="h-9 w-9 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-lg shadow-md"
-                            onClick={() => onViewRegistration(registration)}
-                            title="Ver detalhes"
+                            variant="outline"
+                            className="h-8 w-8 border-purple-300 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg"
+                            onClick={() => onViewStudentProfile(registration.studentId)}
+                            title="Ver Perfil"
                           >
-                            <Eye className="h-4 w-4" />
+                            <UserCircle className="h-4 w-4" />
                           </Button>
                         )}
 
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 border-green-300 text-green-600 hover:bg-green-600 hover:text-white rounded-lg"
+                          onClick={() => handlePrintReceipt(registration)}
+                          title="Baixar Recibo"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+
                         {permissions.canEdit && onEditRegistration && (
-                          <Button 
+                          <Button
                             size="icon"
-                            className="h-9 w-9 bg-[#004B87] hover:bg-[#003868] text-white rounded-lg shadow-md"
+                            className="h-8 w-8 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-lg shadow-md"
                             onClick={() => onEditRegistration(registration)}
                             title="Editar"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
-                        
+
                         {permissions.canDelete && onDeleteRegistration && (
-                          <Button 
+                          <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-red-500 hover:bg-red-50 rounded-lg"
+                            className="h-8 w-8 text-red-500 hover:bg-red-50 rounded-lg"
                             onClick={() => onDeleteRegistration(registration.id)}
                             title="Cancelar"
                           >

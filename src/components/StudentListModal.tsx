@@ -3,24 +3,31 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  Users, 
-  Mail, 
-  Phone, 
+import {
+  Users,
+  Mail,
+  Phone,
   Calendar,
   BookOpen,
   MessageSquare,
-  Loader2
+  Loader2,
+  Settings,
+  CheckCircle,
+  Pause,
+  Lock,
+  Ban
 } from "lucide-react";
 import studentService from "@/services/studentService";
 import { toast } from "sonner";
+import { RegistrationSettingsModal } from "./shared/RegistrationSettingsModal";
+import { cn } from "@/lib/utils";
 
 interface Student {
   id: number;
@@ -30,8 +37,12 @@ interface Student {
   enrollmentDate: string;
   grade?: number;
   status: "active" | "inactive";
+  registration_status?: 'ativo' | 'suspenso' | 'trancado' | 'cancelado';
   attendance?: number;
   className?: string;
+  enrollment_number?: string;
+  bi_number?: string;
+  course_name?: string;
 }
 
 interface StudentListModalProps {
@@ -44,6 +55,10 @@ interface StudentListModalProps {
 export function StudentListModal({ isOpen, onClose, className, classId }: StudentListModalProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [settingsModal, setSettingsModal] = useState<{ isOpen: boolean; student: Student | null }>({
+    isOpen: false,
+    student: null
+  });
 
   // ✅ Carregar estudantes reais quando o modal abrir
   useEffect(() => {
@@ -56,33 +71,36 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
     setIsLoading(true);
     try {
       console.log('📚 Carregando estudantes da turma:', classId);
-      
+
       // Buscar todos os estudantes
-      const allStudents = await studentService.getAll();
-      
+      const allStudents: any[] = await studentService.getAll();
+
       // Filtrar estudantes da turma específica
-      // Assumindo que você tem um campo 'turma_id' na API
-      const classStudents = allStudents.filter(student => 
+      const classStudents = allStudents.filter((student: any) =>
         student.turma_id === classId
       );
-      
+
       // Mapear para o formato do componente
-      const mappedStudents: Student[] = classStudents.map(student => ({
+      const mappedStudents: Student[] = classStudents.map((student: any) => ({
         id: student.id,
-        name: student.nome,
+        name: student.nome || student.name,
         email: student.email,
-        phone: student.telefone || 'Não informado',
-        enrollmentDate: student.data_matricula || new Date().toISOString(),
+        phone: student.telefone || student.phone || 'Não informado',
+        enrollmentDate: student.data_matricula || student.enrollment_date || new Date().toISOString(),
         grade: student.media_geral || 0,
         status: student.status === 'ativo' ? 'active' : 'inactive',
+        registration_status: student.registration_status || (student.status === 'ativo' ? 'ativo' : 'inativo'),
         attendance: student.percentual_presenca || 0,
-        className: className
+        className: className,
+        enrollment_number: student.enrollment_number || student.numero_matricula,
+        bi_number: student.bi_number || student.numero_bi,
+        course_name: student.curso_nome || student.course_name
       }));
-      
+
       setStudents(mappedStudents);
       console.log('✅ Estudantes carregados:', mappedStudents.length);
-      
-    } catch (error: any) {
+
+    } catch (error) {
       console.error('❌ Erro ao carregar estudantes:', error);
       toast.error('Erro ao carregar estudantes da turma');
       setStudents([]);
@@ -103,6 +121,19 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
     return "text-red-600";
   };
 
+  // Get registration status badge info
+  const getRegistrationStatusInfo = (status: string | undefined) => {
+    const map: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+      ativo: { label: 'Activo', color: 'text-green-700', bg: 'bg-green-100', icon: CheckCircle },
+      active: { label: 'Activo', color: 'text-green-700', bg: 'bg-green-100', icon: CheckCircle },
+      suspenso: { label: 'Suspenso', color: 'text-yellow-700', bg: 'bg-yellow-100', icon: Pause },
+      trancado: { label: 'Trancado', color: 'text-blue-700', bg: 'bg-blue-100', icon: Lock },
+      cancelado: { label: 'Cancelado', color: 'text-red-700', bg: 'bg-red-100', icon: Ban },
+      inactive: { label: 'Inactivo', color: 'text-slate-700', bg: 'bg-slate-100', icon: Ban },
+    };
+    return map[status || 'ativo'] || map.ativo;
+  };
+
   const handleSendEmailToAll = () => {
     const activeStudents = students.filter(s => s.status === "active");
     const emails = activeStudents.map(s => s.email).join(', ');
@@ -118,6 +149,7 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -230,25 +262,33 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
                           
                           {/* Ações */}
                           <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => window.location.href = `mailto:${student.email}`}
                             >
                               <MessageSquare className="h-4 w-4 mr-1" />
                               Conversar
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => {
-                                // Navegar para perfil do estudante
                                 console.log('Ver perfil do estudante:', student.id);
                                 toast.info('Funcionalidade em desenvolvimento');
                               }}
                             >
                               <BookOpen className="h-4 w-4 mr-1" />
                               Perfil
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSettingsModal({ isOpen: true, student })}
+                              className="border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
+                              title="Configurações da Matrícula"
+                            >
+                              <Settings className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
@@ -262,5 +302,29 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Modal de Configurações da Matrícula */}
+    <RegistrationSettingsModal
+      isOpen={settingsModal.isOpen}
+      onClose={() => setSettingsModal({ isOpen: false, student: null })}
+      student={settingsModal.student ? {
+        id: settingsModal.student.id,
+        name: settingsModal.student.name,
+        email: settingsModal.student.email,
+        phone: settingsModal.student.phone,
+        enrollment_number: settingsModal.student.enrollment_number,
+        bi_number: settingsModal.student.bi_number,
+        status: settingsModal.student.status === 'active' ? 'ativo' : 'inativo',
+        registration_status: settingsModal.student.registration_status,
+        enrollment_date: settingsModal.student.enrollmentDate,
+        course_name: settingsModal.student.course_name,
+        class_name: settingsModal.student.className
+      } : null}
+      onStatusChanged={() => {
+        loadStudents();
+        setSettingsModal({ isOpen: false, student: null });
+      }}
+    />
+    </>
   );
 }

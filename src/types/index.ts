@@ -27,20 +27,29 @@ export interface User {
 export interface Class {
   id: number;
   name: string;
-  schedule: string;
+  code?: string;
+  curso?: string;           // ID do curso (ex: 'INF', 'CONT')
+  schedule: string;         // turno: 'manha' | 'tarde' | 'noite'
+  schedule_days?: string;   // dias da semana
   students: number;
   capacity?: number;
   teacher?: string;
+  teacher_id?: number;
   teacherId?: number;
   status: 'active' | 'inactive' | 'completed';
   description?: string;
   duration?: string;
+  start_date?: string;
+  end_date?: string;
+  start_time?: string;
+  end_time?: string;
   startDate?: string;
   endDate?: string;
   room?: string;
   level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   createdAt?: string;
   updatedAt?: string;
+  selectedStudentIds?: number[]; // IDs dos estudantes a adicionar (criação)
 }
 
 // ============================

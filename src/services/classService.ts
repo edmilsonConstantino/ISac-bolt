@@ -24,6 +24,7 @@ export interface Class {
   status?: 'active' | 'inactive' | 'completed';
   created_at?: string;
   updated_at?: string;
+  selectedStudentIds?: number[]; // IDs dos estudantes a adicionar (criação)
 }
 
 interface TurmaAPI {
@@ -162,13 +163,25 @@ class ClassService {
     // Remove disciplina
     delete (mapped as any).disciplina;
 
+    // ✅ Mapear selectedStudentIds → estudante_ids (para criação)
+    if (data.selectedStudentIds && data.selectedStudentIds.length > 0) {
+      (mapped as any).estudante_ids = data.selectedStudentIds;
+      console.log('✓ Estudantes a adicionar:', data.selectedStudentIds.length);
+    }
+
+    // ✅ Mapear turno: schedule (manha/tarde/noite)
+    if (data.schedule && ['manha', 'tarde', 'noite'].includes(data.schedule)) {
+      (mapped as any).turno = data.schedule;
+      console.log('✓ Turno:', data.schedule);
+    }
+
     console.log('✅ Mapeamento completo:', mapped);
     console.log('✅ Campos obrigatórios mapeados:', {
       codigo: !!mapped.codigo,
       nome: !!mapped.nome,
-      disciplina: !!mapped.disciplina
+      curso_id: !!(mapped as any).curso_id
     });
-    
+
     return mapped;
   }
 
@@ -182,13 +195,13 @@ class ClassService {
       name: data.nome || data.name,
       description: data.observacoes || data.description,
       subject: data.disciplina || data.subject,
-      curso: data.curso,
+      curso: data.curso_id || data.curso,
       teacher_id: data.professor_id || data.teacher_id,
       teacher_name: data.professor_nome || data.teacher_name,
       capacity: data.capacidade_maxima || data.max_students || data.capacity,
       students: data.vagas_ocupadas || data.students_count || data.students || 0,
       room: data.sala || data.room,
-      schedule: data.schedule,
+      schedule: data.turno || data.schedule,
       schedule_days: data.dias_semana || data.schedule_days,
       start_time: data.horario_inicio?.substring(0, 5) || data.start_time,
       end_time: data.horario_fim?.substring(0, 5) || data.end_time,
@@ -279,7 +292,7 @@ class ClassService {
       delete (apiData as any).disciplina;
       
       // ✅ Garantir campos obrigatórios
-      const dataToSend = {
+      const dataToSend: any = {
         ...apiData,
         // Valores padrão para campos obrigatórios se faltarem
         status: apiData.status || 'ativo',
@@ -288,21 +301,26 @@ class ClassService {
         duracao_meses: apiData.duracao_meses || 6,
         horario_inicio: apiData.horario_inicio || '00:00:00',
         horario_fim: apiData.horario_fim || '00:00:00',
-        dias_semana: apiData.dias_semana || ''
+        dias_semana: apiData.dias_semana || '',
+        // ✅ Incluir turno se existir
+        turno: (apiData as any).turno || 'manha'
       };
-      
+
+      // ✅ Incluir estudante_ids se existir (para adicionar estudantes na criação)
+      if ((apiData as any).estudante_ids && (apiData as any).estudante_ids.length > 0) {
+        dataToSend.estudante_ids = (apiData as any).estudante_ids;
+        console.log('📤 Estudantes a adicionar:', dataToSend.estudante_ids.length);
+      }
+
       console.log('📤 Dados FINAIS enviados para API:', dataToSend);
-      console.log('📤 Verificação de campos obrigatórios:');
-      console.log('   - codigo:', dataToSend.codigo, '✓');
+      console.log('📤 Verificação de campos:');
       console.log('   - nome:', dataToSend.nome, '✓');
-      console.log('   - disciplina:', dataToSend.disciplina, '✓');
+      console.log('   - curso_id:', dataToSend.curso_id, '✓');
+      console.log('   - turno:', dataToSend.turno, '✓');
+      console.log('   - estudante_ids:', dataToSend.estudante_ids?.length || 0, 'estudantes');
       console.log('═══════════════════════════════════════════');
-      
+
       console.log('🚀 POST /api/turmas.php payload FINAL:', dataToSend);
-      console.log('🚀 Campos:', {
-        nome: dataToSend.nome,
-        curso_id: (dataToSend as any).curso_id
-      });
       
       const response = await apiClient.post('/api/turmas.php', dataToSend);
       

@@ -64,13 +64,13 @@ interface GeneralSettings {
   lessonDuration: number; // em minutos
   
   // Configurações Financeiras
-  currency: string;
   defaultMonthlyFee: number;
   registrationFee: number;
-  lateFeeAmount: number;
-  lateFeePercentage: number;
+  firstPenaltyPercentage: number;  // Primeira multa (após dia 10)
+  secondPenaltyPercentage: number; // Segunda multa (após dia 20)
   paymentDueDays: number;
   advancePaymentDiscount: number;
+  penaltyEnabled: boolean;
   
   // Configurações de Comunicação
   enableEmailNotifications: boolean;
@@ -132,13 +132,13 @@ export function GeneralSettingsModal({
     minStudentsPerClass: 5,
     lessonDuration: 90,
     
-    currency: "MZN",
     defaultMonthlyFee: 3500,
     registrationFee: 1000,
-    lateFeeAmount: 200,
-    lateFeePercentage: 5,
-    paymentDueDays: 5,
+    firstPenaltyPercentage: 10,
+    secondPenaltyPercentage: 10,
+    paymentDueDays: 10,
     advancePaymentDiscount: 5,
+    penaltyEnabled: true,
     
     enableEmailNotifications: true,
     enableSMSNotifications: false,
@@ -193,7 +193,7 @@ export function GeneralSettingsModal({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-MZ', {
       style: 'currency',
-      currency: settings.currency
+      currency: 'MZN'
     }).format(amount);
   };
 
@@ -473,37 +473,6 @@ export function GeneralSettingsModal({
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="currency">Moeda</Label>
-                        <Select 
-                          value={settings.currency} 
-                          onValueChange={(value) => handleInputChange('currency', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MZN">Metical (MZN)</SelectItem>
-                            <SelectItem value="USD">Dólar (USD)</SelectItem>
-                            <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentDueDays">Dias para Vencimento</Label>
-                        <Input
-                          id="paymentDueDays"
-                          type="number"
-                          value={settings.paymentDueDays}
-                          onChange={(e) => handleInputChange('paymentDueDays', parseInt(e.target.value))}
-                          min="1"
-                          max="30"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
                         <Label htmlFor="defaultMonthlyFee">Mensalidade Padrão</Label>
                         <Input
                           id="defaultMonthlyFee"
@@ -517,7 +486,7 @@ export function GeneralSettingsModal({
                           Valor: {formatCurrency(settings.defaultMonthlyFee)}
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="registrationFee">Taxa de Matrícula</Label>
                         <Input
@@ -534,38 +503,22 @@ export function GeneralSettingsModal({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="lateFeeAmount">Multa Fixa (Atraso)</Label>
+                        <Label htmlFor="paymentDueDays">Dia de Vencimento (do mês)</Label>
                         <Input
-                          id="lateFeeAmount"
+                          id="paymentDueDays"
                           type="number"
-                          value={settings.lateFeeAmount}
-                          onChange={(e) => handleInputChange('lateFeeAmount', parseFloat(e.target.value))}
-                          step="0.01"
-                          min="0"
+                          value={settings.paymentDueDays}
+                          onChange={(e) => handleInputChange('paymentDueDays', parseInt(e.target.value))}
+                          min="1"
+                          max="28"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {formatCurrency(settings.lateFeeAmount)}
+                          Vencimento todo dia {settings.paymentDueDays} do mês
                         </p>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="lateFeePercentage">Multa % (Atraso)</Label>
-                        <Input
-                          id="lateFeePercentage"
-                          type="number"
-                          value={settings.lateFeePercentage}
-                          onChange={(e) => handleInputChange('lateFeePercentage', parseFloat(e.target.value))}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {settings.lateFeePercentage}% do valor
-                        </p>
-                      </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="advancePaymentDiscount">Desconto Antecipado %</Label>
                         <Input
@@ -578,9 +531,70 @@ export function GeneralSettingsModal({
                           max="50"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {settings.advancePaymentDiscount}% de desconto
+                          {settings.advancePaymentDiscount}% de desconto para pagamento antecipado
                         </p>
                       </div>
+                    </div>
+
+                    {/* Secção de Multas */}
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="font-medium">Política de Multas por Atraso</h4>
+                          <p className="text-xs text-muted-foreground">Configure as penalidades por atraso no pagamento</p>
+                        </div>
+                        <Switch
+                          checked={settings.penaltyEnabled}
+                          onCheckedChange={(checked) => handleInputChange('penaltyEnabled', checked)}
+                        />
+                      </div>
+
+                      {settings.penaltyEnabled && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstPenaltyPercentage">Primeira Multa % (após dia 10)</Label>
+                            <Input
+                              id="firstPenaltyPercentage"
+                              type="number"
+                              value={settings.firstPenaltyPercentage}
+                              onChange={(e) => handleInputChange('firstPenaltyPercentage', parseFloat(e.target.value))}
+                              step="1"
+                              min="0"
+                              max="100"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              +{settings.firstPenaltyPercentage}% após o dia 10 do mês
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="secondPenaltyPercentage">Segunda Multa % (após dia 20)</Label>
+                            <Input
+                              id="secondPenaltyPercentage"
+                              type="number"
+                              value={settings.secondPenaltyPercentage}
+                              onChange={(e) => handleInputChange('secondPenaltyPercentage', parseFloat(e.target.value))}
+                              step="1"
+                              min="0"
+                              max="100"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              +{settings.secondPenaltyPercentage}% adicional após o dia 20
+                            </p>
+                          </div>
+
+                          <div className="col-span-2 p-3 bg-white rounded border border-orange-300">
+                            <p className="text-sm text-slate-700">
+                              <strong>Exemplo:</strong> Para uma mensalidade de {formatCurrency(settings.defaultMonthlyFee)}:
+                            </p>
+                            <ul className="text-xs text-slate-600 mt-1 space-y-1">
+                              <li>• Até dia 10: {formatCurrency(settings.defaultMonthlyFee)} (sem multa)</li>
+                              <li>• Dia 11-20: {formatCurrency(settings.defaultMonthlyFee * (1 + settings.firstPenaltyPercentage / 100))} (+{settings.firstPenaltyPercentage}%)</li>
+                              <li>• Após dia 20: {formatCurrency(settings.defaultMonthlyFee * (1 + (settings.firstPenaltyPercentage + settings.secondPenaltyPercentage) / 100))} (+{settings.firstPenaltyPercentage + settings.secondPenaltyPercentage}%)</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

@@ -1,5 +1,6 @@
 import React from "react";
-import { Calendar, DollarSign, Hash, AlertCircle, Monitor, Wifi, Building } from "lucide-react";
+import { Calendar, DollarSign, Hash, AlertCircle, Monitor, Wifi, Building, Info } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -196,13 +197,22 @@ export default function CourseInfoTab({
                 onValueChange={(value) => {
                   const categoriaId = parseInt(value);
                   handleChange('categoria_id', categoriaId);
-                  
+
                   const cat = categorias.find(c => c.id === categoriaId);
                   setCategoriaSelecionada(cat || null);
-                  
+
                   if (cat && !cat.has_levels) {
                     setNiveis([]);
                     setQtdNiveis(0);
+
+                    // Auto-fill duration from category default (if available)
+                    if (cat.duration_months && cat.duration_months > 0) {
+                      handleChange('duracao_valor', cat.duration_months);
+                      toast.info(
+                        `Duração definida para ${cat.duration_months} meses (padrão da categoria). Pode editar se necessário.`,
+                        { duration: 4000 }
+                      );
+                    }
                   } else if (cat && cat.has_levels) {
                     if (categoriaSelecionada?.id !== cat.id) {
                       setNiveis([]);
@@ -271,6 +281,16 @@ export default function CourseInfoTab({
               {errors.duracao_valor && (
                 <p className="text-xs text-red-600">{errors.duracao_valor}</p>
               )}
+              {/* Show info when category has default duration */}
+              {categoriaSelecionada?.duration_months && categoriaSelecionada.duration_months > 0 && (
+                <div className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                  <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-600">
+                    Duração padrão para <strong>{categoriaSelecionada.name}</strong>: {categoriaSelecionada.duration_months} meses.
+                    <span className="text-blue-500"> Pode editar este valor se necessário.</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -333,24 +353,6 @@ export default function CourseInfoTab({
               )}
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label className="text-slate-600 font-semibold ml-1">Regime</Label>
-            <Select
-              value={formData.regime}
-              onValueChange={(value: any) => handleChange('regime', value)}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="h-12 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="laboral">☀️ Laboral</SelectItem>
-                <SelectItem value="pos_laboral">🌙 Pós-Laboral</SelectItem>
-                <SelectItem value="ambos">🔄 Ambos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="space-y-2">
             <Label className="text-slate-600 font-semibold ml-1">Modalidade</Label>

@@ -51,7 +51,6 @@ interface Course {
   categoria?: Categoria;
   tipo_curso?: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
   duracao_valor: number;
-  regime: 'laboral' | 'pos_laboral' | 'ambos';
   mensalidade: number;
   taxa_matricula: number;
   propina_fixa: boolean;
@@ -109,24 +108,6 @@ export function CourseList({
     return icons[tipo] || '';
   };
 
-  const getRegimeLabel = (regime: string) => {
-    const labels: Record<string, string> = {
-      'laboral': 'Laboral',
-      'pos_laboral': 'Pós-Laboral',
-      'ambos': 'Ambos'
-    };
-    return labels[regime] || regime;
-  };
-
-  const getRegimeIcon = (regime: string) => {
-    const icons: Record<string, string> = {
-      'laboral': '☀️',
-      'pos_laboral': '🌙',
-      'ambos': '🔄'
-    };
-    return icons[regime] || '';
-  };
-
   const getDuracaoText = (tipo: string, valor: number) => {
     if (tipo === 'tecnico_superior') {
       return `${valor} ${valor === 1 ? 'Ano' : 'Anos'}`;
@@ -154,7 +135,7 @@ export function CourseList({
 
   const handleExportCourses = () => {
     const csvContent = [
-      ["ID", "Nome", "Código", "Categoria", "Tipo", "Duração", "Regime", "Mensalidade", "Status"],
+      ["ID", "Nome", "Código", "Categoria", "Tipo", "Duração", "Mensalidade", "Status"],
       ...filteredCourses.map(c => [
         c.id,
         c.nome,
@@ -162,7 +143,6 @@ export function CourseList({
         c.categoria?.nome || "Sem categoria",
         getTipoCursoLabel(c.tipo_curso || ''),
         getDuracaoText(c.tipo_curso || '', c.duracao_valor),
-        getRegimeLabel(c.regime),
         formatCurrency(c.mensalidade),
         c.status === "ativo" ? "Ativo" : "Inativo"
       ])
@@ -328,7 +308,7 @@ export function CourseList({
           {/* Table Header */}
           <div className="bg-slate-50 border-b-2 border-slate-200 px-6 py-4">
             <div className="grid grid-cols-12 gap-4 items-center">
-              <div className="col-span-3">
+              <div className="col-span-4">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Curso</span>
               </div>
               <div className="col-span-2">
@@ -337,10 +317,7 @@ export function CourseList({
               <div className="col-span-2">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Duração</span>
               </div>
-              <div className="col-span-2">
-                <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Regime</span>
-              </div>
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Mensalidade</span>
               </div>
               <div className="col-span-1 text-right">
@@ -357,7 +334,7 @@ export function CourseList({
                 className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-slate-50/80 transition-colors"
               >
                 {/* Course Column */}
-                <div className="col-span-3 flex items-center gap-3">
+                <div className="col-span-4 flex items-center gap-3">
                   <div className={`h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
                     course.status === 'inativo' ? 'opacity-50 grayscale' : ''
                   }`}>
@@ -410,16 +387,8 @@ export function CourseList({
                   </div>
                 </div>
 
-                {/* Regime Column */}
-                <div className="col-span-2">
-                  <Badge className="bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold">
-                    <span className="mr-1.5">{getRegimeIcon(course.regime)}</span>
-                    {getRegimeLabel(course.regime)}
-                  </Badge>
-                </div>
-
                 {/* Price Column */}
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
                       <DollarSign className="h-3 w-3 text-[#F5821F]" />

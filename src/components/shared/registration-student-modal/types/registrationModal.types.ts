@@ -15,8 +15,8 @@ export type RegistrationStatus = "active" | "pending" | "suspended" | "cancelled
 export type PaymentStatus = "paid" | "pending" | "overdue";
 export type PaymentMethod = "cash" | "transfer" | "mobile" | "check";
 
-/** Tipo de inscrição */
-export type RegistrationType = "new" | "renewal" | "transfer";
+/** Tipo de inscrição/matrícula */
+export type RegistrationType = "new" | "renewal" | "module";
 
 
 

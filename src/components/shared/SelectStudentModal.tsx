@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Search, UserPlus, Users, X, Loader2, AlertCircle, CheckCircle2
+import {
+  Search, UserPlus, Users, X, Loader2, AlertCircle, CheckCircle2,
+  Sun, Sunset, Moon
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,15 +31,17 @@ interface SelectStudentModalProps {
   onClose: () => void;
   turmaId: number;
   cursoId: string;
+  turno?: string;
   onStudentsAdded: () => void;
 }
 
-export function SelectStudentModal({ 
-  isOpen, 
-  onClose, 
-  turmaId, 
+export function SelectStudentModal({
+  isOpen,
+  onClose,
+  turmaId,
   cursoId,
-  onStudentsAdded 
+  turno,
+  onStudentsAdded
 }: SelectStudentModalProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -52,7 +55,7 @@ export function SelectStudentModal({
     if (isOpen && turmaId && cursoId) {
       loadAvailableStudents();
     }
-  }, [isOpen, turmaId, cursoId]);
+  }, [isOpen, turmaId, cursoId, turno]);
 
   // Filtrar estudantes com base na busca
   useEffect(() => {
@@ -70,13 +73,19 @@ export function SelectStudentModal({
   const loadAvailableStudents = async () => {
     setIsLoading(true);
     try {
+      const token = localStorage.getItem('access_token');
+      let url = `http://localhost/API-LOGIN/api/turmas.php?action=get_available_students&turma_id=${turmaId}&curso_id=${cursoId}`;
+      if (turno) {
+        url += `&turno=${turno}`;
+      }
       const response = await fetch(
-        `http://localhost/API-LOGIN/api/turmas.php?action=get_available_students&turma_id=${turmaId}&curso_id=${cursoId}`,
+        url,
         {
           method: 'GET',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         }
       );
@@ -121,13 +130,15 @@ export function SelectStudentModal({
 
     setIsSaving(true);
     try {
+      const token = localStorage.getItem('access_token');
       const response = await fetch(
         'http://localhost/API-LOGIN/api/turmas.php?action=add_students',
         {
           method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             turma_id: turmaId,
@@ -175,8 +186,20 @@ export function SelectStudentModal({
               <DialogTitle className="text-2xl text-[#004B87]">
                 Adicionar Estudantes à Turma
               </DialogTitle>
-              <DialogDescription className="text-sm">
+              <DialogDescription className="text-sm flex items-center gap-2">
                 Selecione os estudantes que deseja matricular nesta turma
+                {turno && (
+                  <Badge className={`ml-2 ${
+                    turno === 'manha' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                    turno === 'tarde' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                    'bg-indigo-100 text-indigo-700 border-indigo-200'
+                  }`}>
+                    {turno === 'manha' && <Sun className="h-3 w-3 mr-1" />}
+                    {turno === 'tarde' && <Sunset className="h-3 w-3 mr-1" />}
+                    {turno === 'noite' && <Moon className="h-3 w-3 mr-1" />}
+                    {turno === 'manha' ? 'Manhã' : turno === 'tarde' ? 'Tarde' : 'Noite'}
+                  </Badge>
+                )}
               </DialogDescription>
             </div>
           </div>

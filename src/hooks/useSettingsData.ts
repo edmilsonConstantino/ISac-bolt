@@ -22,13 +22,13 @@ export interface GeneralSettings {
   lessonDuration: number; // em minutos
   
   // Configurações Financeiras
-  currency: string;
   defaultMonthlyFee: number;
   registrationFee: number;
-  lateFeeAmount: number;
-  lateFeePercentage: number;
+  firstPenaltyPercentage: number;  // Primeira multa (após dia 10)
+  secondPenaltyPercentage: number; // Segunda multa (após dia 20)
   paymentDueDays: number;
   advancePaymentDiscount: number;
+  penaltyEnabled: boolean;
   
   // Configurações de Comunicação
   enableEmailNotifications: boolean;
@@ -86,13 +86,13 @@ const defaultSettings: GeneralSettings = {
   lessonDuration: 90,
   
   // Configurações Financeiras
-  currency: "MZN",
   defaultMonthlyFee: 3500,
   registrationFee: 1000,
-  lateFeeAmount: 200,
-  lateFeePercentage: 5,
-  paymentDueDays: 5,
+  firstPenaltyPercentage: 10,
+  secondPenaltyPercentage: 10,
+  paymentDueDays: 10,
   advancePaymentDiscount: 5,
+  penaltyEnabled: true,
   
   // Configurações de Comunicação
   enableEmailNotifications: true,
@@ -331,7 +331,7 @@ export function useSettingsData() {
   const getCurrencyFormatter = () => {
     return new Intl.NumberFormat('pt-MZ', {
       style: 'currency',
-      currency: settings.currency
+      currency: 'MZN'
     });
   };
 

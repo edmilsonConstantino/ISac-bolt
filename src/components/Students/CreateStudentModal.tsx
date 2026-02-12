@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 interface StudentFormData {
   name: string;
   email: string;
+  username?: string;
+  password?: string;
   phone?: string;
   bi_number: string;
   address?: string;
@@ -26,7 +28,6 @@ interface StudentFormData {
   enrollment_year: number;
   enrollment_number: string;
   status: 'ativo' | 'inativo';
-  // ❌ REMOVIDO: curso_id
 }
 
 interface Class {
@@ -73,8 +74,13 @@ export function CreateStudentModal({
     birthYear: '',
     emergency_contact_1: '',
     emergency_contact_2: '',
-    notes: ''
+    notes: '',
+    usuario: '',
+    senha: ''
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [autoGenerateCredentials, setAutoGenerateCredentials] = useState(true);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -83,6 +89,20 @@ export function CreateStudentModal({
       setFormData(prev => ({ ...prev, class_id: preSelectedClassId }));
     }
   }, [preSelectedClassId]);
+
+  // Auto-gerar username baseado no nome
+  useEffect(() => {
+    if (autoGenerateCredentials && formData.name) {
+      const generateUsername = (name: string) => {
+        const parts = name.trim().toLowerCase().split(/\s+/);
+        if (parts.length >= 2) {
+          return parts[0] + '.' + parts[parts.length - 1];
+        }
+        return parts[0] || '';
+      };
+      setFormData(prev => ({ ...prev, usuario: generateUsername(formData.name) }));
+    }
+  }, [formData.name, autoGenerateCredentials]);
 
   const isClassPreSelected = Boolean(preSelectedClassId && preSelectedClassName);
   const selectedClass = availableClasses.find(c => c.id === formData.class_id);
@@ -139,6 +159,14 @@ export function CreateStudentModal({
       }
     }
 
+    // Validação de credenciais
+    if (!formData.usuario.trim()) newErrors.usuario = 'Username é obrigatório';
+    if (!formData.senha.trim()) {
+      newErrors.senha = 'Senha é obrigatória';
+    } else if (formData.senha.length < 5) {
+      newErrors.senha = 'Senha deve ter pelo menos 5 caracteres';
+    }
+
     // Validação de contatos de emergência (se preenchidos)
     if (formData.emergency_contact_1 && !/^\+?\d+$/.test(formData.emergency_contact_1.replace(/\s/g, ''))) {
       newErrors.emergency_contact_1 = 'Deve conter apenas números';
@@ -162,10 +190,11 @@ export function CreateStudentModal({
           birth_date = `${formData.birthYear}-${month}-${day}`;
         }
 
-        // ✅ Dados formatados para API - SEM curso_id
         const studentData: StudentFormData = {
           name: formData.name,
           email: formData.email,
+          username: formData.usuario || undefined,
+          password: formData.senha || undefined,
           phone: formData.phone || undefined,
           bi_number: formData.bi_number.toUpperCase(),
           address: formData.address || undefined,
@@ -178,7 +207,6 @@ export function CreateStudentModal({
           enrollment_number: generateEnrollmentNumber(),
           enrollment_year: new Date().getFullYear(),
           status: 'ativo'
-          // ❌ REMOVIDO: curso_id
         };
 
         onSave(studentData);
@@ -195,7 +223,8 @@ export function CreateStudentModal({
       name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
       class_id: preSelectedClassId || 0,
       birthDay: '', birthMonth: '', birthYear: '',
-      emergency_contact_1: '', emergency_contact_2: '', notes: ''
+      emergency_contact_1: '', emergency_contact_2: '', notes: '',
+      usuario: '', senha: ''
     });
     setErrors({});
     setActiveTab('personal');
@@ -539,6 +568,66 @@ export function CreateStudentModal({
                         className="rounded-2xl resize-none"
                       />
                     </div>
+                  </div>
+
+                  {/* Credenciais de Acesso */}
+                  <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <Label className="font-bold text-slate-700 leading-none">
+                          Credenciais de Acesso
+                        </Label>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={autoGenerateCredentials}
+                          onChange={(e) => setAutoGenerateCredentials(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span className="text-xs text-slate-500">Auto-gerar</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-slate-600 font-semibold ml-1">Username</Label>
+                        <div className="relative">
+                          <User className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="username"
+                            value={formData.usuario}
+                            onChange={(e) => handleInputChange('usuario', e.target.value)}
+                            className="h-12 pl-11 rounded-xl"
+                            disabled={autoGenerateCredentials}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-slate-600 font-semibold ml-1">Senha</Label>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Senha de acesso"
+                            value={formData.senha}
+                            onChange={(e) => handleInputChange('senha', e.target.value)}
+                            className="h-12 pl-4 pr-12 rounded-xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-3 text-slate-400 hover:text-slate-600"
+                          >
+                            {showPassword ? '🙈' : '👁️'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400">O estudante usará o username ou nº de matrícula + senha para fazer login.</p>
                   </div>
 
                   <div className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border-2 border-[#004B87]/20 rounded-2xl p-6">

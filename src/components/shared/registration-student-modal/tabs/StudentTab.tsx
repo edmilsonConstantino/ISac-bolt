@@ -75,7 +75,6 @@ export function StudentTab({
           student={selectedStudent!}
           studentCode={formData.studentCode || ""}
           onClear={onClearStudent}
-          registrationType={formData.registrationType}
           isPreSelected={isPreSelected}
         />
       ) : (
@@ -181,32 +180,13 @@ function SelectedStudentCard({
   student,
   studentCode,
   onClear,
-  registrationType,
   isPreSelected = false,
 }: {
   student: StudentDTO;
   studentCode: string;
   onClear: () => void;
-  registrationType?: 'new' | 'renewal' | 'transfer';
   isPreSelected?: boolean;
 }) {
-  const getRegistrationTypeBadge = () => {
-    if (!registrationType) return null;
-
-    const badges = {
-      new: { label: 'Novo Estudante', color: 'bg-green-500' },
-      renewal: { label: 'Renovação', color: 'bg-blue-500' },
-      transfer: { label: 'Inscrição por Módulo', color: 'bg-purple-500' },
-    };
-
-    const badge = badges[registrationType];
-    return (
-      <Badge className={`${badge.color} text-white border-0 text-[10px] ml-2`}>
-        {badge.label}
-      </Badge>
-    );
-  };
-
   return (
     <div className="relative">
       <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-400 rounded-2xl p-6 shadow-lg">
@@ -214,7 +194,6 @@ function SelectedStudentCard({
         <div className="absolute -top-3 left-6 bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-md flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
           ESTUDANTE SELECIONADO
-          {getRegistrationTypeBadge()}
         </div>
 
         <div className="flex items-center gap-5 mt-2">
