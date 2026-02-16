@@ -398,6 +398,19 @@ class ClassService {
   }
 
   /**
+   * 👨‍🎓 Buscar estudantes matriculados numa turma
+   */
+  async getClassStudents(turmaId: number): Promise<any[]> {
+    try {
+      const response = await apiClient.get(`/api/turmas.php?action=get_students&turma_id=${turmaId}`);
+      return response.data?.data || [];
+    } catch (error: any) {
+      console.error('Erro ao buscar estudantes da turma:', error);
+      return [];
+    }
+  }
+
+  /**
    * 🗑️ Deletar turma
    */
   async delete(id: number): Promise<{ success: boolean; message: string }> {

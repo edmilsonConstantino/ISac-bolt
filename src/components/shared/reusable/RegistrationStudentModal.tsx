@@ -24,6 +24,7 @@ import { Registration } from "./RegistrationList";
 import courseService from "@/services/courseService";
 import studentService from "@/services/studentService";
 import classService from "@/services/classService";
+import { useSettingsData } from "@/hooks/useSettingsData";
 
 import { StudentTab } from "../registration-student-modal/tabs/StudentTab";
 import { CourseTab } from "../registration-student-modal/tabs/CourseTab";
@@ -82,8 +83,9 @@ const buildInitialFormData = (): RegistrationFormData => ({
   enrollmentDate: new Date().toISOString().split("T")[0],
   status: "pending", // ✅ Pendente até pagar taxa obrigatória
   paymentStatus: "pending",
-  enrollmentFee: 5000,
-  monthlyFee: 2500,
+  enrollmentFee: 0,
+  enrollmentFeeIsento: false,
+  monthlyFee: 0,
   observations: "",
   registrationType: "new",
   // Campos de pagamento (ConfirmationTab)
@@ -103,6 +105,7 @@ export function RegistrationStudentModal({
   preSelectedStudentId,
 }: RegistrationStudentModalProps) {
   const [activeTab, setActiveTab] = useState<RegistrationModalTab>("student");
+  const { settings } = useSettingsData();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -260,7 +263,25 @@ export function RegistrationStudentModal({
     onChangeField("courseName", course.nome);
 
     onChangeField("monthlyFee", (course.mensalidade as any) || 2500);
-    onChangeField("enrollmentFee", (course.taxa_matricula as any) || 5000);
+
+    // Taxa de matrícula: lógica de prioridade
+    // 1. Se curso é isento → SEMPRE isento (independente do global)
+    // 2. Se definições globais estão activas + isento global → isento para todos
+    // 3. Se definições globais estão activas → usar valor global
+    // 4. Se definições globais desactivadas → usar valor do curso
+    if (course.isento_matricula) {
+      onChangeField("enrollmentFee", 0);
+      onChangeField("enrollmentFeeIsento", true);
+    } else if (settings.registrationFeeGlobalEnabled && settings.registrationFeeIsento) {
+      onChangeField("enrollmentFee", 0);
+      onChangeField("enrollmentFeeIsento", true);
+    } else if (settings.registrationFeeGlobalEnabled) {
+      onChangeField("enrollmentFee", settings.registrationFee || 0);
+      onChangeField("enrollmentFeeIsento", false);
+    } else {
+      onChangeField("enrollmentFee", (course.taxa_matricula as any) || 0);
+      onChangeField("enrollmentFeeIsento", false);
+    }
 
     // reset turma ao trocar curso
     onChangeField("classId", undefined);
@@ -272,40 +293,21 @@ export function RegistrationStudentModal({
     onChangeField("className", classItem.nome);
   };
 
-  // -----------------------------
-  // Auto generate student code when student+course are set
-  // (Credenciais são geradas na INSCRIÇÃO, não na matrícula)
-  // -----------------------------
-  useEffect(() => {
-    const run = async () => {
-      const hasStudent = !!formData.studentId && !!formData.studentName;
-      const hasCourse = !!formData.courseId && !!formData.courseName;
-      if (!hasStudent || !hasCourse) return;
-
-      try {
-        const code = await generateStudentCode(formData.courseId, formData.courseName);
-        setFormData((prev) => ({
-          ...prev,
-          studentCode: code,
-        }));
-      } catch (e) {
-        console.error("Falha ao gerar código:", e);
-      }
-    };
-
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.studentId, formData.studentName, formData.courseId, formData.courseName]);
+  // O código de matrícula (enrollment_number) agora é gerado automaticamente
+  // pelo backend na criação da matrícula (via course_sequences).
+  // Formato: {PREFIXO_CURSO}-{SEQUENCIAL:06d}-{ANO}
+  // Ex: IB-000001-2026, IA-000002-2026
 
   // -----------------------------
   // Validation
   // (Removida validação de username/password - credenciais são geradas na INSCRIÇÃO)
   // -----------------------------
 
-  // Verificar se a taxa de matrícula foi paga
+  // Verificar se a taxa de matrícula foi paga (ou se é isento)
   const enrollmentFee = Number(formData.enrollmentFee || 0);
   const paidAmount = Number(formData.paidAmount || 0);
-  const isEnrollmentPaid = paidAmount >= enrollmentFee && enrollmentFee > 0;
+  const isEnrollmentIsento = formData.enrollmentFeeIsento === true || enrollmentFee === 0;
+  const isEnrollmentPaid = isEnrollmentIsento || (paidAmount >= enrollmentFee && enrollmentFee > 0);
 
   const validateForm = (): boolean => {
     const errors: RegistrationFormErrors = {};
@@ -340,7 +342,7 @@ export function RegistrationStudentModal({
         if (!formData.turno) return "Selecione o turno (manhã, tarde ou noite)";
         return null;
       case "payment":
-        if (!formData.enrollmentFee || Number(formData.enrollmentFee) <= 0) return "Defina a taxa de matrícula";
+        if (!formData.enrollmentFeeIsento && (!formData.enrollmentFee || Number(formData.enrollmentFee) <= 0)) return "Defina a taxa de matrícula";
         if (!formData.monthlyFee || Number(formData.monthlyFee) <= 0) return "Defina a mensalidade";
         return null;
       case "confirmation":
@@ -413,12 +415,12 @@ export function RegistrationStudentModal({
       return;
     }
 
-    // ✅ Mapeamento para API (sem username/password - credenciais são geradas na INSCRIÇÃO)
+    // ✅ Mapeamento para API
+    // enrollment_number é gerado automaticamente pelo backend via course_sequences
     const mappedData = {
       student_id: formData.studentId,
       course_id: formData.courseId,
       class_id: formData.classId || null,
-      enrollment_number: formData.studentCode,
       period: formData.period,
       enrollment_date: formData.enrollmentDate,
       status: formData.status,

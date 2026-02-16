@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AccentStatCard } from "@/components/ui/stat-card";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { RegistrationStudentModal } from "./shared/reusable/RegistrationStudentModal";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +48,7 @@ import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
 import { PaymentsDashboard } from "./shared/PaymentsDashboard";
 import { ClassSettingsModal } from "./Classes/ClassSettingsModal";
+import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
 
 
 // Types
@@ -73,7 +76,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [classes, setClasses] = useState<Class[]>([]);
   const [teacherStats, setTeacherStats] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any>(null);
+  const { settings, saveSettings: persistSettings } = useSettingsData();
   const [courses, setCourses] = useState<APICourse[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
 const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
@@ -112,7 +115,8 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   const [selectStudentModal, setSelectStudentModal] = useState({
     isOpen: false,
     turmaId: 0,
-    cursoId: ''
+    cursoId: '',
+    turno: ''
   });
 
   const [createTeacherModal, setCreateTeacherModal] = useState(false);
@@ -362,15 +366,10 @@ loadAllData();
 };  
 
   // ✅ Funções de configurações
-  const saveSettings = async (newSettings: any) => {
-    setSettings(newSettings);
-    toast.success('Configurações salvas!');
-    return true;
-  };
-
-  const handleSaveSettings = async (newSettings: any) => {
+  const handleSaveSettings = async (newSettings: GeneralSettings) => {
     try {
-      await saveSettings(newSettings);
+      await persistSettings(newSettings);
+      toast.success('Configurações salvas!');
     } catch (error) {
       console.error("Erro ao salvar configurações:", error);
       toast.error("Erro ao salvar configurações");
@@ -702,14 +701,30 @@ const handleDeleteRegistration = async (registrationId: number) => {
     }
   };
 
-  const handleViewStudents = (classItem: Class) => {
-    const classStudents = getStudentsByClass(classItem.id);
-    setStudentModal({
-      isOpen: true,
-      className: classItem.name,
-      classId: classItem.id,
-      students: classStudents
-    });
+  const handleViewStudents = async (classItem: Class) => {
+    try {
+      const apiStudents = await classService.getClassStudents(classItem.id!);
+      const mappedStudents: Student[] = apiStudents.map((s: any) => ({
+        id: s.id,
+        name: s.nome || s.name || '',
+        email: s.email || '',
+        phone: s.telefone || s.phone || '',
+        classId: classItem.id!,
+        className: classItem.name,
+        grade: Number(s.nota_final) || 0,
+        attendance: Number(s.frequencia) || 0,
+        status: (s.status === 'ativo' ? 'active' : 'inactive') as Student['status'],
+        enrollmentDate: s.data_matricula || ''
+      }));
+      setStudentModal({
+        isOpen: true,
+        className: classItem.name,
+        classId: classItem.id!,
+        students: mappedStudents
+      });
+    } catch {
+      toast.error('Erro ao carregar estudantes da turma');
+    }
   };
 
   const handleManageClass = (classItem: Class) => {
@@ -909,7 +924,8 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     setSelectStudentModal({
       isOpen: true,
       turmaId: classItem.id || 0,
-      cursoId: classItem.curso || ''
+      cursoId: classItem.curso || '',
+      turno: classItem.schedule || ''
     });
   };
 
@@ -989,6 +1005,8 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       isSidebarOpen={isSidebarOpen}
       setIsSidebarOpen={setIsSidebarOpen}
       onOpenSettings={() => setGeneralSettingsModal(true)}
+      userName={user?.nome}
+      userEmail={user?.email}
     />
 
     {/* ========== MAIN CONTENT ========== */}
@@ -996,6 +1014,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       <AdminTopBar
   activeView={activeView}
   displayName={displayName}
+  userRole={user?.role}
   onLogout={async () => {
     try {
       await logout();
@@ -1013,109 +1032,14 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           <TabsContent value="dashboard" className="space-y-6 mt-0">
             {/* Stats Grid - MELHORADO COM MAIS CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <GraduationCap className="h-4 w-4 text-blue-500" />
-                    Estudantes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{stats.totalStudents}</div>
-                  <p className="text-xs text-slate-500 mt-1">Total matriculados</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <Users className="h-4 w-4 text-purple-500" />
-                    Docentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-purple-600">{stats.totalTeachers}</div>
-                  <p className="text-xs text-slate-500 mt-1">Total de professores</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <BookOpen className="h-4 w-4 text-orange-500" />
-                    Turmas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-orange-600">{stats.totalClasses}</div>
-                  <p className="text-xs text-slate-500 mt-1">Total de turmas</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-cyan-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <FileText className="h-4 w-4 text-cyan-500" />
-                    Matrículas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-cyan-600">{registrations.length}</div>
-                  <p className="text-xs text-slate-500 mt-1">Matrículas ativas</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-green-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <DollarSign className="h-4 w-4 text-green-500" />
-                    Receita Total
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</div>
-                  <p className="text-xs text-slate-500 mt-1">Arrecadado</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-red-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    Em Débito
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{stats.studentsInDebt}</div>
-                  <p className="text-xs text-slate-500 mt-1">Estudantes devendo</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <Shield className="h-4 w-4 text-pink-500" />
-                    Usuários
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-pink-600">{systemUsers.length}</div>
-                  <p className="text-xs text-slate-500 mt-1">Total no sistema</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-indigo-500 shadow-lg hover:shadow-xl transition-all hover:scale-105 duration-300">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                    <BarChart3 className="h-4 w-4 text-indigo-500" />
-                    Taxa de Aprovação
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-indigo-600">87%</div>
-                  <p className="text-xs text-slate-500 mt-1">Média geral</p>
-                </CardContent>
-              </Card>
+              <AccentStatCard icon={GraduationCap} label="Estudantes" value={stats.totalStudents} subtitle="Total matriculados" color="blue" />
+              <AccentStatCard icon={Users} label="Docentes" value={stats.totalTeachers} subtitle="Total de professores" color="purple" />
+              <AccentStatCard icon={BookOpen} label="Turmas" value={stats.totalClasses} subtitle="Total de turmas" color="orange" />
+              <AccentStatCard icon={FileText} label="Matrículas" value={registrations.length} subtitle="Matrículas ativas" color="cyan" />
+              <AccentStatCard icon={DollarSign} label="Receita Total" value={formatCurrency(stats.totalRevenue)} subtitle="Arrecadado" color="green" />
+              <AccentStatCard icon={AlertTriangle} label="Em Débito" value={stats.studentsInDebt} subtitle="Estudantes devendo" color="red" />
+              <AccentStatCard icon={Shield} label="Usuários" value={systemUsers.length} subtitle="Total no sistema" color="pink" />
+              <AccentStatCard icon={BarChart3} label="Taxa de Aprovação" value="87%" subtitle="Média geral" color="indigo" />
             </div>
 
             {/* Quick Actions */}
@@ -1432,11 +1356,12 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
     <SelectStudentModal
       isOpen={selectStudentModal.isOpen}
-      onClose={() => setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' })}
+      onClose={() => setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '', turno: '' })}
       turmaId={selectStudentModal.turmaId}
       cursoId={selectStudentModal.cursoId}
+      turno={selectStudentModal.turno}
       onStudentsAdded={() => {
-        setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' });
+        setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '', turno: '' });
         toast.success('Estudantes adicionados com sucesso!');
         loadClasses();
       }}
@@ -1470,13 +1395,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     )}
 
     {/* FLOATING CHAT BUTTON */}
-    <button
+    <GradientButton
       onClick={() => setShowChatModal(true)}
-      className="fixed bottom-6 right-6 h-16 w-16 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-50"
+      className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl hover:scale-110 active:scale-95 z-50"
       title="Mensagens"
     >
       <MessageCircle className="h-7 w-7" />
-    </button>
+    </GradientButton>
 
     {/* CHAT MODAL */}
     {showChatModal && (
@@ -1505,7 +1430,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
             >
               Cancelar
             </Button>
-            <Button
+            <GradientButton
               onClick={() => {
                 if (chatMessage.trim()) {
                   toast.success("Mensagem enviada com sucesso!");
@@ -1515,10 +1440,10 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                   toast.error("Digite uma mensagem");
                 }
               }}
-              className="flex-1 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
+              className="flex-1"
             >
               Enviar
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </div>

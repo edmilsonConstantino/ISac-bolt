@@ -167,7 +167,7 @@ export default function CourseControlTab({
           <div className="flex justify-between">
             <span className="text-sm text-slate-600">Duração:</span>
             <span className="text-sm font-semibold">
-              {categoriaSelecionada?.has_levels && niveis.length > 0
+              {formData.tem_niveis && niveis.length > 0
                 ? `${getTotalDuracaoNiveis()} meses (${niveis.length} níveis)`
                 : `${formData.duracao_valor} meses`
               }

@@ -22,19 +22,25 @@ import {
   Key,
   Activity,
   UserPlus,
-  Download
+  Download,
+  MoreHorizontal
 } from "lucide-react";
 import { Permission } from "@/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { UserCredentialsModal } from "@/components/shared/UserCredentialsModal";
 import { UserAccessHistoryModal } from "@/components/shared/UserAccessHistoryModal";
+import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
+import { SearchBar, FilterSelect } from "@/components/ui/search-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListFooter } from "@/components/ui/info-row";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 export interface SystemUser {
   id: number;
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'teacher' | 'student';
+  role: 'admin' | 'academic_admin' | 'teacher' | 'student';
   status: 'active' | 'inactive';
   createdAt: string;
   lastLogin?: string;
@@ -44,6 +50,7 @@ export interface SystemUser {
 interface UsersListProps {
   users: SystemUser[];
   permissions: Permission;
+  currentUserRole?: string;
   onViewUser?: (user: SystemUser) => void;
   onEditUser?: (user: SystemUser) => void;
   onDeleteUser?: (userId: number) => void;
@@ -54,6 +61,7 @@ interface UsersListProps {
 export function UsersList({
   users,
   permissions,
+  currentUserRole = 'admin',
   onViewUser,
   onEditUser,
   onDeleteUser,
@@ -61,7 +69,7 @@ export function UsersList({
   onUpdateUser
 }: UsersListProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "teacher" | "student">("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const [createUserModal, setCreateUserModal] = useState(false);
@@ -78,7 +86,12 @@ export function UsersList({
     user: null
   });
 
-  const filteredUsers = users.filter(user => {
+  // Academic admin não deve ver super admins na lista
+  const visibleUsers = currentUserRole === 'admin'
+    ? users
+    : users.filter(u => u.role !== 'admin');
+
+  const filteredUsers = visibleUsers.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -89,21 +102,28 @@ export function UsersList({
   });
 
   const stats = {
-    total: users.length,
-    admins: users.filter(u => u.role === 'admin').length,
-    teachers: users.filter(u => u.role === 'teacher').length,
-    students: users.filter(u => u.role === 'student').length,
-    active: users.filter(u => u.status === 'active').length,
-    inactive: users.filter(u => u.status === 'inactive').length
+    total: visibleUsers.length,
+    admins: visibleUsers.filter(u => u.role === 'admin').length,
+    academicAdmins: visibleUsers.filter(u => u.role === 'academic_admin').length,
+    teachers: visibleUsers.filter(u => u.role === 'teacher').length,
+    students: visibleUsers.filter(u => u.role === 'student').length,
+    active: visibleUsers.filter(u => u.status === 'active').length,
+    inactive: visibleUsers.filter(u => u.status === 'inactive').length
   };
 
   const getRoleInfo = (role: SystemUser['role']) => {
-    const roleMap = {
+    const roleMap: Record<string, { label: string; color: string; icon: any; bgColor: string }> = {
       admin: {
-        label: 'Administrador',
+        label: 'Super Admin',
         color: 'bg-red-100 text-red-700 border-red-200',
         icon: Shield,
         bgColor: 'bg-red-50'
+      },
+      academic_admin: {
+        label: 'Academic Admin',
+        color: 'bg-purple-100 text-purple-700 border-purple-200',
+        icon: Shield,
+        bgColor: 'bg-purple-50'
       },
       teacher: {
         label: 'Docente',
@@ -118,7 +138,7 @@ export function UsersList({
         bgColor: 'bg-green-50'
       }
     };
-    return roleMap[role];
+    return roleMap[role] || roleMap.student;
   };
 
   const formatDate = (dateString: string) => {
@@ -180,50 +200,46 @@ export function UsersList({
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl p-8 border border-slate-200/60">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-[#004B87] mb-2 flex items-center gap-3">
-              <Users className="h-8 w-8" />
-              Gestão de Usuários
-            </h2>
-            <p className="text-sm text-[#004B87]/70">
-              {stats.total} usuário{stats.total !== 1 ? 's' : ''} no sistema
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            {permissions.canExportData && (
-              <Button
-                onClick={handleExportUsers}
-                variant="outline"
-                className="border-2 border-slate-300 hover:border-slate-400"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </Button>
-            )}
-            {permissions.canAdd && (
-              <Button
-                onClick={() => setCreateUserModal(true)}
-                className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
-              >
-                <UserPlus className="h-5 w-5 mr-2" />
-                Novo Usuário
-              </Button>
-            )}
-          </div>
+      <PageHeader className="mb-0">
+        <div>
+          <PageHeaderTitle icon={<Users className="h-8 w-8" />}>
+            Gestão de Usuários
+          </PageHeaderTitle>
+          <PageHeaderSubtitle>
+            {stats.total} usuário{stats.total !== 1 ? 's' : ''} no sistema
+          </PageHeaderSubtitle>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-white rounded-xl p-4 border-2 border-slate-100">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-slate-600" />
-              <span className="text-xs text-slate-600 font-medium">Total</span>
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
-          </div>
+        <PageHeaderActions>
+          {permissions.canExportData && (
+            <Button
+              onClick={handleExportUsers}
+              variant="outline"
+              className="border-2 border-slate-300 hover:border-slate-400"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          )}
+          {permissions.canAdd && currentUserRole === 'admin' && (
+            <GradientButton onClick={() => setCreateUserModal(true)}>
+              <UserPlus className="h-5 w-5" />
+              Novo Usuário
+            </GradientButton>
+          )}
+        </PageHeaderActions>
+      </PageHeader>
 
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 -mt-2">
+        <div className="bg-white rounded-xl p-4 border-2 border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4 text-slate-600" />
+            <span className="text-xs text-slate-600 font-medium">Total</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
+        </div>
+
+        {currentUserRole === 'admin' && (
           <div className="bg-red-50 rounded-xl p-4 border-2 border-red-200">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="h-4 w-4 text-red-600" />
@@ -231,88 +247,79 @@ export function UsersList({
             </div>
             <p className="text-2xl font-bold text-red-700">{stats.admins}</p>
           </div>
+        )}
 
-          <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-xs text-blue-700 font-medium">Docentes</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{stats.teachers}</p>
+        <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4 text-blue-600" />
+            <span className="text-xs text-blue-700 font-medium">Docentes</span>
           </div>
+          <p className="text-2xl font-bold text-blue-700">{stats.teachers}</p>
+        </div>
 
-          <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
-            <div className="flex items-center gap-2 mb-2">
-              <GraduationCap className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-green-700 font-medium">Estudantes</span>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{stats.students}</p>
+        <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+          <div className="flex items-center gap-2 mb-2">
+            <GraduationCap className="h-4 w-4 text-green-600" />
+            <span className="text-xs text-green-700 font-medium">Estudantes</span>
           </div>
+          <p className="text-2xl font-bold text-green-700">{stats.students}</p>
+        </div>
 
-          <div className="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-              <span className="text-xs text-emerald-700 font-medium">Ativos</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald-700">{stats.active}</p>
+        <div className="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs text-emerald-700 font-medium">Ativos</span>
           </div>
+          <p className="text-2xl font-bold text-emerald-700">{stats.active}</p>
+        </div>
 
-          <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <XCircle className="h-4 w-4 text-gray-600" />
-              <span className="text-xs text-gray-700 font-medium">Inativos</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-700">{stats.inactive}</p>
+        <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <XCircle className="h-4 w-4 text-gray-600" />
+            <span className="text-xs text-gray-700 font-medium">Inativos</span>
           </div>
+          <p className="text-2xl font-bold text-gray-700">{stats.inactive}</p>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <Input
-            placeholder="Buscar por nome ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
-          />
-        </div>
+        <SearchBar
+          placeholder="Buscar por nome ou email..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
 
-        <select
+        <FilterSelect
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as any)}
-          className="px-4 h-12 border-2 border-slate-200 rounded-xl text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 min-w-[160px] bg-white"
-        >
-          <option value="all">Todos os Perfis</option>
-          <option value="admin">🛡️ Administradores</option>
-          <option value="teacher">👨‍🏫 Docentes</option>
-          <option value="student">🎓 Estudantes</option>
-        </select>
+          onChange={(value) => setRoleFilter(value as any)}
+          options={[
+            { value: "all", label: "Todos os Perfis" },
+            ...(currentUserRole === 'admin' ? [{ value: "admin", label: "\u{1F6E1}\uFE0F Super Admin" }] : []),
+            { value: "academic_admin", label: "\u{1F4BC} Academic Admin" },
+            { value: "teacher", label: "\u{1F468}\u200D\u{1F3EB} Docentes" },
+            { value: "student", label: "\u{1F393} Estudantes" },
+          ]}
+          minWidth="160px"
+        />
 
-        <select
+        <FilterSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="px-4 h-12 border-2 border-slate-200 rounded-xl text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 min-w-[160px] bg-white"
-        >
-          <option value="all">Todos os Status</option>
-          <option value="active">✅ Ativos</option>
-          <option value="inactive">❌ Inativos</option>
-        </select>
+          onChange={(value) => setStatusFilter(value as any)}
+          options={[
+            { value: "all", label: "Todos os Status" },
+            { value: "active", label: "\u2705 Ativos" },
+            { value: "inactive", label: "\u274C Inativos" },
+          ]}
+          minWidth="160px"
+        />
       </div>
 
       {filteredUsers.length === 0 ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Users className="h-10 w-10 text-slate-400" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhum usuário encontrado</h3>
-              <p className="text-sm text-slate-500 text-center">
-                Tente ajustar os filtros de busca
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title="Nenhum usuário encontrado"
+          description="Tente ajustar os filtros de busca"
+        />
       ) : (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
           {/* Table Header */}
@@ -327,13 +334,13 @@ export function UsersList({
               <div className="col-span-2">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Contato</span>
               </div>
-              <div className="col-span-2">
+              <div className="col-span-1">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Cadastro</span>
               </div>
-              <div className="col-span-2">
-                <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Último Acesso</span>
+              <div className="col-span-1">
+                <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Acesso</span>
               </div>
-              <div className="col-span-1 text-right">
+              <div className="col-span-3 text-right">
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Ações</span>
               </div>
             </div>
@@ -359,7 +366,7 @@ export function UsersList({
                         {user.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    
+
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-sm text-slate-800 truncate">
@@ -400,66 +407,63 @@ export function UsersList({
                   </div>
 
                   {/* Registration Date Column */}
-                  <div className="col-span-2">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                      <Calendar className="h-3 w-3 text-slate-400" />
-                      <span>{formatDate(user.createdAt)}</span>
-                    </div>
+                  <div className="col-span-1">
+                    <span className="text-xs text-slate-600 font-medium">
+                      {formatDate(user.createdAt)}
+                    </span>
                   </div>
 
                   {/* Last Access Column */}
-                  <div className="col-span-2">
+                  <div className="col-span-1">
                     {user.lastLogin ? (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                        <Clock className="h-3 w-3 text-green-500" />
+                      <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
                         <span>{formatDate(user.lastLogin)}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400 italic">Nunca acessou</span>
+                      <span className="text-xs text-slate-400 italic">Nunca</span>
                     )}
                   </div>
 
                   {/* Actions Column */}
-                  <div className="col-span-1 flex justify-end items-center gap-2">
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all"
+                  <div className="col-span-3 flex justify-end items-center gap-1.5">
+                    <button
                       onClick={() => handleViewAccessHistory(user)}
+                      className="group flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 hover:border-purple-300 transition-all text-xs font-medium"
                       title="Histórico de Acesso"
                     >
-                      <Activity className="h-4 w-4" />
-                    </Button>
+                      <Activity className="h-3.5 w-3.5" />
+                      <span className="hidden xl:inline">Histórico</span>
+                    </button>
 
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-lg shadow-sm hover:shadow-md transition-all"
+                    <button
                       onClick={() => handleViewCredentials(user)}
-                      title="Ver Credenciais"
+                      className="group flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-orange-50 text-[#F5821F] hover:bg-orange-100 border border-orange-200 hover:border-orange-300 transition-all text-xs font-medium"
+                      title="Credenciais / Resetar Senha"
                     >
-                      <Key className="h-4 w-4" />
-                    </Button>
+                      <Key className="h-3.5 w-3.5" />
+                      <span className="hidden xl:inline">Senha</span>
+                    </button>
 
                     {permissions.canEdit && (
-                      <Button
-                        size="icon"
-                        className="h-10 w-10 bg-[#004B87] hover:bg-[#003868] text-white rounded-lg shadow-sm hover:shadow-md transition-all"
+                      <button
                         onClick={() => handleEditUser(user)}
-                        title="Editar"
+                        className="group flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-blue-50 text-[#004B87] hover:bg-blue-100 border border-blue-200 hover:border-blue-300 transition-all text-xs font-medium"
+                        title="Editar usuário"
                       >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                        <Edit className="h-3.5 w-3.5" />
+                        <span className="hidden xl:inline">Editar</span>
+                      </button>
                     )}
 
                     {permissions.canDelete && user.role !== 'admin' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg border border-red-200 hover:border-red-300 transition-all"
+                      <button
                         onClick={() => onDeleteUser && onDeleteUser(user.id)}
-                        title="Remover"
+                        className="group flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 hover:border-red-300 transition-all text-xs font-medium"
+                        title="Remover usuário"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -470,26 +474,16 @@ export function UsersList({
       )}
 
       {filteredUsers.length > 0 && (
-        <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Mostrando <span className="font-semibold">{filteredUsers.length}</span> de{" "}
-            <span className="font-semibold">{users.length}</span> usuários
-          </p>
-          {(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setRoleFilter("all");
-                setStatusFilter("all");
-              }}
-              className="text-[#F5821F] hover:text-[#004B87]"
-            >
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+        <ListFooter
+          showing={filteredUsers.length}
+          total={visibleUsers.length}
+          hasFilters={!!(searchTerm || roleFilter !== 'all' || statusFilter !== 'all')}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setRoleFilter("all");
+            setStatusFilter("all");
+          }}
+        />
       )}
 
       <CreateUserModal
@@ -497,6 +491,7 @@ export function UsersList({
         onClose={() => setCreateUserModal(false)}
         onSave={handleCreateUser}
         isEditing={false}
+        currentUserRole={currentUserRole}
       />
 
       <CreateUserModal
@@ -505,6 +500,7 @@ export function UsersList({
         onSave={handleUpdateUser}
         userData={editUserModal.user}
         isEditing={true}
+        currentUserRole={currentUserRole}
       />
 
       <UserCredentialsModal

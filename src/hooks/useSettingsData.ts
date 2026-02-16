@@ -58,6 +58,10 @@ export interface GeneralSettings {
   backupFrequency: string; // daily, weekly, monthly
   backupRetention: number; // em dias
 
+  // Configurações de Taxa de Matrícula Global
+  registrationFeeGlobalEnabled: boolean; // Se taxa global está activa (override todos os cursos)
+  registrationFeeIsento: boolean; // Se taxa de matrícula global é isenta
+
   // Configurações de Inscrição
   inscriptionIsPaid: boolean; // Se inscrição requer pagamento
   inscriptionFee: number; // Valor da taxa de inscrição em MZN
@@ -121,6 +125,10 @@ const defaultSettings: GeneralSettings = {
   autoBackupEnabled: true,
   backupFrequency: "daily",
   backupRetention: 30,
+
+  // Configurações de Taxa de Matrícula Global
+  registrationFeeGlobalEnabled: false, // Por defeito, taxa global desactivada (cada curso usa o seu valor)
+  registrationFeeIsento: false, // Por defeito, taxa de matrícula não é isenta
 
   // Configurações de Inscrição
   inscriptionIsPaid: false, // Por defeito, inscrição é gratuita

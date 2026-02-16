@@ -19,6 +19,8 @@ interface AdminSidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   onOpenSettings: () => void;
+  userName?: string;
+  userEmail?: string;
 }
 
 // --- Dados do Menu (Todos os itens originais) ---
@@ -39,7 +41,7 @@ export const menuItems: MenuItem[] = [
   { id: "grades", label: "Notas", icon: BarChart3 },
 ];
 
-export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings }: AdminSidebarProps) {
+export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings, userName, userEmail }: AdminSidebarProps) {
   const [openDropdown, setOpenDropdown] = useState<AdminView | null>(null);
 
   const isDropdownActive = (item: MenuItem) => item.dropdownItems?.some((sub) => sub.id === activeView);
@@ -83,8 +85,8 @@ export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSi
         {/* SECÇÃO DE PERFIL DO UTILIZADOR */}
         {isSidebarOpen && (
           <div className="p-4 mx-4 mb-4 bg-[#003d72] rounded-xl">
-            <p className="text-sm font-bold text-white tracking-wide">Olá, Admin!</p>
-            <p className="text-xs text-blue-200/70 font-light">isac.admin@email.com</p>
+            <p className="text-sm font-bold text-white tracking-wide">Olá, {userName || 'Admin'}!</p>
+            <p className="text-xs text-blue-200/70 font-light">{userEmail || ''}</p>
           </div>
         )}
         {!isSidebarOpen && (

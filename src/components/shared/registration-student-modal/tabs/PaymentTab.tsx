@@ -41,24 +41,21 @@ export function PaymentTab({
             </Label>
           </div>
 
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            value={formData.enrollmentFee ?? ""}
-            onChange={(e) =>
-              onChangeField(
-                "enrollmentFee",
-                parseFloat(e.target.value) || 0
-              )
-            }
-            className="h-12 rounded-xl text-lg font-bold"
-          />
-
-          {enrollmentFee > 0 && (
-            <p className="text-sm text-[#F5821F] font-semibold">
-              {formatCurrency(enrollmentFee)}
-            </p>
+          {formData.enrollmentFeeIsento ? (
+            <div className="h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center px-4">
+              <span className="text-amber-700 font-bold">Isento</span>
+            </div>
+          ) : (
+            <>
+              <div className="h-12 rounded-xl bg-orange-50 border border-orange-200 flex items-center px-4">
+                <span className="text-lg font-bold text-[#F5821F]">
+                  {formatCurrency(enrollmentFee)}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Valor definido no curso (não editável)
+              </p>
+            </>
           )}
         </div>
 
@@ -72,22 +69,14 @@ export function PaymentTab({
             </Label>
           </div>
 
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            value={formData.monthlyFee ?? ""}
-            onChange={(e) =>
-              onChangeField("monthlyFee", parseFloat(e.target.value) || 0)
-            }
-            className="h-12 rounded-xl text-lg font-bold"
-          />
-
-          {monthlyFee > 0 && (
-            <p className="text-sm text-green-600 font-semibold">
-              {formatCurrency(monthlyFee)}/mês
-            </p>
-          )}
+          <div className="h-12 rounded-xl bg-green-50 border border-green-200 flex items-center px-4">
+            <span className="text-lg font-bold text-green-700">
+              {formatCurrency(monthlyFee)}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            {monthlyFee > 0 ? `${formatCurrency(monthlyFee)}/mês - Valor definido no curso` : 'Valor definido no curso (não editável)'}
+          </p>
         </div>
       </div>
 
@@ -180,8 +169,8 @@ export function PaymentTab({
 
           <div className="flex justify-between">
             <span className="text-sm text-slate-600">Taxa de Matrícula:</span>
-            <span className="text-sm font-semibold text-orange-600">
-              {formatCurrency(enrollmentFee)}
+            <span className={`text-sm font-semibold ${formData.enrollmentFeeIsento ? 'text-amber-600' : 'text-orange-600'}`}>
+              {formData.enrollmentFeeIsento ? 'Isento' : formatCurrency(enrollmentFee)}
             </span>
           </div>
 

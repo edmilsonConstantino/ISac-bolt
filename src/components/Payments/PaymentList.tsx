@@ -1,9 +1,11 @@
 // src/components/shared/PaymentList.tsx - COM TOGGLE GRID/LISTA
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SearchBar, ViewToggle } from "@/components/ui/search-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListFooter } from "@/components/ui/info-row";
 import {
   Search,
   DollarSign,
@@ -62,7 +64,7 @@ export function PaymentList({
 
     students.forEach(student => {
       const paymentInfo = getStudentPaymentInfo(student.id, student.name, student.className);
-     
+
       if (paymentInfo.overduePayments.length > 0) {
         overdue++;
       } else if (paymentInfo.currentBalance < 0) {
@@ -177,7 +179,7 @@ export function PaymentList({
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div 
+          <div
             className={`bg-white rounded-xl p-4 border-2 cursor-pointer transition-all hover:shadow-lg ${
               statusFilter === 'all' ? 'border-[#004B87] shadow-lg' : 'border-slate-100'
             }`}
@@ -190,7 +192,7 @@ export function PaymentList({
             <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
           </div>
 
-          <div 
+          <div
             className={`bg-red-50 rounded-xl p-4 border-2 cursor-pointer transition-all hover:shadow-lg ${
               statusFilter === 'overdue' ? 'border-red-500 shadow-lg' : 'border-red-200'
             }`}
@@ -203,7 +205,7 @@ export function PaymentList({
             <p className="text-2xl font-bold text-red-700">{stats.overdue}</p>
           </div>
 
-          <div 
+          <div
             className={`bg-orange-50 rounded-xl p-4 border-2 cursor-pointer transition-all hover:shadow-lg ${
               statusFilter === 'debt' ? 'border-[#F5821F] shadow-lg' : 'border-orange-200'
             }`}
@@ -216,7 +218,7 @@ export function PaymentList({
             <p className="text-2xl font-bold text-[#F5821F]">{stats.withDebt}</p>
           </div>
 
-          <div 
+          <div
             className={`bg-blue-50 rounded-xl p-4 border-2 cursor-pointer transition-all hover:shadow-lg ${
               statusFilter === 'credit' ? 'border-blue-500 shadow-lg' : 'border-blue-200'
             }`}
@@ -229,7 +231,7 @@ export function PaymentList({
             <p className="text-2xl font-bold text-blue-700">{stats.withCredit}</p>
           </div>
 
-          <div 
+          <div
             className={`bg-green-50 rounded-xl p-4 border-2 cursor-pointer transition-all hover:shadow-lg ${
               statusFilter === 'uptodate' ? 'border-green-500 shadow-lg' : 'border-green-200'
             }`}
@@ -246,71 +248,40 @@ export function PaymentList({
 
       {/* Search Bar + View Toggle */}
       <div className="flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <Input
-            placeholder="Buscar estudante por nome, turma ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
-          />
-        </div>
+        <SearchBar
+          placeholder="Buscar estudante por nome, turma ou email..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
 
-        {/* NOVO: Toggle de Visualização */}
-        <div className="flex bg-white border-2 border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`flex items-center gap-2 px-4 h-12 transition-all font-medium text-sm ${
-              viewMode === "grid"
-                ? "bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Grid3x3 className="h-4 w-4" />
-            Grelha
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`flex items-center gap-2 px-4 h-12 transition-all font-medium text-sm border-l-2 border-slate-200 ${
-              viewMode === "list"
-                ? "bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <List className="h-4 w-4" />
-            Lista
-          </button>
-        </div>
+        <ViewToggle
+          view={viewMode}
+          onChange={setViewMode}
+          gridIcon={<Grid3x3 className="h-4 w-4" />}
+          listIcon={<List className="h-4 w-4" />}
+        />
       </div>
 
       {/* Students Display - CONDICIONAL */}
       {filteredStudents.length === 0 ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Search className="h-10 w-10 text-slate-400" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhum estudante encontrado</h3>
-              <p className="text-sm text-slate-500 text-center">
-                Tente ajustar os filtros ou termos de busca
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Search}
+          title="Nenhum estudante encontrado"
+          description="Tente ajustar os filtros ou termos de busca"
+        />
       ) : viewMode === "grid" ? (
         // ============ VISUALIZAÇÃO EM GRID (CARDS) ============
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredStudents.map((student) => {
             const paymentInfo = getStudentPaymentInfo(student.id, student.name, student.className);
-           
+
             return (
-              <Card 
+              <Card
                 key={student.id}
                 className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md overflow-hidden bg-white"
               >
                 <div className="h-2 bg-gradient-to-r from-[#004B87] to-[#0066B3]"></div>
-                
+
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2.5">
@@ -319,8 +290,8 @@ export function PaymentList({
                           {student.name.charAt(0).toUpperCase()}
                         </div>
                         <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
-                          paymentInfo.overduePayments.length > 0 
-                            ? "bg-red-500" 
+                          paymentInfo.overduePayments.length > 0
+                            ? "bg-red-500"
                             : paymentInfo.currentBalance < 0
                             ? "bg-orange-500"
                             : paymentInfo.currentBalance > 0
@@ -430,7 +401,7 @@ export function PaymentList({
             <div className="divide-y divide-slate-200">
               {filteredStudents.map((student, index) => {
                 const paymentInfo = getStudentPaymentInfo(student.id, student.name, student.className);
-               
+
                 return (
                   <div
                     key={student.id}
@@ -497,25 +468,15 @@ export function PaymentList({
 
       {/* Footer Info */}
       {filteredStudents.length > 0 && (
-        <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Mostrando <span className="font-semibold text-[#004B87]">{filteredStudents.length}</span> de{" "}
-            <span className="font-semibold text-[#004B87]">{students.length}</span> estudantes
-          </p>
-          {(searchTerm || statusFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-              }}
-              className="text-[#F5821F] hover:text-[#004B87]"
-            >
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+        <ListFooter
+          showing={filteredStudents.length}
+          total={students.length}
+          hasFilters={!!(searchTerm || statusFilter !== 'all')}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setStatusFilter("all");
+          }}
+        />
       )}
     </div>
   );

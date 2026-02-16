@@ -17,7 +17,8 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Briefcase
 } from "lucide-react";
 import { SystemUser } from "./UsersList";
 
@@ -27,6 +28,7 @@ interface CreateUserModalProps {
   onSave: (userData: Partial<SystemUser>) => void;
   userData?: SystemUser | null;
   isEditing?: boolean;
+  currentUserRole?: string;
 }
 
 export function CreateUserModal({
@@ -34,13 +36,14 @@ export function CreateUserModal({
   onClose,
   onSave,
   userData,
-  isEditing = false
+  isEditing = false,
+  currentUserRole = 'admin'
 }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    role: "student" as "admin" | "teacher" | "student",
+    role: "student" as string,
     password: "",
     confirmPassword: "",
     status: "active" as "active" | "inactive"
@@ -75,16 +78,26 @@ export function CreateUserModal({
     setErrors({});
   }, [isOpen, userData, isEditing]);
 
-  const roles = [
+  const allRoles = [
     {
       id: "admin",
-      label: "Administrador",
+      label: "Super Admin",
       description: "Acesso total ao sistema",
       icon: Shield,
       color: "from-red-500 to-rose-600",
       bgColor: "bg-red-50",
       borderColor: "border-red-300",
       textColor: "text-red-700"
+    },
+    {
+      id: "academic_admin",
+      label: "Academic Admin",
+      description: "Gestão académica sem acesso total",
+      icon: Briefcase,
+      color: "from-purple-500 to-violet-600",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-300",
+      textColor: "text-purple-700"
     },
     {
       id: "teacher",
@@ -107,6 +120,11 @@ export function CreateUserModal({
       textColor: "text-green-700"
     }
   ];
+
+  // Super admin vê todos os roles; academic admin só pode criar docente e estudante
+  const roles = currentUserRole === 'admin'
+    ? allRoles
+    : allRoles.filter(r => r.id !== 'admin' && r.id !== 'academic_admin');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};

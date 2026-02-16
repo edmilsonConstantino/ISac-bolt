@@ -32,6 +32,8 @@ import { GradeManagementModal } from "@/components/shared/GradeManagementModal";
 import { ClassList } from "@/components/Classes/ClassList";
 import { useClassData, useStudentData, useAssignmentData } from "@/hooks/useData";
 import { Class, Student, Permission } from "@/types";
+import classService from "@/services/classService";
+import { toast } from "sonner";
 
 interface TeacherDashboardProps {
   onLogout?: () => void;
@@ -94,14 +96,30 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
     nextClass: "Business English"
   };
   
-  const handleViewStudents = (classItem: Class) => {
-    const classStudents = getStudentsByClass(classItem.id);
-    setStudentModal({
-      isOpen: true,
-      className: classItem.name,
-      classId: classItem.id,
-      students: classStudents
-    });
+  const handleViewStudents = async (classItem: Class) => {
+    try {
+      const apiStudents = await classService.getClassStudents(classItem.id!);
+      const mappedStudents: Student[] = apiStudents.map((s: any) => ({
+        id: s.id,
+        name: s.nome || s.name || '',
+        email: s.email || '',
+        phone: s.telefone || s.phone || '',
+        classId: classItem.id!,
+        className: classItem.name,
+        grade: Number(s.nota_final) || 0,
+        attendance: Number(s.frequencia) || 0,
+        status: (s.status === 'ativo' ? 'active' : 'inactive') as Student['status'],
+        enrollmentDate: s.data_matricula || ''
+      }));
+      setStudentModal({
+        isOpen: true,
+        className: classItem.name,
+        classId: classItem.id!,
+        students: mappedStudents
+      });
+    } catch {
+      toast.error('Erro ao carregar estudantes da turma');
+    }
   };
   
   const handleManageClass = (classItem: Class) => {

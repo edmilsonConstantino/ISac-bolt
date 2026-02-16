@@ -1,144 +1,157 @@
-// src/services/api.ts - ✅ VERSÃO CORRIGIDA
-import axios, { AxiosInstance, AxiosError } from 'axios';
+// src/services/api.ts - Com refresh token silencioso e protecção contra race conditions
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// ⚙️ URL base da sua API PHP
 const API_BASE_URL = 'http://localhost/api-login';
 
-// 🔧 Criar instância do Axios
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // ✅
+  withCredentials: false,
 });
 
-// 🔐 Interceptor de REQUEST - Adiciona token JWT
+// ============================================================
+// Estado do refresh - protege contra race conditions
+// ============================================================
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (token) {
+      prom.resolve(token);
+    } else {
+      prom.reject(error);
+    }
+  });
+  failedQueue = [];
+};
+
+// ============================================================
+// Interceptor de REQUEST - Adiciona token JWT
+// ============================================================
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
-    
-    // 🔍 DEBUG DETALHADO
-    console.log('\n📡 === REQUEST INTERCEPTOR ===');
-    console.log('URL:', config.url);
-    console.log('Método:', config.method?.toUpperCase());
-    console.log('🔐 Token no localStorage:', token ? 'SIM ✅' : 'NÃO ❌');
-    
+
     if (token) {
-      console.log('Token (30 chars):', token.substring(0, 30) + '...');
-    } else {
-      // Só alertar se NÃO for rota de autenticação (login/register não precisam de token)
-      const isAuthRoute = config.url && (config.url.includes('login') || config.url.includes('register') || config.url.includes('forgot') || config.url.includes('reset'));
-      if (!isAuthRoute) {
-        console.error('❌ PROBLEMA: Token não encontrado!');
-        console.log('Conteúdo do localStorage:', Object.keys(localStorage));
-      }
-    }
-    
-    if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('✅ Header Authorization adicionado');
-    } else {
-      console.warn('⚠️ Token NÃO foi adicionado ao header!');
-      
-      // Se for uma rota protegida, alertar
-      if (config.url && !config.url.includes('login') && !config.url.includes('register')) {
-        console.error('🚨 ALERTA: Requisição para rota protegida sem token!');
-      }
     }
-    
+
     return config;
   },
-  (error) => {
-    console.error('❌ Erro no request interceptor:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// ⚠️ Interceptor de RESPONSE - Trata erros 401
+// ============================================================
+// Interceptor de RESPONSE - Refresh automático silencioso
+// ============================================================
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('✅ Response OK:', response.config.url, '- Status:', response.status);
-    console.log('📦 Response data type:', typeof response.data);
-    console.log('📦 Response data:', response.data);
     // Se response.data for string, tentar parsear como JSON
     if (typeof response.data === 'string' && response.data.trim().startsWith('{')) {
       try {
-        console.log('⚠️ Response data é string, parseando como JSON...');
         response.data = JSON.parse(response.data);
-        console.log('✅ Parsed data:', response.data);
-      } catch (e) {
-        console.error('❌ Falha ao parsear response.data como JSON:', e);
+      } catch {
+        // ignorar
       }
     }
     return response;
   },
   async (error: AxiosError) => {
-    const originalRequest = error.config as any;
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    console.error('\n❌ === ERRO NA RESPOSTA ===');
-    console.error('URL:', originalRequest?.url);
-    console.error('Status:', error.response?.status);
-    console.error('Mensagem:', error.message);
-
-    // Se erro 401 (não autorizado) e não for retry
-    if (error.response?.status === 401 && !originalRequest?._retry) {
-      console.log('🔄 Tentando renovar token...');
-      originalRequest._retry = true;
-
-      try {
-        // Tentar renovar o token
-        const refreshToken = localStorage.getItem('refresh_token');
-        
-        if (!refreshToken) {
-          console.error('❌ Refresh token não encontrado');
-          throw new Error('Refresh token ausente');
-        }
-        
-        console.log('📤 Enviando refresh token...');
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh.php`, {
-          refresh_token: refreshToken,
-        });
-
-        const tokenData = response.data.data ?? response.data;
-        const { access_token, refresh_token: new_refresh_token } = tokenData;
-
-        if (!access_token) {
-          throw new Error('Novo access_token não recebido');
-        }
-
-        console.log('✅ Novo token recebido');
-        localStorage.setItem('access_token', access_token);
-        if (new_refresh_token) {
-          localStorage.setItem('refresh_token', new_refresh_token);
-        }
-
-        // Retry request original com novo token
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        console.log('🔄 Reenviando requisição original...');
-        
-        return apiClient(originalRequest);
-        
-      } catch (refreshError: any) {
-        console.error('❌ Falha ao renovar token:', refreshError.message);
-        
-        // Token inválido, fazer logout completo
-        console.log('🚪 Fazendo logout e redirecionando...');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('auth-storage');
-        
-        // Redirecionar para login
-        window.location.href = '/login';
-        
-        return Promise.reject(refreshError);
-      }
+    // Só tratar 401 (token expirado/inválido)
+    if (error.response?.status !== 401 || !originalRequest) {
+      return Promise.reject(error);
     }
 
-    // Para outros erros, apenas rejeitar
-    return Promise.reject(error);
+    // Se já é um retry, não tentar novamente
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // Se é rota de auth (login/refresh), não fazer refresh
+    const isAuthRoute = originalRequest.url && (
+      originalRequest.url.includes('login') ||
+      originalRequest.url.includes('refresh') ||
+      originalRequest.url.includes('register')
+    );
+    if (isAuthRoute) {
+      return Promise.reject(error);
+    }
+
+    // Se já estamos a fazer refresh, enfileirar esta requisição
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(apiClient(originalRequest));
+          },
+          reject: (err: unknown) => {
+            reject(err);
+          },
+        });
+      });
+    }
+
+    // Marcar como a fazer refresh
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      if (!refreshToken) {
+        throw new Error('Refresh token ausente');
+      }
+
+      // Chamar endpoint de refresh (usando axios directamente, não apiClient)
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh.php`, {
+        refresh_token: refreshToken,
+      });
+
+      const tokenData = response.data.data ?? response.data;
+      const { access_token, refresh_token: new_refresh_token } = tokenData;
+
+      if (!access_token) {
+        throw new Error('Novo access_token não recebido');
+      }
+
+      // Guardar novos tokens
+      localStorage.setItem('access_token', access_token);
+      if (new_refresh_token) {
+        localStorage.setItem('refresh_token', new_refresh_token);
+      }
+
+      // Processar fila de requisições pendentes com o novo token
+      processQueue(null, access_token);
+
+      // Reenviar requisição original
+      originalRequest.headers.Authorization = `Bearer ${access_token}`;
+      return apiClient(originalRequest);
+
+    } catch (refreshError) {
+      // Refresh falhou - processar fila com erro
+      processQueue(refreshError, null);
+
+      // Limpar storage e redirecionar para login
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('auth-storage');
+
+      window.location.href = '/login';
+
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 

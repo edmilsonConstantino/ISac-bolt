@@ -1,4 +1,5 @@
 // src/components/shared/InscriptionSettingsModal.tsx
+// VERSÃO SIMPLIFICADA - Lógica mais direta
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,29 +34,44 @@ export function InscriptionSettingsModal({
 }: InscriptionSettingsModalProps) {
   const { settings, updateSetting, saveSettings } = useSettingsData();
 
+  // ============================================================================
+  // ESTADO LOCAL
+  // ============================================================================
+  // LÓGICA CORRETA FINAL:
+  // - Switch ON (checked=true) = PAGA (isPaid = true)
+  // - Switch OFF (checked=false) = GRATUITA (isPaid = false)
+  // Por padrão, a inscrição começa como GRATUITA (isPaid = false, switch OFF)
   const [isPaid, setIsPaid] = useState(false);
   const [fee, setFee] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Carregar valores das settings quando o modal abre
+  // ============================================================================
+  // CARREGAR CONFIGURAÇÕES AO ABRIR O MODAL
+  // ============================================================================
   useEffect(() => {
     if (isOpen) {
+      // Carrega diretamente do backend (sem inversão)
       setIsPaid(settings.inscriptionIsPaid ?? false);
       setFee(settings.inscriptionFee ?? 0);
       setHasChanges(false);
     }
   }, [isOpen, settings.inscriptionIsPaid, settings.inscriptionFee]);
 
-  // Detectar mudanças
+  // ============================================================================
+  // DETECTAR MUDANÇAS NOS CAMPOS
+  // ============================================================================
   useEffect(() => {
     const changed =
       isPaid !== settings.inscriptionIsPaid || fee !== settings.inscriptionFee;
     setHasChanges(changed);
   }, [isPaid, fee, settings.inscriptionIsPaid, settings.inscriptionFee]);
 
+  // ============================================================================
+  // SALVAR CONFIGURAÇÕES
+  // ============================================================================
   const handleSave = async () => {
-    // Validação
+    // Validação: se for paga, precisa ter valor
     if (isPaid && fee <= 0) {
       toast.error("Taxa de inscrição deve ser maior que zero");
       return;
@@ -66,7 +82,7 @@ export function InscriptionSettingsModal({
       const newSettings = {
         ...settings,
         inscriptionIsPaid: isPaid,
-        inscriptionFee: isPaid ? fee : 0,
+        inscriptionFee: isPaid ? fee : 0, // Zera se gratuita
       };
 
       const success = await saveSettings(newSettings);
@@ -85,6 +101,9 @@ export function InscriptionSettingsModal({
     }
   };
 
+  // ============================================================================
+  // FORMATAÇÃO DE MOEDA
+  // ============================================================================
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-MZ", {
       style: "currency",
@@ -95,6 +114,9 @@ export function InscriptionSettingsModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
+        {/* ====================================================================== */}
+        {/* HEADER DO MODAL */}
+        {/* ====================================================================== */}
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center">
@@ -112,12 +134,20 @@ export function InscriptionSettingsModal({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Toggle Gratuita/Paga */}
+          {/* ================================================================== */}
+          {/* TOGGLE GRATUITA / PAGA */}
+          {/* LÓGICA FINAL CORRETA: */}
+          {/* - Switch ON = PAGA (laranja) */}
+          {/* - Switch OFF = GRATUITA (verde) */}
+          {/* ================================================================== */}
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border">
             <div className="flex items-center gap-3">
+              {/* Ícone muda conforme o estado */}
               <div
-                className={`p-2 rounded-lg ${
-                  isPaid ? "bg-[#F5821F] text-white" : "bg-green-100 text-green-600"
+                className={`p-2 rounded-lg transition-all ${
+                  isPaid 
+                    ? "bg-[#F5821F] text-white"
+                    : "bg-green-100 text-green-600" 
                 }`}
               >
                 {isPaid ? (
@@ -137,6 +167,12 @@ export function InscriptionSettingsModal({
                 </p>
               </div>
             </div>
+            {/* 
+              Switch DIRETO:
+              - checked={isPaid}: ON quando PAGA (laranja)
+              - onCheckedChange={setIsPaid}: atualiza diretamente
+              - Cor laranja quando ON
+            */}
             <Switch
               checked={isPaid}
               onCheckedChange={setIsPaid}
@@ -144,40 +180,76 @@ export function InscriptionSettingsModal({
             />
           </div>
 
-          {/* Campo de Taxa (condicional) - Input simples sem spinners */}
+          {/* ================================================================== */}
+          {/* CAMPO DE TAXA (só aparece quando É PAGA) */}
+          {/* ================================================================== */}
           {isPaid && (
             <div className="space-y-3 p-4 bg-orange-50 border border-orange-200 rounded-xl animate-in slide-in-from-top-2">
+              {/* Label do campo */}
               <Label className="font-bold text-slate-700 flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-[#F5821F]" />
-                Taxa de Inscrição (MZN)
+                Taxa de Inscrição
               </Label>
+
+              {/* Input de valor */}
               <div className="relative">
                 <Input
                   type="text"
                   inputMode="numeric"
                   value={fee > 0 ? fee.toString() : ""}
                   onChange={(e) => {
-                    // Apenas aceitar números
+                    // Permite apenas números (remove qualquer outro caractere)
                     const value = e.target.value.replace(/[^0-9]/g, "");
                     setFee(value ? parseInt(value, 10) : 0);
                   }}
-                  placeholder="Digite o valor..."
-                  className="text-lg font-bold pl-12 h-12 border-2 border-orange-200 focus:border-[#F5821F] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="0"
+                  className={`text-lg font-bold pl-16 pr-4 h-14 border-2 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                    fee > 0
+                      ? "border-[#F5821F] bg-white"
+                      : "border-orange-200 focus:border-[#F5821F]"
+                  }`}
                 />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
+                {/* Prefixo "MZN" fixo à esquerda */}
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#F5821F] font-bold text-base">
                   MZN
                 </span>
+                {/* Ícone de check quando valor é válido */}
+                {fee > 0 && (
+                  <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600" />
+                )}
               </div>
-              {fee > 0 && (
-                <p className="text-sm text-orange-700 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Valor a cobrar: {formatCurrency(fee)}
-                </p>
+
+              {/* ============================================================== */}
+              {/* FEEDBACK VISUAL DO VALOR */}
+              {/* ============================================================== */}
+              {fee > 0 ? (
+                // Card VERDE - Valor configurado
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-green-800">
+                      {formatCurrency(fee)}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Valor configurado com sucesso
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Card ÂMBAR - Campo vazio (alerta)
+                <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-xs text-amber-700">
+                    Digite um valor para a taxa de inscrição
+                  </p>
+                </div>
               )}
             </div>
           )}
 
-          {/* Info Box */}
+          {/* ================================================================== */}
+          {/* INFO BOX - Explica o comportamento do sistema */}
+          {/* ================================================================== */}
           <div
             className={`p-4 rounded-xl border ${
               isPaid
@@ -214,7 +286,9 @@ export function InscriptionSettingsModal({
             </div>
           </div>
 
-          {/* Indicador de mudanças */}
+          {/* ================================================================== */}
+          {/* INDICADOR DE MUDANÇAS NÃO SALVAS */}
+          {/* ================================================================== */}
           {hasChanges && (
             <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
               <AlertCircle className="h-4 w-4" />
@@ -223,10 +297,16 @@ export function InscriptionSettingsModal({
           )}
         </div>
 
+        {/* ==================================================================== */}
+        {/* FOOTER - BOTÕES DE AÇÃO */}
+        {/* ==================================================================== */}
         <DialogFooter className="gap-2">
+          {/* Botão Cancelar */}
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancelar
           </Button>
+          
+          {/* Botão Salvar */}
           <Button
             onClick={handleSave}
             disabled={isSaving || !hasChanges}

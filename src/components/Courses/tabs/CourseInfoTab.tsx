@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, DollarSign, Hash, AlertCircle, Monitor, Wifi, Building, Info } from "lucide-react";
+import { Calendar, DollarSign, Hash, AlertCircle, Monitor, Wifi, Building, Info, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,7 +109,8 @@ export default function CourseInfoTab({
     }
 
     const year = new Date().getFullYear();
-    return code ? `${code}-${year}` : '';
+    const random = Math.floor(Math.random() * 900 + 100); // 100-999
+    return code ? `${code}-${year}-${random}` : '';
   };
 
   const formatCurrency = (value: number) => {
@@ -252,6 +253,36 @@ export default function CourseInfoTab({
               )}
             </div>
           </div>
+
+          {/* CHECKBOX INDEPENDENTE - CURSO POR NÍVEIS */}
+          <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="tem_niveis"
+                  checked={formData.tem_niveis || false}
+                  onCheckedChange={(checked) => {
+                    handleChange('tem_niveis', checked);
+                    if (!checked) {
+                      setNiveis([]);
+                      setQtdNiveis(0);
+                    }
+                  }}
+                  disabled={isLoading}
+                />
+                <Label htmlFor="tem_niveis" className="text-sm font-bold text-purple-800 cursor-pointer flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-purple-600" />
+                  Este curso é por níveis?
+                </Label>
+              </div>
+            </div>
+            <p className="text-xs text-purple-600/70 mt-2 ml-8">
+              {formData.tem_niveis
+                ? 'O curso terá níveis (ex: Nível 1, Nível 2...). Configure-os na aba "Módulos".'
+                : 'O curso terá duração única, sem divisão por níveis.'
+              }
+            </p>
+          </div>
         </div>
       </section>
 
@@ -265,7 +296,7 @@ export default function CourseInfoTab({
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          {!categoriaSelecionada?.has_levels && (
+          {!formData.tem_niveis && (
             <div className="space-y-2">
               <Label className="text-slate-600 font-semibold ml-1">
                 Duração (meses)
@@ -294,7 +325,7 @@ export default function CourseInfoTab({
             </div>
           )}
 
-          {categoriaSelecionada?.has_levels && categoriaSelecionada?.level_type !== 'named' && (
+          {formData.tem_niveis && categoriaSelecionada?.level_type !== 'named' && (
             <div className="space-y-2">
               <Label className="text-slate-600 font-semibold ml-1">
                 Quantidade de Níveis <span className="text-red-500">*</span>
@@ -338,7 +369,7 @@ export default function CourseInfoTab({
             </div>
           )}
 
-          {categoriaSelecionada?.has_levels && categoriaSelecionada?.level_type === 'named' && (
+          {formData.tem_niveis && categoriaSelecionada?.level_type === 'named' && (
             <div className="space-y-2">
               <Label className="text-slate-600 font-semibold ml-1">
                 Níveis Disponíveis
@@ -507,10 +538,13 @@ export default function CourseInfoTab({
               type="number"
               min="0"
               step="0.01"
-              placeholder="0.00"
-              value={formData.isento_matricula ? 0 : (formData.taxa_matricula || '')}
+              placeholder="Insira o valor da taxa de matrícula"
+              value={formData.isento_matricula ? '' : (formData.taxa_matricula || '')}
               onChange={(e) => handleChange('taxa_matricula', parseFloat(e.target.value) || 0)}
-              className={cn("h-12 rounded-xl", errors.taxa_matricula && "border-red-500")}
+              className={cn(
+                "h-12 rounded-xl",
+                errors.taxa_matricula && "border-red-500"
+              )}
               disabled={isLoading || formData.isento_matricula}
             />
             <div className="flex items-center space-x-2 mt-1">

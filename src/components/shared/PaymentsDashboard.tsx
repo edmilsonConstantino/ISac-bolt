@@ -36,6 +36,8 @@ import {
   PlayCircle,
   Info
 } from "lucide-react";
+import { PageHeader, PageHeaderTitle, PageHeaderSubtitle } from "@/components/ui/page-header";
+import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { financeService } from "@/services/financeService";
 import {
   StudentFinanceResponse,
@@ -210,15 +212,16 @@ export function PaymentsDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl p-6 border border-slate-200/60">
-        <div className="flex items-center gap-3 mb-2">
-          <DollarSign className="h-7 w-7 text-[#004B87]" />
-          <h2 className="text-2xl font-bold text-[#004B87]">Gestão de Pagamentos</h2>
+      <PageHeader>
+        <div>
+          <PageHeaderTitle icon={<DollarSign className="h-7 w-7 text-[#004B87]" />}>
+            Gestão de Pagamentos
+          </PageHeaderTitle>
+          <PageHeaderSubtitle>
+            Seleccione um estudante para ver e gerir os pagamentos
+          </PageHeaderSubtitle>
         </div>
-        <p className="text-sm text-slate-600">
-          Seleccione um estudante para ver e gerir os pagamentos
-        </p>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lista de Estudantes */}
@@ -263,9 +266,7 @@ export function PaymentsDashboard() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-full flex items-center justify-center text-white text-xs font-bold">
-                            {student.name.charAt(0).toUpperCase()}
-                          </div>
+                          <AvatarInitials name={student.name} size="sm" shape="circle" />
                           <div>
                             <p className="font-medium text-sm text-slate-800">{student.name}</p>
                             <p className="text-xs text-slate-500">{student.email}</p>
@@ -313,9 +314,7 @@ export function PaymentsDashboard() {
                 {/* Header do estudante */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center text-white font-bold">
-                      {studentFinance.student.name.charAt(0).toUpperCase()}
-                    </div>
+                    <AvatarInitials name={studentFinance.student.name} size="lg" />
                     <div>
                       <h3 className="font-bold text-lg text-[#004B87]">
                         {studentFinance.student.name}

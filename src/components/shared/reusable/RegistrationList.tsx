@@ -3,11 +3,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   FileText,
   Plus,
-  Search,
   Grid3x3,
   LayoutList,
   Eye,
@@ -27,6 +25,14 @@ import {
   UserCircle
 } from "lucide-react";
 import { Permission } from "../../types";
+
+// Componentes reutilizaveis
+import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
+import { SearchBar, FilterSelect, ViewToggle } from "@/components/ui/search-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatCard } from "@/components/ui/stat-card";
+import { ListFooter } from "@/components/ui/info-row";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 // Interface para Matrícula
 export interface Registration {
@@ -90,10 +96,10 @@ export function RegistrationList({
     const matchesSearch = reg.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          reg.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          reg.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || reg.status === statusFilter;
     const matchesPayment = paymentFilter === "all" || reg.paymentStatus === paymentFilter;
-    
+
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
@@ -218,159 +224,94 @@ export function RegistrationList({
       <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-8 border border-slate-200/60">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-[#004B87] mb-2">
+            <PageHeaderTitle>
               Gestão de Matrículas
-            </h2>
-            <div className="flex items-center gap-2 text-[#004B87]/70">
-              <FileText className="h-5 w-5" />
-              <p className="text-sm">
-                {stats.total} matrícula{stats.total !== 1 ? 's' : ''} registrada{stats.total !== 1 ? 's' : ''}
-              </p>
-            </div>
+            </PageHeaderTitle>
+            <PageHeaderSubtitle icon={<FileText className="h-5 w-5" />}>
+              {stats.total} matrícula{stats.total !== 1 ? 's' : ''} registrada{stats.total !== 1 ? 's' : ''}
+            </PageHeaderSubtitle>
           </div>
 
           {permissions.canAdd && onAddRegistration && (
-            <Button 
-              onClick={onAddRegistration}
-              className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white shadow-md h-12 px-6"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Nova Matrícula
-            </Button>
+            <PageHeaderActions>
+              <GradientButton onClick={onAddRegistration}>
+                <Plus className="h-5 w-5 mr-2" />
+                Nova Matrícula
+              </GradientButton>
+            </PageHeaderActions>
           )}
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
-          <div className="bg-white rounded-xl p-4 border-2 border-slate-100">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-slate-600" />
-              <span className="text-xs text-slate-600 font-medium">Total</span>
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
-          </div>
-
-          <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-xs text-green-700 font-medium">Ativos</span>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{stats.active}</p>
-          </div>
-
-          <div className="bg-yellow-50 rounded-xl p-4 border-2 border-yellow-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Pause className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs text-yellow-700 font-medium">Trancados</span>
-            </div>
-            <p className="text-2xl font-bold text-yellow-700">{stats.suspended}</p>
-          </div>
-
-          <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="h-4 w-4 text-blue-600" />
-              <span className="text-xs text-blue-700 font-medium">Concluídos</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{stats.completed}</p>
-          </div>
-
-          <div className="bg-red-50 rounded-xl p-4 border-2 border-red-200">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4 text-red-600" />
-              <span className="text-xs text-red-700 font-medium">Atrasados</span>
-            </div>
-            <p className="text-2xl font-bold text-red-700">{stats.overdue}</p>
-          </div>
+          <StatCard icon={FileText} label="Total" value={stats.total} color="slate" />
+          <StatCard icon={CheckCircle} label="Ativos" value={stats.active} color="green" />
+          <StatCard icon={Pause} label="Trancados" value={stats.suspended} color="orange" />
+          <StatCard icon={Trophy} label="Concluídos" value={stats.completed} color="blue" />
+          <StatCard icon={DollarSign} label="Atrasados" value={stats.overdue} color="red" />
         </div>
       </div>
 
       {/* Barra de Pesquisa e Filtros */}
       <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <Input
-            placeholder="Buscar por estudante, código ou curso..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
-          />
-        </div>
+        <SearchBar
+          placeholder="Buscar por estudante, código ou curso..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
 
-        <select
+        <FilterSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="px-4 h-12 border-2 border-slate-200 rounded-xl text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 min-w-[160px] bg-white"
-        >
-          <option value="all">Todos os Status</option>
-          <option value="active">✅ Matriculados</option>
-          <option value="suspended">⏸ Trancados</option>
-          <option value="cancelled">❌ Cancelados</option>
-          <option value="completed">🏆 Concluídos</option>
-        </select>
+          onChange={(v) => setStatusFilter(v as any)}
+          options={[
+            { value: "all", label: "Todos os Status" },
+            { value: "active", label: "Matriculados" },
+            { value: "suspended", label: "Trancados" },
+            { value: "cancelled", label: "Cancelados" },
+            { value: "completed", label: "Concluídos" },
+          ]}
+          minWidth="160px"
+        />
 
-        <select
+        <FilterSelect
           value={paymentFilter}
-          onChange={(e) => setPaymentFilter(e.target.value as any)}
-          className="px-4 h-12 border-2 border-slate-200 rounded-xl text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 min-w-[160px] bg-white"
-        >
-          <option value="all">Todos Pagamentos</option>
-          <option value="paid">💰 Pagos</option>
-          <option value="pending">⏳ Pendentes</option>
-          <option value="overdue">⚠️ Atrasados</option>
-        </select>
+          onChange={(v) => setPaymentFilter(v as any)}
+          options={[
+            { value: "all", label: "Todos Pagamentos" },
+            { value: "paid", label: "Pagos" },
+            { value: "pending", label: "Pendentes" },
+            { value: "overdue", label: "Atrasados" },
+          ]}
+          minWidth="160px"
+        />
 
-        {/* Toggle Grid/Lista */}
-        <div className="flex border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`px-4 h-12 flex items-center gap-2 transition-colors ${
-              viewMode === "grid" 
-                ? "bg-[#F5821F] text-white" 
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Grid3x3 className="h-4 w-4" />
-            <span className="text-sm font-medium">Grelha</span>
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`px-4 h-12 flex items-center gap-2 transition-colors border-l-2 border-slate-200 ${
-              viewMode === "list" 
-                ? "bg-[#F5821F] text-white" 
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <LayoutList className="h-4 w-4" />
-            <span className="text-sm font-medium">Lista</span>
-          </button>
-        </div>
+        <ViewToggle
+          view={viewMode}
+          onChange={setViewMode}
+          gridIcon={<Grid3x3 className="h-4 w-4" />}
+          listIcon={<LayoutList className="h-4 w-4" />}
+        />
       </div>
 
       {/* Estado Vazio */}
       {filteredRegistrations.length === 0 ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <FileText className="h-10 w-10 text-slate-400" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhuma matrícula encontrada</h3>
-              <p className="text-sm text-slate-500 text-center mb-6 max-w-sm">
-                {searchTerm ? "Tente ajustar os filtros de busca" : "Não há matrículas cadastradas"}
-              </p>
-              {permissions.canAdd && onAddRegistration && !searchTerm && (
-                <Button 
-                  onClick={onAddRegistration}
-                  variant="outline"
-                  className="border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Cadastrar Primeira Matrícula
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="Nenhuma matrícula encontrada"
+          description={searchTerm ? "Tente ajustar os filtros de busca" : "Não há matrículas cadastradas"}
+          action={
+            permissions.canAdd && onAddRegistration && !searchTerm ? (
+              <Button
+                onClick={onAddRegistration}
+                variant="outline"
+                className="border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Cadastrar Primeira Matrícula
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
           {/* VISUALIZAÇÃO EM GRELHA */}
@@ -382,12 +323,12 @@ export function RegistrationList({
                 const StatusIcon = statusInfo.icon;
 
                 return (
-                  <Card 
-                    key={registration.id} 
+                  <Card
+                    key={registration.id}
                     className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md overflow-hidden bg-white"
                   >
                     <div className={`h-2 ${statusInfo.color}`}></div>
-                    
+
                     <CardContent className="p-5">
                       {/* Header com Estudante */}
                      {/* Header com Estudante */}
@@ -552,7 +493,7 @@ export function RegistrationList({
                   const StatusIcon = statusInfo.icon;
 
                   return (
-                    <div 
+                    <div
                       key={registration.id}
                       className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-slate-50 transition-colors"
                     >
@@ -671,26 +612,16 @@ export function RegistrationList({
 
       {/* Rodapé */}
       {filteredRegistrations.length > 0 && (
-        <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Mostrando <span className="font-semibold">{filteredRegistrations.length}</span> de{" "}
-            <span className="font-semibold">{registrations.length}</span> matrículas
-          </p>
-          {(searchTerm || statusFilter !== 'all' || paymentFilter !== 'all') && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-                setPaymentFilter("all");
-              }}
-              className="text-[#F5821F] hover:text-[#004B87]"
-            >
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+        <ListFooter
+          showing={filteredRegistrations.length}
+          total={registrations.length}
+          hasFilters={!!searchTerm || statusFilter !== 'all' || paymentFilter !== 'all'}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setStatusFilter("all");
+            setPaymentFilter("all");
+          }}
+        />
       )}
     </div>
   );

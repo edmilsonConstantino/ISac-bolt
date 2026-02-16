@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Award,
-  Search,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -16,6 +13,10 @@ import {
   Target,
   AlertCircle
 } from "lucide-react";
+import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
+import { SearchBar, FilterSelect } from "@/components/ui/search-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListFooter } from "@/components/ui/info-row";
 
 export interface Grade {
   id: number;
@@ -210,32 +211,42 @@ export function GradesList({ grades: providedGrades }: GradesListProps) {
     });
   };
 
+  const statusFilterOptions = [
+    { value: "all", label: "Todos os Desempenhos" },
+    { value: "excellent", label: "\u{1F3C6} Excelente" },
+    { value: "good", label: "\u2B50 Bom" },
+    { value: "average", label: "\u{1F3AF} Médio" },
+    { value: "below", label: "\u26A0\uFE0F Abaixo" },
+    { value: "failed", label: "\u274C Reprovado" }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-8 border border-slate-200/60">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+        <PageHeader className="bg-transparent p-0 border-0 rounded-none mb-6">
           <div>
-            <h2 className="text-3xl font-bold text-[#004B87] mb-2 flex items-center gap-3">
-              <Award className="h-8 w-8" />
+            <PageHeaderTitle icon={<Award className="h-8 w-8" />}>
               Gestão de Notas
-            </h2>
-            <p className="text-sm text-[#004B87]/70">
+            </PageHeaderTitle>
+            <PageHeaderSubtitle>
               {stats.total} avaliação{stats.total !== 1 ? 'ões' : ''} registrada{stats.total !== 1 ? 's' : ''}
-            </p>
+            </PageHeaderSubtitle>
           </div>
 
-          <div className="bg-white rounded-xl px-6 py-3 border-2 border-[#F5821F]/20">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-[#F5821F]" />
-              <div>
-                <p className="text-xs text-slate-500">Média Geral</p>
-                <p className="text-2xl font-bold text-[#004B87]">
-                  {stats.avgGrade.toFixed(1)}<span className="text-sm text-slate-400">/20</span>
-                </p>
+          <PageHeaderActions>
+            <div className="bg-white rounded-xl px-6 py-3 border-2 border-[#F5821F]/20">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-[#F5821F]" />
+                <div>
+                  <p className="text-xs text-slate-500">Média Geral</p>
+                  <p className="text-2xl font-bold text-[#004B87]">
+                    {stats.avgGrade.toFixed(1)}<span className="text-sm text-slate-400">/20</span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </PageHeaderActions>
+        </PageHeader>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="bg-white rounded-xl p-4 border-2 border-slate-100">
@@ -289,44 +300,25 @@ export function GradesList({ grades: providedGrades }: GradesListProps) {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <Input
-            placeholder="Buscar por estudante, disciplina ou curso..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
-          />
-        </div>
+        <SearchBar
+          placeholder="Buscar por estudante, disciplina ou curso..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
 
-        <select
+        <FilterSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="px-4 h-12 border-2 border-slate-200 rounded-xl text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 min-w-[180px] bg-white"
-        >
-          <option value="all">Todos os Desempenhos</option>
-          <option value="excellent">🏆 Excelente</option>
-          <option value="good">⭐ Bom</option>
-          <option value="average">🎯 Médio</option>
-          <option value="below">⚠️ Abaixo</option>
-          <option value="failed">❌ Reprovado</option>
-        </select>
+          onChange={(value) => setStatusFilter(value as "all" | Grade['status'])}
+          options={statusFilterOptions}
+        />
       </div>
 
       {filteredGrades.length === 0 ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Award className="h-10 w-10 text-slate-400" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhuma nota encontrada</h3>
-              <p className="text-sm text-slate-500 text-center">
-                Tente ajustar os filtros de busca
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Award}
+          title="Nenhuma nota encontrada"
+          description="Tente ajustar os filtros de busca"
+        />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredGrades.map((grade) => {
@@ -424,25 +416,15 @@ export function GradesList({ grades: providedGrades }: GradesListProps) {
       )}
 
       {filteredGrades.length > 0 && (
-        <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Mostrando <span className="font-semibold">{filteredGrades.length}</span> de{" "}
-            <span className="font-semibold">{grades.length}</span> notas
-          </p>
-          {(searchTerm || statusFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-              }}
-              className="text-[#F5821F] hover:text-[#004B87]"
-            >
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+        <ListFooter
+          showing={filteredGrades.length}
+          total={grades.length}
+          hasFilters={!!(searchTerm || statusFilter !== 'all')}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setStatusFilter("all");
+          }}
+        />
       )}
     </div>
   );

@@ -278,7 +278,7 @@ export default function CourseModulesTab({
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
       
       {/* NÍVEIS (se categoria tem níveis) */}
-      {categoriaSelecionada?.has_levels && (
+      {formData.tem_niveis && (
         <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
@@ -605,7 +605,7 @@ export default function CourseModulesTab({
       )}
 
       {/* MÓDULOS GERAIS (quando não tem níveis) */}
-      {!categoriaSelecionada?.has_levels && (
+      {!formData.tem_niveis && (
         <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">

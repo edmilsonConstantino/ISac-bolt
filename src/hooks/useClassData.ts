@@ -266,6 +266,16 @@ class ClassService {
   /**
    * 👨‍🎓 Matricular estudante
    */
+  async getClassStudents(turmaId: number): Promise<any[]> {
+    try {
+      const response = await apiClient.get(`/api/turmas.php?action=get_students&turma_id=${turmaId}`);
+      return response.data?.data || [];
+    } catch (error: any) {
+      console.error('Erro ao buscar estudantes da turma:', error);
+      return [];
+    }
+  }
+
   async enrollStudent(turmaId: number, studentId: number): Promise<{ success: boolean; message: string; students_count: number }> {
     try {
       console.log('📤 Matriculando estudante:', { turmaId, studentId });

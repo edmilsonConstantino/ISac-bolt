@@ -1,3 +1,4 @@
+// src/components/shared/LaunchGradesModal.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -5,16 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Award,
   Save,
   Download,
   CheckCircle,
   AlertCircle,
-  TrendingUp,
   Search,
   X,
-  FileSpreadsheet,
-  Users
+  Users,
+  XCircle,
+  Star,
+  Edit3,
+  BookOpen,
+  GraduationCap,
+  TrendingUp
 } from "lucide-react";
 
 interface StudentGrade {
@@ -35,6 +39,7 @@ interface LaunchGradesModalProps {
     name: string;
     course: string;
   };
+  readOnly?: boolean;
 }
 
 const MOCK_STUDENTS: StudentGrade[] = [
@@ -51,22 +56,22 @@ const MOCK_STUDENTS: StudentGrade[] = [
 export function LaunchGradesModal({
   isOpen,
   onClose,
-  classInfo
+  classInfo,
+  readOnly = false
 }: LaunchGradesModalProps) {
   const [students, setStudents] = useState<StudentGrade[]>(MOCK_STUDENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleGradeChange = (studentId: number, field: keyof StudentGrade, value: string) => {
-    // Validação: aceitar apenas números de 0 a 20 com até 1 casa decimal
     if (value !== "" && (!/^\d*\.?\d{0,1}$/.test(value) || Number(value) > 20)) {
       return;
     }
-
     setStudents(prev => prev.map(s =>
       s.id === studentId ? { ...s, [field]: value } : s
     ));
@@ -80,14 +85,24 @@ export function LaunchGradesModal({
       Number(student.evaluation3) || 0,
       Number(student.evaluation4) || 0
     ];
-    const sum = grades.reduce((a, b) => a + b, 0);
-    return Math.round((sum / grades.length) * 10) / 10;
+    return Math.round((grades.reduce((a, b) => a + b, 0) / grades.length) * 10) / 10;
   };
 
   const handleSaveGrades = () => {
     toast.success("Notas salvas com sucesso!", {
       description: "As notas foram registradas no sistema."
     });
+    setHasUnsavedChanges(false);
+    setIsEditMode(false);
+  };
+
+  const handleCancelEditing = () => {
+    if (hasUnsavedChanges) {
+      const confirmCancel = window.confirm("Tem alterações não salvas. Deseja cancelar?");
+      if (!confirmCancel) return;
+    }
+    setStudents(MOCK_STUDENTS);
+    setIsEditMode(false);
     setHasUnsavedChanges(false);
   };
 
@@ -98,16 +113,7 @@ export function LaunchGradesModal({
         const avg = calculateAverage(s);
         const finalGrade = Number(s.finalResult) || avg;
         const status = finalGrade >= 10 ? "Aprovado" : "Reprovado";
-        return [
-          s.name,
-          s.evaluation1 || "0",
-          s.evaluation2 || "0",
-          s.evaluation3 || "0",
-          s.evaluation4 || "0",
-          avg.toFixed(1),
-          s.finalResult || avg.toFixed(1),
-          status
-        ];
+        return [s.name, s.evaluation1 || "0", s.evaluation2 || "0", s.evaluation3 || "0", s.evaluation4 || "0", avg.toFixed(1), s.finalResult || avg.toFixed(1), status];
       })
     ].map(row => row.join(",")).join("\n");
 
@@ -116,16 +122,12 @@ export function LaunchGradesModal({
     link.href = URL.createObjectURL(blob);
     link.download = `notas_${classInfo.name.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
-    toast.success("Pautas exportadas com sucesso!", {
-      description: "O arquivo CSV foi baixado."
-    });
+    toast.success("Pautas exportadas com sucesso!");
   };
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
-      const confirmClose = window.confirm(
-        "Você tem alterações não salvas. Deseja realmente sair sem salvar?"
-      );
+      const confirmClose = window.confirm("Tem alterações não salvas. Deseja sair?");
       if (!confirmClose) return;
     }
     setHasUnsavedChanges(false);
@@ -134,18 +136,18 @@ export function LaunchGradesModal({
 
   const getGradeColor = (grade: string): string => {
     const num = Number(grade);
-    if (num >= 18) return "text-purple-600 font-bold";
-    if (num >= 14) return "text-green-600 font-semibold";
-    if (num >= 10) return "text-blue-600 font-medium";
-    return "text-red-600 font-semibold";
+    if (num >= 18) return "text-purple-600";
+    if (num >= 14) return "text-green-600";
+    if (num >= 10) return "text-blue-600";
+    return "text-red-600";
   };
 
-  const getGradeStatus = (grade: string): { label: string; color: string } => {
+  const getGradeStatus = (grade: string): { label: string; class: string } => {
     const num = Number(grade);
-    if (num >= 18) return { label: "Excelente", color: "bg-purple-100 text-purple-700 border border-purple-300" };
-    if (num >= 14) return { label: "Bom", color: "bg-green-100 text-green-700 border border-green-300" };
-    if (num >= 10) return { label: "Aprovado", color: "bg-blue-100 text-blue-700 border border-blue-300" };
-    return { label: "Reprovado", color: "bg-red-100 text-red-700 border border-red-300" };
+    if (num >= 18) return { label: "Excelente", class: "bg-purple-50 text-purple-700 border-purple-200" };
+    if (num >= 14) return { label: "Bom", class: "bg-green-50 text-green-700 border-green-200" };
+    if (num >= 10) return { label: "Aprovado", class: "bg-blue-50 text-blue-700 border-blue-200" };
+    return { label: "Reprovado", class: "bg-red-50 text-red-700 border-red-200" };
   };
 
   const stats = {
@@ -158,280 +160,271 @@ export function LaunchGradesModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent 
-        className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0"
+      <DialogContent
+        className="max-w-6xl max-h-[90vh] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white px-6 py-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Award className="h-6 w-6" />
-                </div>
-                Lançamento de Notas
-              </DialogTitle>
-              <div className="flex items-center gap-4 text-sm text-white/90">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  <span className="font-medium">{classInfo.name}</span>
-                </div>
-                <span>•</span>
-                <span>{classInfo.course}</span>
-                <span>•</span>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>{students.length} estudantes</span>
+        {/* Compact Header */}
+        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-5 py-3 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 bg-white/15 rounded-lg flex items-center justify-center">
+                <GraduationCap className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div>
+                <DialogHeader className="p-0">
+                  <DialogTitle className="text-base font-bold text-white">
+                    {readOnly ? 'Consulta de Notas' : 'Lançamento de Notas'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex items-center gap-2 text-blue-200 text-xs mt-0.5">
+                  <BookOpen className="h-3 w-3" />
+                  <span>{classInfo.name}</span>
+                  <span className="text-blue-300/40">|</span>
+                  <span>{classInfo.course}</span>
                 </div>
               </div>
             </div>
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20 h-10 w-10"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-          <div className="grid grid-cols-5 gap-3">
-            <div className="bg-white rounded-lg p-3 border border-slate-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Users className="h-4 w-4 text-slate-600" />
-                <span className="text-xs text-slate-600 font-medium">Total</span>
+            {/* Inline Stats */}
+            <div className="flex items-center gap-4 mr-8">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-blue-200" />
+                <span className="text-white font-bold text-sm">{stats.total}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-xs text-green-700 font-medium">Aprovados</span>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5 text-green-300" />
+                <span className="text-white font-bold text-sm">{stats.approved}</span>
               </div>
-              <p className="text-2xl font-bold text-green-700">{stats.approved}</p>
-            </div>
-
-            <div className="bg-red-50 rounded-lg p-3 border border-red-200">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <span className="text-xs text-red-700 font-medium">Reprovados</span>
+              <div className="flex items-center gap-1.5">
+                <XCircle className="h-3.5 w-3.5 text-red-300" />
+                <span className="text-white font-bold text-sm">{stats.failed}</span>
               </div>
-              <p className="text-2xl font-bold text-red-700">{stats.failed}</p>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Award className="h-4 w-4 text-purple-600" />
-                <span className="text-xs text-purple-700 font-medium">Excelentes</span>
+              <div className="flex items-center gap-1.5">
+                <Star className="h-3.5 w-3.5 text-yellow-300" />
+                <span className="text-white font-bold text-sm">{stats.excellent}</span>
               </div>
-              <p className="text-2xl font-bold text-purple-700">{stats.excellent}</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-[#004B87]/10 to-[#F5821F]/10 rounded-lg p-3 border border-[#004B87]/20">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-4 w-4 text-[#004B87]" />
-                <span className="text-xs text-[#004B87] font-medium">Média Geral</span>
+              <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2 py-1">
+                <TrendingUp className="h-3.5 w-3.5 text-orange-300" />
+                <span className="text-white font-bold text-sm">{stats.averageGrade}</span>
               </div>
-              <p className="text-2xl font-bold bg-gradient-to-r from-[#004B87] to-[#F5821F] bg-clip-text text-transparent">
-                {stats.averageGrade}
-              </p>
             </div>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-white">
-          <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                placeholder="Buscar estudante por nome..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-11 h-11 border-2 border-slate-200 rounded-lg focus:border-[#F5821F]"
-              />
-            </div>
-            <Button
-              onClick={handleSaveGrades}
-              disabled={!hasUnsavedChanges}
-              className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white h-11 px-6 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Salvar Notas
-            </Button>
-            <Button
-              onClick={handleExportGrades}
-              variant="outline"
-              className="border-2 border-[#004B87] text-[#004B87] hover:bg-[#004B87] hover:text-white h-11 px-6"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
+        <div className="px-5 py-2.5 border-b border-slate-200 bg-white flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar estudante..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-9 border-slate-200 text-sm"
+            />
           </div>
+
+          {isEditMode && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
+              <Edit3 className="h-3 w-3 text-orange-500" />
+              <span className="text-[11px] font-semibold text-orange-600">Editando</span>
+            </div>
+          )}
+
+          {!isEditMode ? (
+            <>
+              {!readOnly && (
+                <Button
+                  onClick={() => setIsEditMode(true)}
+                  className="bg-[#F5821F] hover:bg-[#E07318] text-white h-9 px-4 text-sm"
+                >
+                  <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                  Lançar Notas
+                </Button>
+              )}
+              <Button
+                onClick={handleExportGrades}
+                variant="outline"
+                className="h-9 px-3 border-slate-200 text-slate-600 text-sm"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                CSV
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={handleCancelEditing}
+                variant="outline"
+                className="h-9 px-4 border-slate-200 text-slate-600 text-sm"
+              >
+                <X className="h-3.5 w-3.5 mr-1.5" />
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveGrades}
+                disabled={!hasUnsavedChanges}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 text-sm disabled:opacity-50"
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Salvar
+              </Button>
+            </>
+          )}
         </div>
 
-        {/* Table */}
-        <div className="flex-1 overflow-auto px-6">
-          <div className="min-w-full">
-            {/* Table Header */}
-            <div className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-200">
-              <div className="grid grid-cols-12 gap-3 px-4 py-3">
-                <div className="col-span-3 text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  Estudante
-                </div>
-                <div className="col-span-1 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  1ª Aval.
-                </div>
-                <div className="col-span-1 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  2ª Aval.
-                </div>
-                <div className="col-span-1 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  3ª Aval.
-                </div>
-                <div className="col-span-1 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  4ª Aval.
-                </div>
-                <div className="col-span-2 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  Média
-                </div>
-                <div className="col-span-2 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  Resultado
-                </div>
-                <div className="col-span-1 text-center text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  Status
-                </div>
-              </div>
+        {/* Grades Table - Maximum visibility */}
+        <div className="flex-1 overflow-auto">
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-16">
+              <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">Nenhum estudante encontrado</p>
             </div>
+          ) : (
+            <table className="w-full">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50 border-b-2 border-slate-200">
+                  <th className="text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider px-5 py-3 w-[220px]">
+                    Estudante
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    1ª Aval
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    2ª Aval
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    3ª Aval
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    4ª Aval
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    Média
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 py-3">
+                    Final
+                  </th>
+                  <th className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider px-5 py-3">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.map((student, index) => {
+                  const average = calculateAverage(student);
+                  const finalGrade = student.finalResult || average.toString();
+                  const status = getGradeStatus(finalGrade);
 
-            {/* Table Body */}
-            <div className="divide-y divide-slate-100">
-              {filteredStudents.map((student, index) => {
-                const average = calculateAverage(student);
-                const finalGrade = student.finalResult || average.toString();
-                const status = getGradeStatus(finalGrade);
+                  return (
+                    <tr
+                      key={student.id}
+                      className={`border-b border-slate-100 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      } hover:bg-blue-50/30`}
+                    >
+                      {/* Student */}
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <span className="text-white font-bold text-sm">
+                              {student.name.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm text-slate-800">{student.name}</p>
+                            <p className="text-[11px] text-slate-400">Nº {student.id}</p>
+                          </div>
+                        </div>
+                      </td>
 
-                return (
-                  <div
-                    key={student.id}
-                    className={`grid grid-cols-12 gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors ${
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-                    }`}
-                  >
-                    {/* Student Info */}
-                    <div className="col-span-3 flex items-center gap-3">
-                      <div className="h-10 w-10 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-white font-bold text-sm">
-                          {student.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm text-slate-800 truncate">{student.name}</p>
-                        <p className="text-xs text-slate-500">Nº {student.id}</p>
-                      </div>
-                    </div>
+                      {/* Evaluations 1-4 */}
+                      {(["evaluation1", "evaluation2", "evaluation3", "evaluation4"] as const).map((field) => (
+                        <td key={field} className="px-3 py-3 text-center">
+                          {isEditMode ? (
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={student[field]}
+                              onChange={(e) => handleGradeChange(student.id, field, e.target.value)}
+                              className={`text-center h-10 w-16 mx-auto text-base font-semibold border-2 rounded-lg focus:border-[#F5821F] focus:ring-1 focus:ring-[#F5821F]/20 ${getGradeColor(student[field])} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                            />
+                          ) : (
+                            <span className={`text-base font-bold ${getGradeColor(student[field])}`}>
+                              {student[field] || "—"}
+                            </span>
+                          )}
+                        </td>
+                      ))}
 
-                    {/* Evaluation 1 */}
-                    <div className="col-span-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={student.evaluation1}
-                        onChange={(e) => handleGradeChange(student.id, "evaluation1", e.target.value)}
-                        className={`text-center h-10 border-2 focus:border-[#F5821F] ${getGradeColor(student.evaluation1)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                      />
-                    </div>
-
-                    {/* Evaluation 2 */}
-                    <div className="col-span-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={student.evaluation2}
-                        onChange={(e) => handleGradeChange(student.id, "evaluation2", e.target.value)}
-                        className={`text-center h-10 border-2 focus:border-[#F5821F] ${getGradeColor(student.evaluation2)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                      />
-                    </div>
-
-                    {/* Evaluation 3 */}
-                    <div className="col-span-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={student.evaluation3}
-                        onChange={(e) => handleGradeChange(student.id, "evaluation3", e.target.value)}
-                        className={`text-center h-10 border-2 focus:border-[#F5821F] ${getGradeColor(student.evaluation3)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                      />
-                    </div>
-
-                    {/* Evaluation 4 */}
-                    <div className="col-span-1">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={student.evaluation4}
-                        onChange={(e) => handleGradeChange(student.id, "evaluation4", e.target.value)}
-                        className={`text-center h-10 border-2 focus:border-[#F5821F] ${getGradeColor(student.evaluation4)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                      />
-                    </div>
-
-                    {/* Average */}
-                    <div className="col-span-2 flex items-center justify-center">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <TrendingUp className="h-4 w-4 text-blue-600" />
-                        <span className={`text-xl font-bold ${getGradeColor(average.toString())}`}>
+                      {/* Average */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`inline-block text-base font-bold px-3 py-1 rounded-lg bg-slate-100 ${getGradeColor(average.toString())}`}>
                           {average.toFixed(1)}
                         </span>
-                      </div>
-                    </div>
+                      </td>
 
-                    {/* Final Result */}
-                    <div className="col-span-2">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={student.finalResult}
-                        onChange={(e) => handleGradeChange(student.id, "finalResult", e.target.value)}
-                        className={`text-center h-10 text-lg border-2 focus:border-[#F5821F] ${getGradeColor(student.finalResult)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                      />
-                    </div>
+                      {/* Final */}
+                      <td className="px-3 py-3 text-center">
+                        {isEditMode ? (
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="—"
+                            value={student.finalResult}
+                            onChange={(e) => handleGradeChange(student.id, "finalResult", e.target.value)}
+                            className={`text-center h-10 w-16 mx-auto text-base font-bold border-2 rounded-lg focus:border-[#F5821F] focus:ring-1 focus:ring-[#F5821F]/20 ${getGradeColor(student.finalResult)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                          />
+                        ) : (
+                          <span className={`text-lg font-bold ${getGradeColor(student.finalResult)}`}>
+                            {student.finalResult || "—"}
+                          </span>
+                        )}
+                      </td>
 
-                    {/* Status */}
-                    <div className="col-span-1 flex items-center justify-center">
-                      <Badge className={`${status.color} text-xs px-3 py-1 font-semibold`}>
-                        {status.label}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                      {/* Status */}
+                      <td className="px-5 py-3 text-center">
+                        <Badge className={`${status.class} border text-[11px] px-2.5 py-0.5 font-semibold`}>
+                          {status.label}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-slate-600">
-              Mostrando <span className="font-semibold">{filteredStudents.length}</span> de{" "}
-              <span className="font-semibold">{students.length}</span> estudantes
+        {/* Minimal Footer */}
+        <div className="px-5 py-3 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-slate-500">
+              {filteredStudents.length} de {students.length} estudantes
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="ml-2 text-[#F5821F] hover:text-[#E07318] font-medium"
+                >
+                  Limpar
+                </button>
+              )}
             </p>
             {hasUnsavedChanges && (
-              <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-                <AlertCircle className="h-4 w-4" />
-                <span className="font-medium">Alterações não salvas</span>
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">
+                <AlertCircle className="h-3 w-3" />
+                <span className="font-medium">Não salvo</span>
               </div>
             )}
           </div>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="h-8 px-4 border-slate-200 text-sm"
+          >
+            Fechar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

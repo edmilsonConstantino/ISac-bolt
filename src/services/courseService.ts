@@ -8,6 +8,8 @@ export interface Course {
   tipo_curso: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
+  tem_niveis?: boolean;
+  usar_taxa_padrao?: boolean;
   mensalidade: number;
   taxa_matricula: number;
   propina_fixa: boolean;

@@ -1,35 +1,50 @@
-// src/components/shared/reusable/NormalAdmin.tsx
+// src/components/shared/normaladmin/NormalAdmin.tsx
+// Academic Admin - Usa a mesma navbar/sidebar do SuperAdmin
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import studentService, { Student as APIStudent } from "@/services/studentService";
-import classService from "@/services/classService";
+import classService, { Class as APIClass } from "@/services/classService";
 import teacherService, { Teacher, CreateTeacherData } from "@/services/teacherService";
+import courseService, { Course as APICourse } from "@/services/courseService";
+import registrationService from '@/services/registrationService';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { AccentStatCard } from "@/components/ui/stat-card";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { RegistrationStudentModal } from "../reusable/RegistrationStudentModal";
 import {
-  Users, BookOpen, DollarSign, Settings, GraduationCap,
-  LogOut, UserCog, BarChart3, AlertTriangle, TrendingUp,
-  UserPlus, ChevronLeft, ChevronRight, Home
+  Users, BookOpen, DollarSign, UserPlus, GraduationCap,
+  BarChart3, AlertTriangle, TrendingUp, FileText, Shield, MessageCircle
 } from "lucide-react";
 
 // Import dos componentes compartilhados
 import { ClassList } from "../../Classes/ClassList";
 import { StudentList } from "../../Students/StudentList";
 import { TeacherList } from "../../Teachers/TeacherList";
-import { PaymentList } from "../../Payments/PaymentList";
+import { AdminTopBar } from "../AdminTopBar";
 import { ClassModal } from "../CreateClassModal";
 import { StudentModal } from "../../Students/StudentModal";
 import { CreateStudentModal } from "../../Students/CreateStudentModal";
 import { CreateTeacherModal } from "../../Teachers/CreateTeacherModal";
+import { SelectStudentModal } from "../SelectStudentModal";
 import { ReportsModal } from "../ReportsModal";
 import { PaymentManagementModal } from "../../Payments/PaymentManagementModal";
+import { GeneralSettingsModal } from "../GeneralSettingsModal";
 import { TeacherProfileModal } from "../../Teachers/TeacherProfileModal";
 import { StudentProfileModal } from "../../Students/StudentProfileModal";
-import { SelectStudentModal } from "../SelectStudentModal";
+import CourseProfileModal from '@/components/Courses/CourseProfileModal';
+import { CourseList } from "../superadmin/CourseList";
+import { RegistrationList, Registration } from "../reusable/RegistrationList";
+import { UsersList, SystemUser } from "@/components/Users/UsersList";
+import { GradesList, Grade } from "../GradesList";
 import { LaunchGradesModal } from "../LaunchGradesModal";
+import { AdminSidebar, AdminView } from "../AdminSidebar";
+import { InscriptionList } from "../InscriptionList";
+import { PaymentsDashboard } from "../PaymentsDashboard";
 import { ClassSettingsModal } from "../../Classes/ClassSettingsModal";
+import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
 
 // Types
 import { Class, Student, Permission, PaymentMethod } from "../../../types";
@@ -45,8 +60,8 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const displayName = user ? user.nome : 'Academic Admin';
 
-  // ✅ Estados de navegação
-  const [activeView, setActiveView] = useState<'dashboard' | 'students' | 'teachers' | 'classes' | 'payments'>('dashboard');
+  // Estados de navegação
+  const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Estados de dados
@@ -54,10 +69,16 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const [classes, setClasses] = useState<Class[]>([]);
   const [teacherStats, setTeacherStats] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [courses, setCourses] = useState<APICourse[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const { settings, saveSettings: persistSettings } = useSettingsData();
 
   // Estados de loading
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
   // Estados de modais
   const [studentModal, setStudentModal] = useState({
@@ -87,16 +108,25 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const [selectStudentModal, setSelectStudentModal] = useState({
     isOpen: false,
     turmaId: 0,
-    cursoId: ''
-  });
-
-  const [launchGradesModal, setLaunchGradesModal] = useState({
-    isOpen: false,
-    classInfo: null as { id: number; name: string; course: string } | null
+    cursoId: '',
+    turno: ''
   });
 
   const [createTeacherModal, setCreateTeacherModal] = useState(false);
   const [reportsModal, setReportsModal] = useState(false);
+  const [generalSettingsModal, setGeneralSettingsModal] = useState(false);
+
+  const [courseProfileModal, setCourseProfileModal] = useState({
+    isOpen: false,
+    course: null as APICourse | null,
+  });
+
+  const [registrationModal, setRegistrationModal] = useState({
+    isOpen: false,
+    registrationData: null as Registration | null,
+    isEditing: false,
+    preSelectedStudentId: null as number | null
+  });
 
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
@@ -108,26 +138,42 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isStudentProfileModalOpen, setIsStudentProfileModalOpen] = useState(false);
 
-  // Menu items para sidebar
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'students', label: 'Estudantes', icon: GraduationCap },
-    { id: 'teachers', label: 'Docentes', icon: Users },
-    { id: 'classes', label: 'Turmas', icon: BookOpen },
-    { id: 'payments', label: 'Pagamentos', icon: DollarSign },
-  ];
+  const [launchGradesModal, setLaunchGradesModal] = useState({
+    isOpen: false,
+    classInfo: null as { id: number; name: string; course: string } | null
+  });
+
+  const [paymentDetailsModal, setPaymentDetailsModal] = useState({
+    isOpen: false,
+    studentInfo: null as Student | null
+  });
+
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+
+  // Estados para usuários e notas
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+  const [gradesData, setGradesData] = useState<Grade[]>([]);
 
   // Verificar autenticação
   useEffect(() => {
-    console.log('🔍 NormalAdmin montado - verificando autenticação...');
     checkAuth();
   }, [checkAuth]);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      console.log('❌ Usuário não autenticado, redirecionando...');
       window.location.href = '/login';
     }
+  }, [isAuthenticated]);
+
+  // Carregar dados de usuários
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const mockUsers: SystemUser[] = [
+      { id: 1, name: "Admin ISAC", email: "admin@isac.ac.mz", role: "admin", status: "active", createdAt: "2024-01-15", lastLogin: "2025-01-25" },
+      { id: 2, name: "João Silva", email: "joao.silva@isac.ac.mz", role: "teacher", status: "active", createdAt: "2024-02-20", lastLogin: "2025-01-24", phone: "+258 84 123 4567" },
+    ];
+    setSystemUsers(mockUsers);
   }, [isAuthenticated]);
 
   // Carregar dados da API
@@ -136,6 +182,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
     const loadAllData = async () => {
       try {
+        await loadCourses();
+        await loadClasses();
+
         setIsLoadingTeachers(true);
         const teachers = await teacherService.getAll();
         const mappedTeachers = teachers.map((t: Teacher) => ({
@@ -160,31 +209,34 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
         setIsLoadingStudents(true);
         const apiStudents = await studentService.getAll();
-        const mappedStudents = apiStudents.map((student: APIStudent) => ({
-          id: student.id,
-          name: student.nome,
-          email: student.email,
-          phone: student.telefone || '',
-          className: student.curso || 'Sem turma',
-          enrollmentDate: student.data_nascimento || new Date().toISOString(),
-          status: student.status === 'ativo' ? 'active' : 'inactive',
-          address: student.endereco || '',
-          birthDate: student.data_nascimento || '',
-          level: '',
-          parentName: '',
-          parentPhone: '',
-          emergencyContact: '',
-          emergencyPhone: '',
-          notes: ''
-        }));
+        const mappedStudents = apiStudents.map((student: APIStudent) => {
+          const studentClass = classes.find((c: any) => c.curso === student.curso_id);
+          return {
+            id: student.id,
+            name: student.name || '',
+            email: student.email || '',
+            phone: student.phone || '',
+            className: student.curso || 'Sem curso',
+            classId: studentClass?.id || 0,
+            grade: 0,
+            enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0],
+            status: (student.status === 'ativo' ? 'active' : 'inactive') as Student['status'],
+            address: student.address || '',
+            birthDate: student.birth_date || '',
+            level: '',
+            parentName: '',
+            parentPhone: '',
+            emergencyContact: student.emergency_contact_1 || '',
+            emergencyPhone: student.emergency_contact_2 || '',
+            notes: student.notes || ''
+          };
+        });
         setStudents(mappedStudents);
 
-        // Carregar turmas
-        const classesData = await classService.getAll();
-        setClasses(classesData);
+        await loadRegistrations();
 
       } catch (error: any) {
-        console.error("❌ Erro ao carregar dados:", error);
+        console.error("Erro ao carregar dados:", error);
         toast.error("Erro ao carregar dados");
       } finally {
         setIsLoadingTeachers(false);
@@ -216,27 +268,79 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     return students.filter(s => s.classId === classId);
   };
 
+  // Carregar turmas
   const loadClasses = async () => {
     try {
+      setIsLoadingClasses(true);
       const data = await classService.getAll();
-      setClasses(data);
-    } catch (error) {
-      console.error("Erro ao carregar turmas:", error);
+      setClasses(data as any);
+    } catch (error: any) {
+      console.error('Erro ao carregar turmas:', error);
+      toast.error('Erro ao carregar turmas');
+    } finally {
+      setIsLoadingClasses(false);
     }
   };
 
-  const addClass = (classData: Omit<Class, 'id'>) => {
-    setClasses(prev => [...prev, { ...classData, id: Date.now() }]);
+  // Carregar cursos
+  const loadCourses = async () => {
+    try {
+      setIsLoadingCourses(true);
+      const data = await courseService.getAll();
+      setCourses(data);
+    } catch (error: any) {
+      console.error('Erro ao carregar cursos:', error);
+      toast.error('Erro ao carregar cursos');
+    } finally {
+      setIsLoadingCourses(false);
+    }
   };
 
-  const updateClass = (id: number, data: Partial<Class>) => {
-    setClasses(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  // Carregar matrículas
+  const loadRegistrations = async () => {
+    try {
+      setIsLoadingRegistrations(true);
+      const data = await registrationService.getAll();
+
+      const mappedRegistrations: Registration[] = data.map((reg: any) => {
+        const student = students.find(s => s.id === reg.student_id);
+        const studentName = student?.name || reg.student_name || 'Estudante não encontrado';
+        const course = courses.find(c => c.codigo === reg.course_id);
+        const courseName = course?.nome || reg.course_name || 'Curso não encontrado';
+        const classItem = classes.find(c => c.id === reg.class_id);
+        const className = (classItem as any)?.nome || reg.class_name || '';
+
+        return {
+          id: reg.id,
+          studentId: reg.student_id,
+          studentName: studentName,
+          studentCode: reg.enrollment_number,
+          courseId: reg.course_id,
+          courseName: courseName,
+          classId: reg.class_id,
+          className: className,
+          period: reg.period,
+          enrollmentDate: reg.enrollment_date,
+          status: reg.status || 'active',
+          paymentStatus: reg.payment_status || 'pending',
+          enrollmentFee: reg.enrollment_fee || 0,
+          monthlyFee: reg.monthly_fee || 0,
+          username: reg.username || '',
+          password: reg.password || '',
+          observations: reg.observations
+        };
+      });
+
+      setRegistrations(mappedRegistrations);
+    } catch (error: any) {
+      console.error('Erro ao carregar matrículas:', error);
+      toast.error('Erro ao carregar matrículas');
+    } finally {
+      setIsLoadingRegistrations(false);
+    }
   };
 
-  const deleteClass = (id: number) => {
-    setClasses(prev => prev.filter(c => c.id !== id));
-  };
-
+  // Funções de pagamento
   const getStudentPaymentInfo = (studentId: number, name: string, className: string) => {
     return {
       studentId,
@@ -268,11 +372,30 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     toast.success('Pagamento registrado!');
   };
 
-  const updatePayment = (paymentId: number, data: any) => {
-    console.log('Atualizar pagamento:', { paymentId, data });
-    toast.success('Pagamento atualizado!');
+  const updatePayment = async (paymentId: number, data: any) => {
+    try {
+      setPayments(prev => prev.map(p =>
+        p.id === paymentId ? { ...p, ...data } : p
+      ));
+      toast.success('Pagamento atualizado!');
+    } catch (error: any) {
+      console.error('Erro ao atualizar pagamento:', error);
+      toast.error('Erro ao atualizar pagamento');
+    }
   };
 
+  // Configurações
+  const handleSaveSettings = async (newSettings: GeneralSettings) => {
+    try {
+      await persistSettings(newSettings);
+      toast.success('Configurações salvas!');
+    } catch (error) {
+      console.error("Erro ao salvar configurações:", error);
+      toast.error("Erro ao salvar configurações");
+    }
+  };
+
+  // Permissões
   const academicAdminPermissions: Permission = {
     canEdit: true,
     canDelete: true,
@@ -296,7 +419,73 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     collectionRate: paymentSummary.collectionRate
   };
 
-  // Handlers
+  // ========== HANDLERS ==========
+
+  // Matrículas
+  const handleAddRegistration = () => {
+    setRegistrationModal({ isOpen: true, registrationData: null, isEditing: false, preSelectedStudentId: null });
+  };
+
+  const handleViewRegistration = (registration: Registration) => {
+    setRegistrationModal({ isOpen: true, registrationData: registration, isEditing: false, preSelectedStudentId: null });
+  };
+
+  const handleEditRegistration = (registration: Registration) => {
+    setRegistrationModal({ isOpen: true, registrationData: registration, isEditing: true, preSelectedStudentId: null });
+  };
+
+  const handleSaveRegistration = async (registrationData: any) => {
+    try {
+      if (registrationModal.isEditing && registrationModal.registrationData?.id) {
+        await registrationService.update(registrationModal.registrationData.id, registrationData);
+        toast.success('Matrícula atualizada com sucesso!');
+      } else {
+        const result = await registrationService.create(registrationData);
+
+        if (result && result.id) {
+          try {
+            const token = localStorage.getItem('auth_token');
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
+            const planResponse = await fetch(`${API_URL}/student-payment-plans/generate.php`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ registration_id: result.id })
+            });
+            const planResult = await planResponse.json();
+            if (planResult.success) {
+              console.log('Plano de pagamentos gerado:', planResult);
+            }
+          } catch (planError) {
+            console.warn('Erro ao gerar plano de pagamentos:', planError);
+          }
+        }
+      }
+
+      await loadRegistrations();
+    } catch (error: any) {
+      console.error('Erro ao salvar matrícula:', error);
+      toast.error(error.message || 'Erro ao salvar matrícula');
+      throw error;
+    }
+  };
+
+  const handleDeleteRegistration = async (registrationId: number) => {
+    if (confirm("Tem certeza que deseja cancelar esta matrícula?")) {
+      try {
+        await registrationService.cancel(registrationId);
+        toast.success("Matrícula cancelada com sucesso!");
+        await loadRegistrations();
+      } catch (error: any) {
+        console.error('Erro ao cancelar matrícula:', error);
+        toast.error('Erro ao cancelar matrícula');
+      }
+    }
+  };
+
+  // Professores
   const handleViewTeacherProfile = (teacher: any) => {
     setSelectedTeacher(teacher);
     setIsTeacherProfileModalOpen(true);
@@ -334,6 +523,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     setSelectedTeacher(null);
   };
 
+  // Estudantes
   const handleViewStudentProfile = (student: Student) => {
     setSelectedStudent(student);
     setIsStudentProfileModalOpen(true);
@@ -350,7 +540,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         status: updatedStudent.status === 'active' ? 'ativo' : 'inativo'
       };
 
-      await studentService.update(updatedStudent.id, updateData);
+      await studentService.update({ id: updatedStudent.id, ...updateData } as any);
       updateStudent(updatedStudent.id, updatedStudent);
       toast.success("Perfil atualizado com sucesso!");
       setIsStudentProfileModalOpen(false);
@@ -364,6 +554,10 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const handleCloseStudentProfileModal = () => {
     setIsStudentProfileModalOpen(false);
     setSelectedStudent(null);
+  };
+
+  const handleViewPaymentDetails = (student: Student) => {
+    setPaymentDetailsModal({ isOpen: true, studentInfo: student });
   };
 
   const handleToggleTeacherStatus = (teacherId: number) => {
@@ -385,14 +579,31 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  const handleViewStudents = (classItem: Class) => {
-    const classStudents = getStudentsByClass(classItem.id);
-    setStudentModal({
-      isOpen: true,
-      className: classItem.name,
-      classId: classItem.id,
-      students: classStudents
-    });
+  // Turmas
+  const handleViewStudents = async (classItem: Class) => {
+    try {
+      const apiStudents = await classService.getClassStudents(classItem.id!);
+      const mappedStudents: Student[] = apiStudents.map((s: any) => ({
+        id: s.id,
+        name: s.nome || s.name || '',
+        email: s.email || '',
+        phone: s.telefone || s.phone || '',
+        classId: classItem.id!,
+        className: classItem.name,
+        grade: Number(s.nota_final) || 0,
+        attendance: Number(s.frequencia) || 0,
+        status: (s.status === 'ativo' ? 'active' : 'inactive') as Student['status'],
+        enrollmentDate: s.data_matricula || ''
+      }));
+      setStudentModal({
+        isOpen: true,
+        className: classItem.name,
+        classId: classItem.id!,
+        students: mappedStudents
+      });
+    } catch {
+      toast.error('Erro ao carregar estudantes da turma');
+    }
   };
 
   const handleManageClass = (classItem: Class) => {
@@ -403,17 +614,35 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     setClassModal({ isOpen: true, classData: null, isCreating: true });
   };
 
-  const handleDeleteClass = (classId: number) => {
+  const handleDeleteClass = async (classId: number) => {
     if (confirm("Tem certeza que deseja deletar esta turma?")) {
-      deleteClass(classId);
+      try {
+        await classService.delete(classId);
+        toast.success("Turma deletada com sucesso!");
+        await loadClasses();
+        await loadCourses();
+      } catch (error: any) {
+        console.error('Erro ao deletar turma:', error);
+        toast.error(error.message || "Erro ao deletar turma");
+      }
     }
   };
 
-  const handleSaveClass = (classData: Partial<Class>) => {
-    if (classModal.isCreating) {
-      addClass({ ...classData, students: 0, teacher: "A designar", teacherId: 0 } as Omit<Class, 'id'>);
-    } else if (classModal.classData?.id) {
-      updateClass(classModal.classData.id, classData);
+  const handleSaveClass = async (classData: Partial<APIClass>) => {
+    try {
+      if (classModal.isCreating) {
+        await classService.create(classData);
+        toast.success("Turma criada com sucesso!");
+      } else if (classModal.classData?.id) {
+        await classService.update(classModal.classData.id, classData);
+        toast.success("Turma atualizada com sucesso!");
+      }
+
+      await loadClasses();
+      setClassModal({ isOpen: false, classData: null, isCreating: false });
+    } catch (error: any) {
+      console.error('Erro ao salvar turma:', error);
+      toast.error(error.message || "Erro ao salvar turma");
     }
   };
 
@@ -434,14 +663,41 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     console.log("Admin enviando email para todos os estudantes");
   };
 
-  const handleCreateStudent = async (studentData: Omit<Student, 'id'>) => {
+  const handleCreateStudent = async (studentData: any) => {
     try {
-      await studentService.getAll();
-      addStudent(studentData);
+      await studentService.create(studentData);
       toast.success("Estudante cadastrado com sucesso!");
+
+      setIsLoadingStudents(true);
+      const apiStudents = await studentService.getAll();
+      const mappedStudents = apiStudents.map((student: APIStudent) => {
+        const studentClass = classes.find((c: any) => c.curso === student.curso_id);
+        return {
+          id: student.id,
+          name: student.name || '',
+          email: student.email || '',
+          phone: student.phone || '',
+          className: student.curso || 'Sem curso',
+          classId: studentClass?.id || 0,
+          grade: 0,
+          enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0],
+          status: (student.status === 'ativo' ? 'active' : 'inactive') as Student['status'],
+          address: student.address || '',
+          birthDate: student.birth_date || '',
+          level: '',
+          parentName: '',
+          parentPhone: '',
+          emergencyContact: student.emergency_contact_1 || '',
+          emergencyPhone: student.emergency_contact_2 || '',
+          notes: student.notes || ''
+        };
+      });
+      setStudents(mappedStudents);
     } catch (error: any) {
-      console.error("Erro ao atualizar lista de estudantes:", error);
-      toast.error("Erro ao atualizar lista");
+      console.error("Erro ao criar estudante:", error);
+      toast.error(error.message || "Erro ao criar estudante");
+    } finally {
+      setIsLoadingStudents(false);
     }
   };
 
@@ -474,18 +730,20 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  const handleGenerateReport = (reportType: string, filters: any) => {
-    console.log("Gerando relatório:", reportType, "com filtros:", filters);
+  const handleDeleteCourse = async (courseId: number) => {
+    if (confirm("Tem certeza que deseja desativar este curso?")) {
+      try {
+        await courseService.delete(courseId);
+        toast.success("Curso desativado com sucesso!");
+        await loadCourses();
+      } catch (error: any) {
+        console.error('Erro ao deletar curso:', error);
+        toast.error(error.message || "Erro ao deletar curso");
+      }
+    }
   };
 
-  const handleAddStudentToClass = (classItem: Class) => {
-    setSelectStudentModal({
-      isOpen: true,
-      turmaId: classItem.id || 0,
-      cursoId: (classItem as any).curso || ''
-    });
-  };
-
+  // Notas
   const handleLaunchGrades = (classItem: Class) => {
     setLaunchGradesModal({
       isOpen: true,
@@ -497,11 +755,34 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     });
   };
 
+  const handleCloseLaunchGrades = () => {
+    setLaunchGradesModal({ isOpen: false, classInfo: null });
+  };
+
+  // Outros
+  const handleGenerateReport = (reportType: string, filters: any) => {
+    console.log("Gerando relatório:", reportType, "com filtros:", filters);
+  };
+
+  const handleAddStudentToClass = (classItem: Class) => {
+    setSelectStudentModal({
+      isOpen: true,
+      turmaId: classItem.id || 0,
+      cursoId: (classItem as any).curso || '',
+      turno: (classItem as any).schedule || ''
+    });
+  };
+
   const handleOpenCreateStudentModal = () => {
     setCreateStudentModal({ isOpen: true, preSelectedClassId: 0, preSelectedClassName: "" });
   };
 
   const handleOpenPaymentModal = (studentId: number) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+      toast.error("Estudante não encontrado");
+      return;
+    }
     setPaymentModal({ isOpen: true, studentId });
   };
 
@@ -522,134 +803,32 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
-      {/* ========== SIDEBAR LATERAL ========== */}
-      <aside
-        className={`${
-          isSidebarOpen ? 'w-72' : 'w-20'
-        } bg-gradient-to-b from-[#004B87] via-[#003868] to-[#002850] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl relative z-50`}
-      >
-        {/* Logo e Header */}
-        <div className="p-6 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-3 ${!isSidebarOpen && 'justify-center'}`}>
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-xl blur-md opacity-75"></div>
-                <div className="relative h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
-                  <img src="/image.png" alt="ISAC" className="h-full w-full object-contain" />
-                </div>
-              </div>
-              {isSidebarOpen && (
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-[#F5821F] to-[#FF9933] bg-clip-text text-transparent">
-                    ISAC
-                  </h1>
-                  <p className="text-xs text-slate-300">Direção Académica</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* User Profile */}
-        <div className="p-4 border-b border-white/10">
-          <div className={`flex items-center gap-3 ${!isSidebarOpen && 'justify-center'}`}>
-            <div className="h-10 w-10 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-full flex items-center justify-center font-bold text-white shadow-md flex-shrink-0">
-              {displayName.charAt(0)}
-            </div>
-            {isSidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate">{displayName}</p>
-                <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                  <UserCog className="h-3 w-3" />
-                  <span>Academic Admin</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Menu Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <div className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeView === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveView(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white shadow-lg'
-                      : 'text-slate-200 hover:bg-white/10'
-                  } ${!isSidebarOpen && 'justify-center'}`}
-                >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {isSidebarOpen && (
-                    <span className="font-medium text-sm">{item.label}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Bottom Actions */}
-        <div className="p-3 border-t border-white/10 space-y-2">
-          <button
-            onClick={async () => {
-              try {
-                await logout();
-                if (onLogout) onLogout();
-              } catch (e) {
-                console.error('Logout falhou', e);
-              }
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-300 hover:bg-red-500/20 transition-colors ${
-              !isSidebarOpen && 'justify-center'
-            }`}
-          >
-            <LogOut className="h-5 w-5" />
-            {isSidebarOpen && <span className="text-sm">Sair</span>}
-          </button>
-        </div>
-
-        {/* Toggle Button */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-3 top-24 bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white rounded-full p-1.5 shadow-lg hover:shadow-xl transition-all duration-200"
-        >
-          {isSidebarOpen ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
-      </aside>
+      {/* ========== SIDEBAR LATERAL (mesma do SuperAdmin) ========== */}
+      <AdminSidebar
+        activeView={activeView}
+        setActiveView={setActiveView}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        onOpenSettings={() => setGeneralSettingsModal(true)}
+        userName={user?.nome}
+        userEmail={user?.email}
+      />
 
       {/* ========== MAIN CONTENT ========== */}
       <main className="flex-1 overflow-y-auto">
-        {/* Top Bar */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-          <div className="px-8 py-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                {menuItems.find(m => m.id === activeView)?.label || 'Dashboard'}
-              </h2>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Gerencie estudantes, docentes e turmas da instituição
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-200">
-                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-emerald-700 font-medium">Online</span>
-              </div>
-            </div>
-          </div>
-        </header>
+        <AdminTopBar
+          activeView={activeView}
+          displayName={displayName}
+          userRole={user?.role}
+          onLogout={async () => {
+            try {
+              await logout();
+              if (onLogout) onLogout();
+            } catch (e) {
+              console.error('Logout falhou', e);
+            }
+          }}
+        />
 
         {/* Dashboard Content */}
         <div className="p-8">
@@ -657,57 +836,14 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
             <TabsContent value="dashboard" className="space-y-6 mt-0">
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                      <GraduationCap className="h-4 w-4 text-blue-500" />
-                      Estudantes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-blue-600">{stats.totalStudents}</div>
-                    <p className="text-xs text-slate-500 mt-1">Total matriculados</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-l-purple-500 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                      <Users className="h-4 w-4 text-purple-500" />
-                      Docentes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-purple-600">{stats.totalTeachers}</div>
-                    <p className="text-xs text-slate-500 mt-1">Total de professores</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-l-green-500 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                      <DollarSign className="h-4 w-4 text-green-500" />
-                      Receita Total
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</div>
-                    <p className="text-xs text-slate-500 mt-1">Arrecadado</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-l-red-500 shadow-lg hover:shadow-xl transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2 text-slate-600">
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                      Em Débito
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-red-600">{stats.studentsInDebt}</div>
-                    <p className="text-xs text-slate-500 mt-1">Estudantes devendo</p>
-                  </CardContent>
-                </Card>
+                <AccentStatCard icon={GraduationCap} label="Estudantes" value={stats.totalStudents} subtitle="Total matriculados" color="blue" />
+                <AccentStatCard icon={Users} label="Docentes" value={stats.totalTeachers} subtitle="Total de professores" color="purple" />
+                <AccentStatCard icon={BookOpen} label="Turmas" value={stats.totalClasses} subtitle="Total de turmas" color="orange" />
+                <AccentStatCard icon={FileText} label="Matrículas" value={registrations.length} subtitle="Matrículas ativas" color="cyan" />
+                <AccentStatCard icon={DollarSign} label="Receita Total" value={formatCurrency(stats.totalRevenue)} subtitle="Arrecadado" color="green" />
+                <AccentStatCard icon={AlertTriangle} label="Em Débito" value={stats.studentsInDebt} subtitle="Estudantes devendo" color="red" />
+                <AccentStatCard icon={Shield} label="Usuários" value={systemUsers.length} subtitle="Total no sistema" color="pink" />
+                <AccentStatCard icon={BarChart3} label="Taxa de Aprovação" value="87%" subtitle="Média geral" color="indigo" />
               </div>
 
               {/* Quick Actions */}
@@ -828,7 +964,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
               <ClassList
                 classes={classes}
                 permissions={academicAdminPermissions}
-                currentUserRole="academic_admin"
+                currentUserRole="admin"
                 onViewStudents={handleViewStudents}
                 onManageClass={handleManageClass}
                 onCreateClass={handleCreateClass}
@@ -838,13 +974,88 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
               />
             </TabsContent>
 
-            <TabsContent value="payments" className="mt-0">
-              <PaymentList
-                students={students}
-                onOpenPaymentModal={handleOpenPaymentModal}
-                formatCurrency={formatCurrency}
-                getStudentPaymentInfo={getStudentPaymentInfo}
+            <TabsContent value="courses" className="mt-0">
+              <CourseList
+                courses={courses}
+                isLoading={isLoadingCourses}
+                onAddCourse={() => {}}
+                onEditCourse={() => {}}
+                onDeleteCourse={() => {}}
+                readOnly
+                onViewCourse={(course) => setCourseProfileModal({ isOpen: true, course })}
               />
+            </TabsContent>
+
+            <TabsContent value="registrations" className="mt-0">
+              <RegistrationList
+                registrations={registrations}
+                permissions={academicAdminPermissions}
+                currentUserRole="admin"
+                onViewRegistration={handleViewRegistration}
+                onEditRegistration={handleEditRegistration}
+                onDeleteRegistration={handleDeleteRegistration}
+                onAddRegistration={handleAddRegistration}
+                onViewStudentProfile={(studentId) => {
+                  const student = students.find(s => s.id === studentId);
+                  if (student) handleViewStudentProfile(student);
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="inscriptions" className="mt-0">
+              <InscriptionList
+                onProceedToRegistration={(studentId) => {
+                  setRegistrationModal({
+                    isOpen: true,
+                    registrationData: null,
+                    isEditing: false,
+                    preSelectedStudentId: studentId
+                  });
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="payments" className="mt-0">
+              <PaymentsDashboard />
+            </TabsContent>
+
+            <TabsContent value="users" className="mt-0">
+              <UsersList
+                users={systemUsers}
+                permissions={academicAdminPermissions}
+                currentUserRole="academic_admin"
+                onViewUser={(user) => console.log('Ver usuário:', user)}
+                onEditUser={(user) => console.log('Editar usuário:', user)}
+                onDeleteUser={(userId) => {
+                  if (confirm('Tem certeza que deseja remover este usuário?')) {
+                    setSystemUsers(prev => prev.filter(u => u.id !== userId));
+                    toast.success('Usuário removido com sucesso!');
+                  }
+                }}
+                onCreateUser={(userData) => {
+                  const newUser: SystemUser = {
+                    id: Date.now(),
+                    name: userData.name || '',
+                    email: userData.email || '',
+                    phone: userData.phone,
+                    role: userData.role || 'student',
+                    status: userData.status || 'active',
+                    createdAt: new Date().toISOString(),
+                  };
+                  setSystemUsers(prev => [...prev, newUser]);
+                  toast.success('Usuário criado com sucesso!');
+                }}
+                onUpdateUser={(userId, userData) => {
+                  setSystemUsers(prev => prev.map(u =>
+                    u.id === userId ? { ...u, ...userData } : u
+                  ));
+                  toast.success('Usuário atualizado com sucesso!');
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="grades" className="mt-0">
+              <GradesList grades={gradesData} />
             </TabsContent>
           </Tabs>
         </div>
@@ -861,7 +1072,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         currentUserRole="academic_admin"
         onSendEmailToAll={handleSendEmailToAll}
         onViewStudentProfile={handleViewStudentProfile}
-        onAddStudent={() => handleAddStudentToClass({ id: studentModal.classId, name: studentModal.className } as Class)}
       />
 
       <ClassModal
@@ -869,7 +1079,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         onClose={() => setClassModal({ ...classModal, isOpen: false })}
         classData={classModal.classData}
         permissions={academicAdminPermissions}
-        currentUserRole="academic_admin"
+        currentUserRole="admin"
         onSave={handleSaveClass}
         onDelete={handleDeleteClass}
         isCreating={classModal.isCreating}
@@ -880,16 +1090,20 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         onClose={() => setClassSettingsModal({ isOpen: false, classData: null })}
         classData={classSettingsModal.classData}
         currentUserRole="academic_admin"
-        onClassUpdated={loadClasses}
+        onClassUpdated={() => {
+          loadClasses();
+          loadCourses();
+        }}
       />
 
       <SelectStudentModal
         isOpen={selectStudentModal.isOpen}
-        onClose={() => setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' })}
+        onClose={() => setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '', turno: '' })}
         turmaId={selectStudentModal.turmaId}
         cursoId={selectStudentModal.cursoId}
+        turno={selectStudentModal.turno}
         onStudentsAdded={() => {
-          setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '' });
+          setSelectStudentModal({ isOpen: false, turmaId: 0, cursoId: '', turno: '' });
           toast.success('Estudantes adicionados com sucesso!');
           loadClasses();
         }}
@@ -899,7 +1113,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         isOpen={createStudentModal.isOpen}
         onClose={() => setCreateStudentModal({ isOpen: false, preSelectedClassId: 0, preSelectedClassName: "" })}
         onSave={handleCreateStudent}
-        availableClasses={classes}
+        availableClasses={classes as any}
         preSelectedClassId={createStudentModal.preSelectedClassId}
         preSelectedClassName={createStudentModal.preSelectedClassName}
       />
@@ -920,12 +1134,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
       {paymentModal.isOpen && paymentModal.studentId > 0 && (
         <PaymentManagementModal
           isOpen={paymentModal.isOpen}
-          onClose={() => setPaymentModal({ ...paymentModal, isOpen: false })}
-          studentPaymentInfo={getStudentPaymentInfo(
-            paymentModal.studentId,
-            students.find(s => s.id === paymentModal.studentId)?.name || '',
-            students.find(s => s.id === paymentModal.studentId)?.className || ''
-          )}
+          onClose={() => setPaymentModal({ isOpen: false, studentId: 0 })}
+          studentId={paymentModal.studentId}
+          cursoId=""
           onRecordPayment={handleRecordPayment}
           onUpdatePayment={updatePayment}
         />
@@ -943,16 +1154,96 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         isOpen={isStudentProfileModalOpen}
         onClose={handleCloseStudentProfileModal}
         student={selectedStudent}
-        currentUserRole="academic_admin"
+        currentUserRole="admin"
         onSave={handleSaveStudentProfile}
+        onViewPaymentDetails={handleViewPaymentDetails}
+      />
+
+      <GeneralSettingsModal
+        isOpen={generalSettingsModal}
+        onClose={() => setGeneralSettingsModal(false)}
+        onSave={handleSaveSettings}
+        currentSettings={settings}
+      />
+
+      <CourseProfileModal
+        isOpen={courseProfileModal.isOpen}
+        onClose={() => setCourseProfileModal({ isOpen: false, course: null })}
+        course={courseProfileModal.course as any}
+      />
+
+      <RegistrationStudentModal
+        isOpen={registrationModal.isOpen}
+        onClose={() => setRegistrationModal({ isOpen: false, registrationData: null, isEditing: false, preSelectedStudentId: null })}
+        registrationData={registrationModal.registrationData}
+        isEditing={registrationModal.isEditing}
+        onSave={handleSaveRegistration}
+        existingRegistrations={registrations}
+        preSelectedStudentId={registrationModal.preSelectedStudentId}
       />
 
       {launchGradesModal.classInfo && (
         <LaunchGradesModal
           isOpen={launchGradesModal.isOpen}
-          onClose={() => setLaunchGradesModal({ isOpen: false, classInfo: null })}
+          onClose={handleCloseLaunchGrades}
           classInfo={launchGradesModal.classInfo}
+          readOnly
         />
+      )}
+
+      {/* FLOATING CHAT BUTTON */}
+      <GradientButton
+        onClick={() => setShowChatModal(true)}
+        className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl hover:scale-110 active:scale-95 z-50"
+        title="Mensagens"
+      >
+        <MessageCircle className="h-7 w-7" />
+      </GradientButton>
+
+      {/* CHAT MODAL */}
+      {showChatModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full">
+            <h3 className="text-2xl font-bold text-[#004B87] mb-4">Enviar Mensagem</h3>
+            <p className="text-slate-600 mb-6">
+              Envie uma mensagem para os usuários do sistema
+            </p>
+
+            <textarea
+              className="w-full h-40 p-4 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:outline-none resize-none mb-4 text-sm"
+              placeholder="Digite sua mensagem aqui..."
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+            />
+
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowChatModal(false);
+                  setChatMessage("");
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <GradientButton
+                onClick={() => {
+                  if (chatMessage.trim()) {
+                    toast.success("Mensagem enviada com sucesso!");
+                    setShowChatModal(false);
+                    setChatMessage("");
+                  } else {
+                    toast.error("Digite uma mensagem");
+                  }
+                }}
+                className="flex-1"
+              >
+                Enviar
+              </GradientButton>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

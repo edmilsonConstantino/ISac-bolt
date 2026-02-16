@@ -66,6 +66,8 @@ interface GeneralSettings {
   // Configurações Financeiras
   defaultMonthlyFee: number;
   registrationFee: number;
+  registrationFeeGlobalEnabled: boolean;
+  registrationFeeIsento: boolean;
   firstPenaltyPercentage: number;  // Primeira multa (após dia 10)
   secondPenaltyPercentage: number; // Segunda multa (após dia 20)
   paymentDueDays: number;
@@ -134,6 +136,8 @@ export function GeneralSettingsModal({
     
     defaultMonthlyFee: 3500,
     registrationFee: 1000,
+    registrationFeeGlobalEnabled: false,
+    registrationFeeIsento: false,
     firstPenaltyPercentage: 10,
     secondPenaltyPercentage: 10,
     paymentDueDays: 10,
@@ -169,6 +173,8 @@ export function GeneralSettingsModal({
 
   const [activeTab, setActiveTab] = useState("institution");
   const [hasChanges, setHasChanges] = useState(false);
+  const [showGlobalFeeModal, setShowGlobalFeeModal] = useState(false);
+  const [tempGlobalFee, setTempGlobalFee] = useState<number>(0);
 
   useEffect(() => {
     if (currentSettings) {
@@ -198,7 +204,8 @@ export function GeneralSettingsModal({
   };
 
   return (
- <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+    <Dialog open={isOpen} onOpenChange={onClose}>
   <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-4 border-b">
           <div className="flex items-center gap-3">
@@ -487,19 +494,133 @@ export function GeneralSettingsModal({
                         </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="registrationFee">Taxa de Matrícula</Label>
-                        <Input
-                          id="registrationFee"
-                          type="number"
-                          value={settings.registrationFee}
-                          onChange={(e) => handleInputChange('registrationFee', parseFloat(e.target.value))}
-                          step="0.01"
-                          min="0"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Valor: {formatCurrency(settings.registrationFee)}
-                        </p>
+                      <div className="space-y-3">
+                        <Label className="font-medium">Taxa de Matrícula Global</Label>
+
+                        {/* Toggle para activar taxa global */}
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="registrationFeeGlobalEnabled" className="text-sm font-medium cursor-pointer">
+                              Definir taxa única para todos os cursos
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              {settings.registrationFeeGlobalEnabled
+                                ? 'Activo - todos os cursos usam esta definição'
+                                : 'Desactivado - cada curso usa o seu próprio valor'
+                              }
+                            </p>
+                          </div>
+                          <Switch
+                            id="registrationFeeGlobalEnabled"
+                            checked={settings.registrationFeeGlobalEnabled || false}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                handleInputChange('registrationFeeGlobalEnabled', true);
+                              } else {
+                                handleInputChange('registrationFeeGlobalEnabled', false);
+                                handleInputChange('registrationFeeIsento', false);
+                              }
+                            }}
+                          />
+                        </div>
+
+                        {/* Opções quando activo */}
+                        {settings.registrationFeeGlobalEnabled && (
+                          <div className="space-y-3">
+                            {/* Duas opções claras */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Opção 1: Definir valor */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleInputChange('registrationFeeIsento', false);
+                                  setTempGlobalFee(settings.registrationFee || 0);
+                                  setShowGlobalFeeModal(true);
+                                }}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                  !settings.registrationFeeIsento && settings.registrationFee > 0
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <DollarSign className={`h-4 w-4 ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? 'text-blue-600' : 'text-slate-400'}`} />
+                                  <span className={`text-sm font-bold ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? 'text-blue-700' : 'text-slate-600'}`}>
+                                    Definir Valor
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                  Cobrar um valor fixo a todos os cursos
+                                </p>
+                                {!settings.registrationFeeIsento && settings.registrationFee > 0 && (
+                                  <p className="text-sm font-bold text-blue-600 mt-2">
+                                    {formatCurrency(settings.registrationFee)}
+                                  </p>
+                                )}
+                              </button>
+
+                              {/* Opção 2: Isento / Gratuito */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleInputChange('registrationFeeIsento', true);
+                                  handleInputChange('registrationFee', 0);
+                                }}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                  settings.registrationFeeIsento
+                                    ? 'border-green-500 bg-green-50'
+                                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <CheckCircle className={`h-4 w-4 ${settings.registrationFeeIsento ? 'text-green-600' : 'text-slate-400'}`} />
+                                  <span className={`text-sm font-bold ${settings.registrationFeeIsento ? 'text-green-700' : 'text-slate-600'}`}>
+                                    Isento / Gratuito
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                  Sem taxa de matrícula para nenhum curso
+                                </p>
+                                {settings.registrationFeeIsento && (
+                                  <p className="text-sm font-bold text-green-600 mt-2">
+                                    Gratuito
+                                  </p>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Aviso */}
+                            {settings.registrationFeeIsento && (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-amber-700">
+                                    A taxa de matrícula será <strong>isenta/gratuita</strong> para todos os cursos.
+                                    Os valores definidos na criação de cada curso serão ignorados.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {!settings.registrationFeeIsento && settings.registrationFee > 0 && (
+                              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-blue-700">
+                                    Todos os cursos terão a taxa de matrícula de <strong>{formatCurrency(settings.registrationFee)}</strong>.
+                                    Os valores individuais definidos na criação de cada curso serão ignorados.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {!settings.registrationFeeGlobalEnabled && (
+                          <p className="text-xs text-slate-500">
+                            Cada curso utiliza o valor definido no processo de criação do curso.
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -995,7 +1116,74 @@ export function GeneralSettingsModal({
         </div>
        
       </DialogContent>
-      
+
     </Dialog>
+
+    {/* Mini Modal - Definir valor global da taxa de matrícula */}
+    <Dialog open={showGlobalFeeModal} onOpenChange={setShowGlobalFeeModal}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-[#F5821F]" />
+            Definir Taxa Global de Matrícula
+          </DialogTitle>
+          <DialogDescription>
+            Este valor será aplicado a <strong>todos os cursos</strong> no processo de matrícula.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="globalFeeValue">Valor da Taxa (MZN)</Label>
+            <Input
+              id="globalFeeValue"
+              type="number"
+              value={tempGlobalFee || ''}
+              onChange={(e) => setTempGlobalFee(parseFloat(e.target.value) || 0)}
+              step="0.01"
+              min="0"
+              placeholder="Ex: 5000"
+              className="h-12 text-lg font-bold"
+              autoFocus
+            />
+            {tempGlobalFee > 0 && (
+              <p className="text-sm text-green-600 font-medium">
+                {formatCurrency(tempGlobalFee)}
+              </p>
+            )}
+          </div>
+
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                Este valor será a taxa única de matrícula para <strong>todos os cursos</strong>.
+                Os valores individuais definidos na criação de cada curso serão ignorados enquanto esta opção estiver activa.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={() => setShowGlobalFeeModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="oxford"
+            onClick={() => {
+              handleInputChange('registrationFeeGlobalEnabled', true);
+              handleInputChange('registrationFee', tempGlobalFee);
+              handleInputChange('registrationFeeIsento', false);
+              setShowGlobalFeeModal(false);
+            }}
+            disabled={tempGlobalFee <= 0}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Confirmar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 } 

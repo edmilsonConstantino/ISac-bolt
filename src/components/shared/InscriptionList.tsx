@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InscriptionStudentModal } from "./InscriptionStudentModal";
 import { InscriptionSettingsModal } from "./InscriptionSettingsModal";
+import { SearchBar, ViewToggle } from "@/components/ui/search-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { ListFooter } from "@/components/ui/info-row";
 
 interface InscribedStudent {
   id: number;
@@ -335,13 +339,10 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </Button>
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
-            >
-              <UserPlus className="h-5 w-5 mr-2" />
+            <GradientButton onClick={() => setIsModalOpen(true)}>
+              <UserPlus className="h-5 w-5" />
               Nova Inscrição
-            </Button>
+            </GradientButton>
           </div>
         </div>
 
@@ -390,15 +391,11 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 
       {/* Search Bar + View Toggle */}
       <div className="flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <Input
-            placeholder="Pesquisar por nome, email, username, BI ou nº matrícula..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
-          />
-        </div>
+        <SearchBar
+          placeholder="Pesquisar por nome, email, username, BI ou nº matrícula..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
 
         <Button
           variant="outline"
@@ -409,31 +406,12 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
           <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </Button>
 
-        {/* Toggle de Visualização */}
-        <div className="flex bg-white border-2 border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`flex items-center gap-2 px-4 h-12 transition-all font-medium text-sm ${
-              viewMode === "grid"
-                ? "bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Grid3x3 className="h-4 w-4" />
-            Grelha
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`flex items-center gap-2 px-4 h-12 transition-all font-medium text-sm border-l-2 border-slate-200 ${
-              viewMode === "list"
-                ? "bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <List className="h-4 w-4" />
-            Lista
-          </button>
-        </div>
+        <ViewToggle
+          view={viewMode}
+          onChange={setViewMode}
+          gridIcon={<Grid3x3 className="h-4 w-4" />}
+          listIcon={<List className="h-4 w-4" />}
+        />
       </div>
 
       {/* Students Display */}
@@ -447,30 +425,23 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
           </CardContent>
         </Card>
       ) : filteredStudents.length === 0 ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <UserPlus className="h-10 w-10 text-slate-400" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Nenhum estudante encontrado</h3>
-              <p className="text-sm text-slate-500 text-center mb-6">
-                {searchTerm || statusFilter !== 'all'
-                  ? 'Tente ajustar os filtros de busca'
-                  : 'Nenhum estudante inscrito ainda'}
-              </p>
-              {!searchTerm && statusFilter === 'all' && (
-                <Button
-                  onClick={() => setIsModalOpen(true)}
-                  className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Fazer Primeira Inscrição
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={UserPlus}
+          title="Nenhum estudante encontrado"
+          description={
+            searchTerm || statusFilter !== 'all'
+              ? 'Tente ajustar os filtros de busca'
+              : 'Nenhum estudante inscrito ainda'
+          }
+          action={
+            !searchTerm && statusFilter === 'all' ? (
+              <GradientButton onClick={() => setIsModalOpen(true)}>
+                <UserPlus className="h-4 w-4" />
+                Fazer Primeira Inscrição
+              </GradientButton>
+            ) : undefined
+          }
+        />
       ) : viewMode === "grid" ? (
         // ============ VISUALIZAÇÃO EM GRID (CARDS) ============
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -723,25 +694,15 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 
       {/* Footer Info */}
       {filteredStudents.length > 0 && (
-        <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-          <p className="text-sm text-slate-600">
-            Mostrando <span className="font-semibold text-[#004B87]">{filteredStudents.length}</span> de{" "}
-            <span className="font-semibold text-[#004B87]">{students.length}</span> estudantes
-          </p>
-          {(searchTerm || statusFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-              }}
-              className="text-[#F5821F] hover:text-[#004B87]"
-            >
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+        <ListFooter
+          showing={filteredStudents.length}
+          total={students.length}
+          hasFilters={!!searchTerm || statusFilter !== 'all'}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setStatusFilter("all");
+          }}
+        />
       )}
 
       {/* Modals */}
