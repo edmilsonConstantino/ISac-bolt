@@ -195,7 +195,7 @@ class ClassService {
       name: data.nome || data.name,
       description: data.observacoes || data.description,
       subject: data.disciplina || data.subject,
-      curso: data.curso_id || data.curso,
+      curso: data.curso_codigo || data.curso || data.curso_id,
       teacher_id: data.professor_id || data.teacher_id,
       teacher_name: data.professor_nome || data.teacher_name,
       capacity: data.capacidade_maxima || data.max_students || data.capacity,
@@ -261,7 +261,53 @@ class ClassService {
   }
 
   /**
-   * 🔍 Buscar turma por ID
+   * Listar turmas de um estudante específico
+   */
+  async getByStudent(studentId: number): Promise<Class[]> {
+    try {
+      const response = await apiClient.get(`/api/turmas.php?student_id=${studentId}`);
+      const turmas = response.data.data || response.data || [];
+      return turmas.map((t: any) => this.mapAPIToReact(t));
+    } catch (error: any) {
+      console.error('Erro ao buscar turmas do estudante:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Listar turmas de um professor específico
+   */
+  async getByTeacher(professorId: number): Promise<Class[]> {
+    try {
+      const response = await apiClient.get(`/api/turmas.php?professor_id=${professorId}`);
+      const turmas = response.data.data || response.data || [];
+      return turmas.map((t: any) => this.mapAPIToReact(t));
+    } catch (error: any) {
+      console.error('Erro ao buscar turmas do professor:', error);
+      throw new Error(error.response?.data?.message || 'Erro ao buscar turmas do professor');
+    }
+  }
+
+  /**
+   * Atribuir ou desatribuir docente a uma turma
+   */
+  async assignTeacher(turmaId: number, professorId: number | null): Promise<void> {
+    try {
+      const response = await apiClient.put('/api/turmas.php?action=assign_teacher', {
+        turma_id: turmaId,
+        professor_id: professorId
+      });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erro ao atribuir docente');
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Erro ao atribuir docente';
+      throw new Error(msg);
+    }
+  }
+
+  /**
+   * Buscar turma por ID
    */
   async getById(id: number): Promise<Class> {
     try {

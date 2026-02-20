@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import studentService from "@/services/studentService";
 
 import { generateStudentCode } from "../utils/generateStudentCode";
-import { generateUsername } from "../utils/generateUsername";
 import { generatePassword } from "../utils/generatePassword";
 
 import type { RegistrationFormData } from "../types/registrationModal.types";
@@ -21,7 +20,7 @@ export function useRegistrationCredentials({ formData, setFormData }: Params) {
 
   useEffect(() => {
     const checkAndGenerateCredentials = async () => {
-      // ✅ Só roda quando tiver estudante + curso
+      // Só roda quando tiver estudante + curso
       if (!formData.studentId || !formData.courseId || !formData.courseName) return;
 
       try {
@@ -32,13 +31,9 @@ export function useRegistrationCredentials({ formData, setFormData }: Params) {
         const student = await studentService.getById(formData.studentId);
 
         const hasUsername = !!student?.username;
-        // ⚠️ password geralmente vem como hash (ou pode nem vir). Aqui a regra:
-        // se tiver username, consideramos que já tem credenciais e não regeneramos.
-        // (Se tua API retornar password hash, ok. Se não retornar, segue do mesmo jeito.)
-        const hasPassword = !!student?.password;
 
         if (hasUsername) {
-          // 🔒 Usar credenciais existentes
+          // Usar credenciais existentes
           setFormData((prev) => ({
             ...prev,
             studentCode,
@@ -49,23 +44,20 @@ export function useRegistrationCredentials({ formData, setFormData }: Params) {
           return;
         }
 
-        // 🆕 Primeira matrícula: gerar credenciais
-        const username = generateUsername(formData.studentName || "");
+        // Primeira matrícula: username será gerado pela API (STD###), só gerar password
         const password = generatePassword();
 
         setFormData((prev) => ({
           ...prev,
           studentCode,
-          username,
+          username: '',
           password,
         }));
 
         setCredentialsReadonly(false);
 
-        // Só para debug (podes remover depois)
-        console.log("✅ Credenciais geradas (primeira matrícula)", { studentCode, username });
       } catch (error) {
-        console.error("❌ Erro ao verificar/gerar credenciais:", error);
+        console.error("Erro ao verificar/gerar credenciais:", error);
       }
     };
 

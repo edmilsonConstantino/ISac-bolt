@@ -13,6 +13,7 @@ import { StudentDashboard } from "@/components/Students/StudentDashboard";
 import { TeacherDashboard } from "@/components/Teachers/TeacherDashboard";
 import { AdminDashboard } from "@/components/AdminDashboard";
 import { NormalAdmin } from "@/components/shared/normaladmin/NormalAdmin";
+import { SetPasswordScreen } from "@/components/SetPasswordScreen";
 import { useAuthStore } from "@/store/authStore";
 import { useEffect, useState } from "react";
 
@@ -170,6 +171,7 @@ const App = () => (
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/set-password" element={<SetPasswordScreen />} />
           
           {/* ========== DASHBOARD DO ALUNO ========== */}
           <Route 

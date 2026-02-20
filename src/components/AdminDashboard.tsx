@@ -7,6 +7,7 @@ import teacherService, { Teacher, CreateTeacherData } from "@/services/teacherSe
 import courseService, { Course as APICourse } from "@/services/courseService";
 import registrationService from '@/services/registrationService';
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import {
   Users, BookOpen, DollarSign, UserPlus, GraduationCap,
   LogOut, Shield, BarChart3, AlertTriangle, TrendingUp,
-  FileText, MessageCircle
+  FileText, MessageCircle, Copy, Key, CheckCircle
 } from "lucide-react";
 
 // Import dos componentes compartilhados
@@ -41,8 +42,10 @@ import CreateCourseModal from '@/components/Courses/CreateCourseModal';
 import { CourseList } from "./shared/superadmin/CourseList";
 import { RegistrationList, Registration } from "./shared/reusable/RegistrationList";
 import { UsersList, SystemUser } from "@/components/Users/UsersList";
+import userService from "@/services/userService";
 import { GradesList, Grade } from "./shared/GradesList";
 import { LaunchGradesModal } from "./shared/LaunchGradesModal";
+import { LevelTransitionPanel } from "./shared/LevelTransitionPanel";
 import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
 import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
@@ -166,6 +169,13 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   // Estados para usuários e notas
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [gradesData, setGradesData] = useState<Grade[]>([]);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    isOpen: boolean;
+    username: string;
+    password: string;
+    name: string;
+    role: string;
+  }>({ isOpen: false, username: '', password: '', name: '', role: '' });
 
   // ✅ Verificar autenticação ao montar
   useEffect(() => {
@@ -180,20 +190,31 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     }
   }, [isAuthenticated]);
 
-  // 🆕 Carregar dados de usuários fictícios
+  // Carregar dados de usuários da API
+  const loadUsers = async () => {
+    try {
+      const apiUsers = await userService.getAll();
+      const mapped: SystemUser[] = apiUsers.map(u => ({
+        id: u.id,
+        name: u.nome,
+        email: u.email || undefined,
+        username: u.username || undefined,
+        role: u.role,
+        status: u.status,
+        createdAt: u.created_at,
+        lastLogin: u.last_login || undefined,
+        avatar: u.avatar || undefined,
+        sourceTable: u.source_table,
+      }));
+      setSystemUsers(mapped);
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const mockUsers: SystemUser[] = [
-      { id: 1, name: "Admin ISAC", email: "admin@isac.ac.mz", role: "admin", status: "active", createdAt: "2024-01-15", lastLogin: "2025-01-25" },
-      { id: 2, name: "João Silva", email: "joao.silva@isac.ac.mz", role: "teacher", status: "active", createdAt: "2024-02-20", lastLogin: "2025-01-24", phone: "+258 84 123 4567" },
-      { id: 3, name: "Maria Santos", email: "maria.santos@isac.ac.mz", role: "teacher", status: "active", createdAt: "2024-03-10", lastLogin: "2025-01-23", phone: "+258 85 234 5678" },
-      { id: 4, name: "Pedro Costa", email: "pedro.costa@estudante.isac.ac.mz", role: "student", status: "active", createdAt: "2024-09-01", lastLogin: "2025-01-25", phone: "+258 86 345 6789" },
-      { id: 5, name: "Ana Lopes", email: "ana.lopes@estudante.isac.ac.mz", role: "student", status: "active", createdAt: "2024-09-01", lastLogin: "2025-01-24", phone: "+258 87 456 7890" },
-      { id: 6, name: "Carlos Mendes", email: "carlos.mendes@estudante.isac.ac.mz", role: "student", status: "inactive", createdAt: "2024-09-01", phone: "+258 84 567 8901" },
-    ];
-
-    setSystemUsers(mockUsers);
+    loadUsers();
   }, [isAuthenticated]);
 
   // ✅ Carregar dados da API
@@ -459,7 +480,7 @@ const loadRegistrations = async () => {
         id: reg.id,
         studentId: reg.student_id,
         studentName: studentName,
-        studentCode: reg.enrollment_number,
+        studentCode: reg.username,
         courseId: reg.course_id,
         courseName: courseName,
         classId: reg.class_id,
@@ -866,6 +887,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         qualifications: t.observacoes || ''
       }));
       setTeacherStats(mappedTeachers);
+      await loadUsers();
       toast.success("Professor cadastrado com sucesso!");
     } catch (error: any) {
       console.error("Erro ao atualizar lista de professores:", error);
@@ -1223,36 +1245,99 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
               permissions={adminPermissions}
               onViewUser={(user) => console.log('Ver usuário:', user)}
               onEditUser={(user) => console.log('Editar usuário:', user)}
-              onDeleteUser={(userId) => {
+              onDeleteUser={async (userId) => {
                 if (confirm('Tem certeza que deseja remover este usuário?')) {
-                  setSystemUsers(prev => prev.filter(u => u.id !== userId));
-                  toast.success('Usuário removido com sucesso!');
+                  try {
+                    await userService.delete(userId);
+                    setSystemUsers(prev => prev.filter(u => u.id !== userId));
+                    toast.success('Usuário removido com sucesso!');
+                  } catch (error: unknown) {
+                    toast.error(error instanceof Error ? error.message : 'Erro ao remover usuário');
+                  }
                 }
               }}
-              onCreateUser={(userData) => {
-                const newUser: SystemUser = {
-                  id: Date.now(),
-                  name: userData.name || '',
-                  email: userData.email || '',
-                  phone: userData.phone,
-                  role: userData.role || 'student',
-                  status: userData.status || 'active',
-                  createdAt: new Date().toISOString(),
-                };
-                setSystemUsers(prev => [...prev, newUser]);
-                toast.success('Usuário criado com sucesso!');
+              onCreateUser={async (userData) => {
+                try {
+                  const userWithPassword = userData as Partial<SystemUser> & { password?: string };
+                  const plainPassword = userWithPassword.password || '';
+                  const result = await userService.create({
+                    nome: userData.name || '',
+                    email: userData.email || undefined,
+                    senha: plainPassword,
+                    role: userData.role || 'admin',
+                    status: userData.status || 'active',
+                  });
+                  if (result.data) {
+                    const newUser: SystemUser = {
+                      id: result.data.id,
+                      name: result.data.nome,
+                      email: result.data.email || undefined,
+                      username: result.data.username || undefined,
+                      role: result.data.role,
+                      status: result.data.status,
+                      createdAt: result.data.created_at,
+                    };
+                    setSystemUsers(prev => [...prev, newUser]);
+
+                    // Mostrar credenciais ao utilizador
+                    setCreatedCredentials({
+                      isOpen: true,
+                      username: result.data.username || '',
+                      password: plainPassword,
+                      name: result.data.nome,
+                      role: result.data.role === 'admin' ? 'Super Admin' : 'Academic Admin',
+                    });
+                  }
+                  toast.success('Usuário criado com sucesso!');
+                } catch (error: unknown) {
+                  toast.error(error instanceof Error ? error.message : 'Erro ao criar usuário');
+                }
               }}
-              onUpdateUser={(userId, userData) => {
-                setSystemUsers(prev => prev.map(u =>
-                  u.id === userId ? { ...u, ...userData } : u
-                ));
-                toast.success('Usuário atualizado com sucesso!');
+              onUpdateUser={async (userId, userData) => {
+                try {
+                  const userWithPassword = userData as Partial<SystemUser> & { newPassword?: string };
+                  const result = await userService.update({
+                    id: userId,
+                    nome: userData.name || '',
+                    email: userData.email || undefined,
+                    role: userData.role,
+                    status: userData.status,
+                    senha: userWithPassword.newPassword || undefined,
+                  });
+                  if (result.data) {
+                    setSystemUsers(prev => prev.map(u =>
+                      u.id === userId ? {
+                        ...u,
+                        name: result.data!.nome,
+                        email: result.data!.email || undefined,
+                        username: result.data!.username || undefined,
+                        role: result.data!.role,
+                        status: result.data!.status,
+                      } : u
+                    ));
+                  }
+                  toast.success('Usuário atualizado com sucesso!');
+                } catch (error: unknown) {
+                  toast.error(error instanceof Error ? error.message : 'Erro ao atualizar usuário');
+                }
               }}
             />
           </TabsContent>
 
           <TabsContent value="grades" className="mt-0">
             <GradesList grades={gradesData} />
+          </TabsContent>
+
+          <TabsContent value="transitions" className="mt-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-slate-800">Level Transitions</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Manage student promotions, level repetitions and failures.
+                </p>
+              </div>
+              <LevelTransitionPanel />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -1335,7 +1420,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       onClose={handleCloseTeacherProfileModal}
       teacher={selectedTeacher}
       onSave={handleSaveTeacherProfile}
-      availableClasses={classes}
     />
 
     <StudentProfileModal
@@ -1448,6 +1532,105 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         </div>
       </div>
     )}
+
+      {/* Modal de Credenciais do Usuário Criado */}
+      <Dialog open={createdCredentials.isOpen} onOpenChange={(open) => {
+        if (!open) setCreatedCredentials(prev => ({ ...prev, isOpen: false }));
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#004B87] flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+              Usuário Criado com Sucesso
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-center">
+              <p className="text-sm text-green-700 font-medium">
+                {createdCredentials.name}
+              </p>
+              <Badge className="mt-1 bg-green-100 text-green-700 border-green-300">
+                {createdCredentials.role}
+              </Badge>
+            </div>
+
+            <div className="space-y-3">
+              <div className="bg-slate-50 rounded-xl border-2 border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Key className="h-3.5 w-3.5" />
+                    Username / Login
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredentials.username);
+                      toast.success('Username copiado!');
+                    }}
+                    className="text-xs text-[#F5821F] hover:text-[#004B87] flex items-center gap-1 font-medium"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copiar
+                  </button>
+                </div>
+                <p className="text-lg font-mono font-bold text-[#004B87]">
+                  {createdCredentials.username}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl border-2 border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5" />
+                    Senha
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredentials.password);
+                      toast.success('Senha copiada!');
+                    }}
+                    className="text-xs text-[#F5821F] hover:text-[#004B87] flex items-center gap-1 font-medium"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copiar
+                  </button>
+                </div>
+                <p className="text-lg font-mono font-bold text-slate-800">
+                  {createdCredentials.password}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-xs text-amber-700 font-medium">
+                Guarde estas credenciais em local seguro. A senha não poderá ser visualizada novamente após fechar esta janela.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `Username: ${createdCredentials.username}\nSenha: ${createdCredentials.password}`
+                );
+                toast.success('Credenciais copiadas!');
+              }}
+              variant="outline"
+              className="border-2"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar Tudo
+            </Button>
+            <Button
+              onClick={() => setCreatedCredentials(prev => ({ ...prev, isOpen: false }))}
+              className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   </div>
 );
 }

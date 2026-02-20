@@ -40,6 +40,7 @@ import { RegistrationList, Registration } from "../reusable/RegistrationList";
 import { UsersList, SystemUser } from "@/components/Users/UsersList";
 import { GradesList, Grade } from "../GradesList";
 import { LaunchGradesModal } from "../LaunchGradesModal";
+import { LevelTransitionPanel } from "../LevelTransitionPanel";
 import { AdminSidebar, AdminView } from "../AdminSidebar";
 import { InscriptionList } from "../InscriptionList";
 import { PaymentsDashboard } from "../PaymentsDashboard";
@@ -314,7 +315,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
           id: reg.id,
           studentId: reg.student_id,
           studentName: studentName,
-          studentCode: reg.enrollment_number,
+          studentCode: reg.username,
           courseId: reg.course_id,
           courseName: courseName,
           classId: reg.class_id,
@@ -1057,6 +1058,18 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
             <TabsContent value="grades" className="mt-0">
               <GradesList grades={gradesData} />
             </TabsContent>
+
+            <TabsContent value="transitions" className="mt-0">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-slate-800">Level Transitions</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Manage student promotions, level repetitions and failures.
+                  </p>
+                </div>
+                <LevelTransitionPanel />
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </main>
@@ -1147,7 +1160,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         onClose={handleCloseTeacherProfileModal}
         teacher={selectedTeacher}
         onSave={handleSaveTeacherProfile}
-        availableClasses={classes}
       />
 
       <StudentProfileModal

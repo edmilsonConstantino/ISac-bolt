@@ -114,7 +114,7 @@ export function UserCredentialsModal({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-bold text-white truncate">{user.name}</h3>
-                <p className="text-white/80 text-sm truncate">{user.email}</p>
+                <p className="text-white/80 text-sm truncate">{user.username || user.email || 'Sem identificador'}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <Badge className="bg-white/20 text-white border-white/30 text-xs backdrop-blur-sm">
                     <RoleIcon className="h-3 w-3 mr-1" />
@@ -135,19 +135,19 @@ export function UserCredentialsModal({
 
         {/* Content */}
         <div className="px-6 pb-6 -mt-3 space-y-4">
-          {/* Email field */}
+          {/* Username / Login field */}
           <div className="bg-white rounded-xl border-2 border-slate-200 p-4 shadow-sm hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <div className="h-7 w-7 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Mail className="h-3.5 w-3.5 text-blue-600" />
                 </div>
-                Email / Login
+                {user.username ? 'Username / Login' : 'Email / Login'}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard(user.email, "Email")}
+                onClick={() => copyToClipboard(user.username || user.email || '', user.username ? "Username" : "Email")}
                 className="h-7 px-2.5 text-xs text-slate-500 hover:text-[#004B87] hover:bg-blue-50"
               >
                 <Copy className="h-3 w-3 mr-1" />
@@ -155,7 +155,7 @@ export function UserCredentialsModal({
               </Button>
             </div>
             <div className="font-mono text-sm bg-slate-50 px-3 py-2.5 rounded-lg border border-slate-200 text-slate-800">
-              {user.email}
+              {user.username || user.email || 'N/A'}
             </div>
           </div>
 

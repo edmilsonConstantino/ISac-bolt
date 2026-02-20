@@ -25,11 +25,13 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  mustChangePassword: boolean;
 
   login: (credentials: { identifier: string; senha: string }) => Promise<UserProfile | null>;
   logout: () => Promise<void>;
   checkAuth: () => void;
   clearError: () => void;
+  clearMustChangePassword: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: false,
         isLoading: false,
         error: null,
+        mustChangePassword: false,
 
         login: async (credentials): Promise<UserProfile | null> => {
           set({ isLoading: true, error: null });
@@ -76,11 +79,14 @@ export const useAuthStore = create<AuthState>()(
               profile: mappedRole,
             };
 
+            const mustChangePassword = !!response.data.must_change_password;
+
             set({
               user: userWithProfile,
               isAuthenticated: true,
               isLoading: false,
-              error: null
+              error: null,
+              mustChangePassword
             });
 
             // Guardar user com role normalizado
@@ -146,7 +152,8 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        clearError: () => set({ error: null })
+        clearError: () => set({ error: null }),
+        clearMustChangePassword: () => set({ mustChangePassword: false })
       }),
       {
         name: 'auth-storage',

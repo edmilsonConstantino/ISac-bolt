@@ -45,9 +45,7 @@ export function CreateTeacherModal({
     email: '',
     phone: '',
     gender: '' as 'M' | 'F' | '',
-    birthDay: '',
-    birthMonth: '',
-    birthYear: '',
+    birth_date: '',
     address: '',
     specialization: '',
     qualifications: '',
@@ -60,15 +58,10 @@ export function CreateTeacherModal({
     emergencyContact1: '',
     emergencyContact2: '',
     notes: '',
-    usuario: '',
-    senha: ''
   });
 
   const [courses, setCourses] = useState<Course[]>([]);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [autoGenerateCredentials, setAutoGenerateCredentials] = useState(true);
 
   // Carregar cursos ao abrir o modal
   useEffect(() => {
@@ -86,27 +79,17 @@ export function CreateTeacherModal({
     loadCourses();
   }, []);
 
-  // Gerar credenciais automaticamente
-  useEffect(() => {
-    if (autoGenerateCredentials && formData.name) {
-      const generateUsername = (name: string) => {
-        const names = name.toLowerCase().trim().split(' ');
-        const firstName = names[0];
-        const lastName = names[names.length - 1];
-        return `${firstName}.${lastName}`.replace(/[^a-z.]/g, '');
-      };
-
-      const generatePassword = () => {
-        return Math.random().toString(36).slice(-8) + Math.random().toString(10).slice(-2);
-      };
-
-      setFormData(prev => ({
-        ...prev,
-        usuario: generateUsername(formData.name),
-        senha: generatePassword()
-      }));
-    }
-  }, [formData.name, autoGenerateCredentials]);
+  // Gerar preview do username: TEACHXX.0001.ANO (XX = 1ª letra primeiro nome + 1ª letra último nome)
+  const getUsernamePreview = () => {
+    const name = formData.name.trim();
+    const year = new Date().getFullYear();
+    if (!name) return `TEACH??.0001.${year}`;
+    const parts = name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+    const first = (parts[0] || '').replace(/[^A-Z]/g, '').charAt(0);
+    const last = parts.length > 1 ? (parts[parts.length - 1] || '').replace(/[^A-Z]/g, '').charAt(0) : '';
+    const initials = (first + last).padEnd(2, 'X');
+    return `TEACH${initials}.0001.${year}`;
+  };
 
   const handleInputChange = (field: string, value: string | number | number[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -137,25 +120,13 @@ export function CreateTeacherModal({
     if (!formData.experience.trim()) newErrors.experience = 'Experiência é obrigatória';
     if (!formData.startDate) newErrors.startDate = 'Data de início é obrigatória';
 
-    // Validar data de nascimento
-    if (formData.birthDay || formData.birthMonth || formData.birthYear) {
-      const day = parseInt(formData.birthDay);
-      const month = parseInt(formData.birthMonth);
-      const year = parseInt(formData.birthYear);
-
-      if (!formData.birthDay || day < 1 || day > 31) {
-        newErrors.birthDate = 'Dia inválido';
-      }
-      if (!formData.birthMonth || month < 1 || month > 12) {
-        newErrors.birthDate = 'Mês inválido';
-      }
-      if (!formData.birthYear || year < 1900 || year > new Date().getFullYear()) {
-        newErrors.birthDate = 'Ano inválido';
+    if (formData.birth_date) {
+      const year = new Date(formData.birth_date).getFullYear();
+      const currentYear = new Date().getFullYear();
+      if (year < 1900 || year > currentYear) {
+        newErrors.birth_date = 'Data de nascimento inválida';
       }
     }
-
-    if (!formData.usuario.trim()) newErrors.usuario = 'Usuário é obrigatório';
-    if (!formData.senha.trim()) newErrors.senha = 'Senha é obrigatória';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,21 +135,12 @@ export function CreateTeacherModal({
   const handleSave = async () => {
     if (validateForm()) {
       try {
-        let birthDateISO = undefined;
-        if (formData.birthDay && formData.birthMonth && formData.birthYear) {
-          const day = formData.birthDay.padStart(2, '0');
-          const month = formData.birthMonth.padStart(2, '0');
-          birthDateISO = `${formData.birthYear}-${month}-${day}`;
-        }
-
         const teacherData: CreateTeacherData = {
           nome: formData.name,
           email: formData.email,
-          username: formData.usuario || undefined,
-          password: formData.senha || undefined,
           telefone: formData.phone || undefined,
           genero: formData.gender || undefined,
-          data_nascimento: birthDateISO,
+          data_nascimento: formData.birth_date || undefined,
           endereco: formData.address || undefined,
           especialidade: formData.specialization || undefined,
           cursos: formData.cursos.length > 0 ? formData.cursos.join(',') : undefined,
@@ -201,7 +163,12 @@ export function CreateTeacherModal({
 
       } catch (error: any) {
         console.error("Erro ao criar docente:", error);
-        toast.error(error.message || "Erro ao cadastrar docente");
+        if (error.field === 'email') {
+          setErrors({ email: error.message });
+          setActiveTab('personal');
+        } else {
+          toast.error(error.message || "Erro ao cadastrar docente");
+        }
       }
     }
   };
@@ -209,15 +176,13 @@ export function CreateTeacherModal({
   const handleClose = () => {
     setFormData({
       name: '', email: '', phone: '', gender: '' as 'M' | 'F' | '',
-      birthDay: '', birthMonth: '', birthYear: '',
+      birth_date: '',
       address: '', specialization: '', qualifications: '', experience: '',
       contractType: 'full-time', cursos: [], turnos: [],
       startDate: new Date().toISOString().split('T')[0],
       assignedClasses: [], emergencyContact1: '', emergencyContact2: '', notes: '',
-      usuario: '', senha: ''
     });
     setErrors({});
-    setAutoGenerateCredentials(true);
     setActiveTab('personal');
     onClose();
   };
@@ -231,10 +196,14 @@ export function CreateTeacherModal({
   };
 
   // Filtrar turmas disponíveis com base nos cursos e turno selecionados
+  // Exclui turmas que já têm docente atribuído
   const getFilteredClasses = () => {
     if (formData.cursos.length === 0 || formData.turnos.length === 0) return [];
 
     return availableClasses.filter(cls => {
+      // Excluir turmas que já têm docente atribuído
+      if (cls.teacher_id) return false;
+
       // Verificar se a turma é de algum dos cursos seleccionados
       const matchesCourse = formData.cursos.some(c => cls.curso === c || cls.code?.includes(c));
 
@@ -324,14 +293,30 @@ export function CreateTeacherModal({
               ))}
             </nav>
 
-            <div className="mt-auto p-4 bg-[#F5821F]/10 border border-[#F5821F]/20 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2 text-[#F5821F]">
-                <Sparkles className="h-4 w-4" />
-                <span className="text-xs font-bold uppercase">Dica</span>
+            <div className="mt-auto space-y-3">
+              {/* Username preview em tempo real */}
+              <div className="p-4 bg-white/10 border border-white/20 rounded-2xl">
+                <div className="flex items-center gap-2 mb-2 text-blue-200">
+                  <Key className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Username Previsto</span>
+                </div>
+                <p className="font-mono text-white text-sm font-bold tracking-wide break-all">
+                  {getUsernamePreview()}
+                </p>
+                {!formData.name.trim() && (
+                  <p className="text-[10px] text-blue-300 mt-1">← Preencha o nome</p>
+                )}
               </div>
-              <p className="text-[11px] text-blue-100 leading-relaxed">
-                As credenciais são geradas automaticamente, mas podem ser editadas.
-              </p>
+              {/* Dica primeiro acesso */}
+              <div className="p-3 bg-[#F5821F]/10 border border-[#F5821F]/20 rounded-2xl">
+                <div className="flex items-center gap-2 mb-1 text-[#F5821F]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase">1º Acesso</span>
+                </div>
+                <p className="text-[10px] text-blue-100 leading-relaxed">
+                  Senha inicial = username. O docente define a senha pessoal no primeiro login.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -453,46 +438,24 @@ export function CreateTeacherModal({
                         <div className="space-y-2">
                           <Label className="text-slate-600 font-semibold ml-1">Data de Nascimento</Label>
                           <div className="relative">
-                            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10" />
-                            <div className="flex items-center gap-1 border-2 border-slate-200 rounded-xl h-12 pl-11 pr-3">
-                              <input
-                                value={formData.birthDay}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '').slice(0, 2);
-                                  handleInputChange('birthDay', value);
-                                }}
-                                placeholder="DD"
-                                maxLength={2}
-                                className="w-8 text-center outline-none bg-transparent"
-                              />
-                              <span className="text-slate-400 font-bold">/</span>
-                              <input
-                                value={formData.birthMonth}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '').slice(0, 2);
-                                  handleInputChange('birthMonth', value);
-                                }}
-                                placeholder="MM"
-                                maxLength={2}
-                                className="w-8 text-center outline-none bg-transparent"
-                              />
-                              <span className="text-slate-400 font-bold">/</span>
-                              <input
-                                value={formData.birthYear}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                  handleInputChange('birthYear', value);
-                                }}
-                                placeholder="AAAA"
-                                maxLength={4}
-                                className="w-14 text-center outline-none bg-transparent"
-                              />
-                            </div>
+                            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
+                            <input
+                              type="date"
+                              value={formData.birth_date}
+                              max={new Date().toISOString().split('T')[0]}
+                              min="1900-01-01"
+                              onChange={(e) => handleInputChange('birth_date', e.target.value)}
+                              className={cn(
+                                "w-full h-12 pl-11 pr-4 border-2 rounded-xl outline-none font-semibold text-slate-800",
+                                "focus:ring-2 focus:ring-[#F5821F]/20 focus:border-[#F5821F] transition-all",
+                                errors.birth_date ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
+                              )}
+                            />
                           </div>
-                          {errors.birthDate && (
+                          {errors.birth_date && (
                             <p className="text-xs text-red-600 flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
-                              {errors.birthDate}
+                              {errors.birth_date}
                             </p>
                           )}
                         </div>
@@ -937,136 +900,69 @@ export function CreateTeacherModal({
               {/* TAB: CREDENTIALS */}
               {activeTab === 'credentials' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
-                  
+
+                  {/* Header de confirmação */}
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
                         <CheckCircle2 className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-green-800">
-                          Cadastro Quase Completo!
-                        </h3>
-                        <p className="text-sm text-green-600">
-                          Revise as credenciais antes de finalizar
-                        </p>
+                        <h3 className="text-lg font-bold text-green-800">Cadastro Quase Completo!</h3>
+                        <p className="text-sm text-green-600">Revise as credenciais antes de finalizar</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-[#F5821F]/30 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#F5821F]/30">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-[#F5821F]" />
-                        <Label className="font-bold text-[#004B87] leading-none">Credenciais de Acesso</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="autoGenerate"
-                          checked={autoGenerateCredentials}
-                          onChange={(e) => setAutoGenerateCredentials(e.target.checked)}
-                          className="h-4 w-4 text-[#F5821F] rounded border-slate-300 focus:ring-[#F5821F]"
-                        />
-                        <Label htmlFor="autoGenerate" className="text-xs text-slate-700 cursor-pointer">
-                          Gerar automaticamente
-                        </Label>
-                      </div>
+                  {/* Credenciais de acesso */}
+                  <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-[#F5821F]/30 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 pb-3 border-b border-[#F5821F]/30">
+                      <Shield className="h-5 w-5 text-[#F5821F]" />
+                      <Label className="font-bold text-[#004B87] leading-none">Credenciais de Acesso</Label>
                     </div>
 
-                    {autoGenerateCredentials && (
-                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-blue-800">
-                            As credenciais são geradas automaticamente com base no nome do docente.
-                            Você pode editá-las manualmente desmarcando a opção acima.
-                          </p>
-                        </div>
+                    {/* Username gerado */}
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                      <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">
+                        Nome de Utilizador (gerado automaticamente)
+                      </p>
+                      <div className="bg-white border-2 border-blue-300 rounded-lg px-4 py-2.5">
+                        <span className="font-mono font-bold text-[#004B87] text-sm tracking-wide">
+                          {getUsernamePreview()}
+                        </span>
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">
-                          Usuário <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative">
-                          <User className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
-                          <Input
-                            placeholder="usuario.docente"
-                            value={formData.usuario}
-                            onChange={(e) => handleInputChange('usuario', e.target.value)}
-                            disabled={autoGenerateCredentials}
-                            className={cn(
-                              "h-12 pl-11 rounded-xl",
-                              autoGenerateCredentials && "bg-slate-100",
-                              errors.usuario && "border-red-500"
-                            )}
-                          />
-                        </div>
-                        {errors.usuario && (
-                          <p className="text-xs text-red-600 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {errors.usuario}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">
-                          Senha <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative">
-                          <Key className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            value={formData.senha}
-                            onChange={(e) => handleInputChange('senha', e.target.value)}
-                            disabled={autoGenerateCredentials}
-                            className={cn(
-                              "h-12 pl-11 pr-10 rounded-xl",
-                              autoGenerateCredentials && "bg-slate-100",
-                              errors.senha && "border-red-500"
-                            )}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                          >
-                            {showPassword ? <X className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                          </button>
-                        </div>
-                        {errors.senha && (
-                          <p className="text-xs text-red-600 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {errors.senha}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {formData.usuario && formData.senha && (
-                      <div className="mt-4 p-4 bg-white border border-slate-200 rounded-lg">
-                        <p className="text-xs text-slate-600 mb-2 font-semibold">
-                          📋 Credenciais que serão criadas:
+                      {!formData.name.trim() ? (
+                        <p className="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Preencha o nome na aba "Dados Pessoais" para ver o username final
                         </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                          <div>
-                            <span className="text-slate-500">Usuário:</span>
-                            <span className="ml-2 text-[#004B87] font-semibold">{formData.usuario}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Senha:</span>
-                            <span className="ml-2 text-[#004B87] font-semibold">
-                              {showPassword ? formData.senha : '••••••••'}
-                            </span>
+                      ) : (
+                        <p className="text-[10px] text-blue-600 mt-2">
+                          O número sequencial (.0001) será confirmado pelo sistema ao guardar
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Aviso de primeiro acesso */}
+                    <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <Shield className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-amber-800 mb-1">Senha do Primeiro Acesso</p>
+                          <p className="text-xs text-amber-700 leading-relaxed">
+                            No <strong>primeiro login</strong>, o docente deverá usar o seu{' '}
+                            <strong>username como senha</strong>. O sistema irá solicitar automaticamente
+                            a definição de uma senha pessoal antes de aceder ao painel.
+                          </p>
+                          <div className="mt-3 bg-white border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                            <Key className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                            <p className="text-[11px] text-amber-800 font-mono">
+                              Senha inicial = <strong>{getUsernamePreview()}</strong>
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               )}

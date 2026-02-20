@@ -3,22 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   User,
-  Mail,
-  Phone,
   Lock,
   Shield,
-  Users,
-  GraduationCap,
   Eye,
   EyeOff,
   AlertCircle,
   CheckCircle2,
   Sparkles,
-  Briefcase
+  Briefcase,
+  Hash
 } from "lucide-react";
 import { SystemUser } from "./UsersList";
 
@@ -41,9 +37,7 @@ export function CreateUserModal({
 }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
-    phone: "",
-    role: "student" as string,
+    role: "admin" as string,
     password: "",
     confirmPassword: "",
     status: "active" as "active" | "inactive"
@@ -57,8 +51,6 @@ export function CreateUserModal({
     if (isOpen && userData && isEditing) {
       setFormData({
         name: userData.name,
-        email: userData.email,
-        phone: userData.phone || "",
         role: userData.role,
         password: "",
         confirmPassword: "",
@@ -67,9 +59,7 @@ export function CreateUserModal({
     } else if (isOpen && !isEditing) {
       setFormData({
         name: "",
-        email: "",
-        phone: "",
-        role: "student",
+        role: "admin",
         password: "",
         confirmPassword: "",
         status: "active"
@@ -78,7 +68,9 @@ export function CreateUserModal({
     setErrors({});
   }, [isOpen, userData, isEditing]);
 
-  const allRoles = [
+  // Apenas Super Admin e Academic Admin podem ser criados aqui.
+  // Docentes são criados via "Criar Docente" e Estudantes via "Inscrição".
+  const roles = [
     {
       id: "admin",
       label: "Super Admin",
@@ -87,7 +79,8 @@ export function CreateUserModal({
       color: "from-red-500 to-rose-600",
       bgColor: "bg-red-50",
       borderColor: "border-red-300",
-      textColor: "text-red-700"
+      textColor: "text-red-700",
+      usernamePrefix: "SPADN"
     },
     {
       id: "academic_admin",
@@ -97,46 +90,39 @@ export function CreateUserModal({
       color: "from-purple-500 to-violet-600",
       bgColor: "bg-purple-50",
       borderColor: "border-purple-300",
-      textColor: "text-purple-700"
-    },
-    {
-      id: "teacher",
-      label: "Docente",
-      description: "Gerenciar turmas e estudantes",
-      icon: Users,
-      color: "from-blue-500 to-cyan-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-300",
-      textColor: "text-blue-700"
-    },
-    {
-      id: "student",
-      label: "Estudante",
-      description: "Acesso às informações acadêmicas",
-      icon: GraduationCap,
-      color: "from-green-500 to-emerald-600",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-300",
-      textColor: "text-green-700"
+      textColor: "text-purple-700",
+      usernamePrefix: "ACADN"
     }
   ];
 
-  // Super admin vê todos os roles; academic admin só pode criar docente e estudante
-  const roles = currentUserRole === 'admin'
-    ? allRoles
-    : allRoles.filter(r => r.id !== 'admin' && r.id !== 'academic_admin');
+  const getUsernamePreview = () => {
+    const selectedRole = roles.find(r => r.id === formData.role);
+    if (!selectedRole) return "";
+
+    const name = formData.name.trim().toUpperCase();
+    const parts = name.split(/\s+/).filter(Boolean);
+
+    let initials = "";
+    if (parts.length > 0) {
+      const firstTwo = parts[0].replace(/[^A-Z]/g, "").substring(0, 2);
+      const lastInitial = parts.length > 1
+        ? parts[parts.length - 1].replace(/[^A-Z]/g, "").substring(0, 1)
+        : "";
+      initials = firstTwo + lastInitial;
+    }
+
+    if (initials.length < 2) {
+      initials = initials.padEnd(2, "X");
+    }
+
+    return `${selectedRole.usernamePrefix}${initials}0001`;
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = "Nome é obrigatório";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email é obrigatório";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Email inválido";
     }
 
     if (!isEditing) {
@@ -172,8 +158,6 @@ export function CreateUserModal({
 
     const dataToSave: Partial<SystemUser> = {
       name: formData.name,
-      email: formData.email,
-      phone: formData.phone || undefined,
       role: formData.role,
       status: formData.status,
     };
@@ -214,7 +198,7 @@ export function CreateUserModal({
               Tipo de Usuário <span className="text-red-500">*</span>
             </Label>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {roles.map((role) => {
                 const Icon = role.icon;
                 const isSelected = formData.role === role.id;
@@ -260,6 +244,34 @@ export function CreateUserModal({
             </div>
           </section>
 
+          {/* Username preview */}
+          {!isEditing && (
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+              <div className="flex items-center gap-2 mb-1">
+                <Hash className="h-4 w-4 text-blue-600" />
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Username Gerado Automaticamente</span>
+              </div>
+              <p className="text-lg font-mono font-bold text-[#004B87]">
+                {getUsernamePreview()}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Formato: {formData.role === 'admin' ? 'SPADN' : 'ACADN'} + 2 primeiras letras do nome + 1ª letra do apelido + número sequencial. O número real será atribuído pelo sistema.
+              </p>
+            </div>
+          )}
+
+          {isEditing && userData?.username && (
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+              <div className="flex items-center gap-2 mb-1">
+                <Hash className="h-4 w-4 text-blue-600" />
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Username</span>
+              </div>
+              <p className="text-lg font-mono font-bold text-[#004B87]">
+                {userData.username}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
@@ -281,42 +293,6 @@ export function CreateUserModal({
                   {errors.name}
                 </p>
               )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-slate-500" />
-                Email <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="email"
-                placeholder="email@exemplo.com"
-                value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  if (errors.email) setErrors({ ...errors, email: "" });
-                }}
-                className={`h-11 ${errors.email ? "border-red-500" : ""}`}
-              />
-              {errors.email && (
-                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                <Phone className="h-4 w-4 text-slate-500" />
-                Telefone
-              </Label>
-              <Input
-                placeholder="+258 XX XXX XXXX"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="h-11"
-              />
             </div>
 
             <div>

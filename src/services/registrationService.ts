@@ -15,7 +15,6 @@ export interface Registration {
   course_name?: string;
   class_id?: number | null;
   class_name?: string;
-  enrollment_number: string;
   period: string;
   enrollment_date: string;
   status: 'active' | 'suspended' | 'cancelled' | 'completed';
@@ -32,7 +31,6 @@ export interface CreateRegistrationData {
   student_id: number;
   course_id: string;
   class_id?: number | null;
-  enrollment_number: string;
   period: string;
   enrollment_date: string;
   status?: 'active' | 'suspended' | 'cancelled' | 'completed';

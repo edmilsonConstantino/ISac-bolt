@@ -28,8 +28,6 @@ export interface StudentItem {
   email: string;
   phone?: string | null;
 
-  enrollment_number?: string | null;
-
   // credenciais (podem vir nulas/undefined)
   username?: string | null;
   password?: string | null;
@@ -81,7 +79,6 @@ export type RegistrationFormData = Partial<Registration>;
 export type RegistrationSavePayload = Partial<Registration> & {
   student_id: number;
   course_id: string;
-  enrollment_number: string;
   period: string;
   enrollment_date: string;
   class_id?: number | null;
@@ -178,6 +175,8 @@ export interface ClassDTO {
   dias_semana?: string | null;
   curso?: string | null; // se no teu backend for "curso"
   turno?: Turno | null;
+  capacity?: number | null;  // capacidade_maxima
+  students?: number | null;  // vagas_ocupadas
 }
 
 export interface RegistrationDTO {

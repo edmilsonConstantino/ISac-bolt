@@ -14,11 +14,11 @@ export interface Student {
   phone?: string;
   birth_date?: string;
   address?: string;
-  enrollment_number: string;
   bi_number: string;
   gender: 'M' | 'F';
   curso_id: string;
   curso?: string;
+  username?: string;
   enrollment_year?: number;
   emergency_contact_1?: string;
   emergency_contact_2?: string;
@@ -35,7 +35,6 @@ export interface CreateStudentData {
   phone?: string;
   birth_date?: string;
   address?: string;
-  enrollment_number: string;
   bi_number: string;
   gender: 'M' | 'F';
   curso_id: string;
@@ -56,7 +55,6 @@ export interface UpdateStudentData {
   phone?: string;
   birth_date?: string;
   address?: string;
-  enrollment_number?: string;
   bi_number?: string;
   gender?: 'M' | 'F';
   curso_id?: string;
@@ -118,7 +116,7 @@ class StudentService {
         success: boolean;
         message: string;
         id?: number;
-        credentials?: { username: string; password: string; enrollment_number: string };
+        credentials?: { username: string; password: string };
       }>(
         '/api/students.php',
         studentData
@@ -154,8 +152,11 @@ class StudentService {
       console.error('❌ Error creating student:', error);
       console.error('❌ Error response:', error.response);
       console.error('❌ Error response data:', error.response?.data);
-      const errorMessage = error.response?.data?.message || error.message || 'Error creating student';
-      throw new Error(errorMessage);
+      const responseData = error.response?.data;
+      const errorMessage = responseData?.message || error.message || 'Error creating student';
+      const err = new Error(errorMessage) as any;
+      err.field = responseData?.field || '';
+      throw err;
     }
   }
 

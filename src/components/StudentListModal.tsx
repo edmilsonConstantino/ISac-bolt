@@ -40,7 +40,7 @@ interface Student {
   registration_status?: 'ativo' | 'suspenso' | 'trancado' | 'cancelado';
   attendance?: number;
   className?: string;
-  enrollment_number?: string;
+  username?: string;
   bi_number?: string;
   course_name?: string;
 }
@@ -92,7 +92,7 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
         registration_status: student.registration_status || (student.status === 'ativo' ? 'ativo' : 'inativo'),
         attendance: student.percentual_presenca || 0,
         className: className,
-        enrollment_number: student.enrollment_number || student.numero_matricula,
+        username: student.username,
         bi_number: student.bi_number || student.numero_bi,
         course_name: student.curso_nome || student.course_name
       }));
@@ -312,7 +312,7 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
         name: settingsModal.student.name,
         email: settingsModal.student.email,
         phone: settingsModal.student.phone,
-        enrollment_number: settingsModal.student.enrollment_number,
+        username: settingsModal.student.username,
         bi_number: settingsModal.student.bi_number,
         status: settingsModal.student.status === 'active' ? 'ativo' : 'inativo',
         registration_status: settingsModal.student.registration_status,

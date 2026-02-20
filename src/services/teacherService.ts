@@ -87,7 +87,10 @@ class TeacherService {
       };
     } catch (error: any) {
       console.error('Erro ao criar professor:', error);
-      throw new Error(error.response?.data?.message || 'Erro ao criar professor');
+      const errData = error.response?.data;
+      const err: any = new Error(errData?.message || 'Erro ao criar professor');
+      if (errData?.field) err.field = errData.field;
+      throw err;
     }
   }
 

@@ -38,13 +38,15 @@ import { GradientButton } from "@/components/ui/gradient-button";
 export interface SystemUser {
   id: number;
   name: string;
-  email: string;
+  email?: string;
+  username?: string;
   phone?: string;
   role: 'admin' | 'academic_admin' | 'teacher' | 'student';
   status: 'active' | 'inactive';
   createdAt: string;
   lastLogin?: string;
   avatar?: string;
+  sourceTable?: 'users' | 'professores' | 'students';
 }
 
 interface UsersListProps {
@@ -93,7 +95,8 @@ export function UsersList({
 
   const filteredUsers = visibleUsers.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (user.username || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
@@ -178,11 +181,12 @@ export function UsersList({
 
   const handleExportUsers = () => {
     const csvContent = [
-      ["ID", "Nome", "Email", "Telefone", "Perfil", "Status", "Data de Criação", "Último Acesso"],
+      ["ID", "Nome", "Username", "Email", "Telefone", "Perfil", "Status", "Data de Criação", "Último Acesso"],
       ...filteredUsers.map(u => [
         u.id,
         u.name,
-        u.email,
+        u.username || "",
+        u.email || "",
         u.phone || "",
         getRoleInfo(u.role).label,
         u.status === "active" ? "Ativo" : "Inativo",
@@ -284,7 +288,7 @@ export function UsersList({
 
       <div className="flex flex-col md:flex-row gap-3">
         <SearchBar
-          placeholder="Buscar por nome ou email..."
+          placeholder="Buscar por nome, username ou email..."
           value={searchTerm}
           onChange={setSearchTerm}
         />
@@ -378,7 +382,7 @@ export function UsersList({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                      <p className="text-xs text-[#F5821F] font-medium truncate">{user.username || user.email}</p>
                     </div>
                   </div>
 
@@ -393,15 +397,20 @@ export function UsersList({
                   {/* Contact Column */}
                   <div className="col-span-2">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                        <Mail className="h-3 w-3 text-slate-400" />
-                        <span className="truncate">{user.email.split('@')[0]}</span>
-                      </div>
+                      {user.email && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <Mail className="h-3 w-3 text-slate-400" />
+                          <span className="truncate">{user.email.split('@')[0]}</span>
+                        </div>
+                      )}
                       {user.phone && (
                         <div className="flex items-center gap-1.5 text-xs text-slate-600">
                           <Phone className="h-3 w-3 text-slate-400" />
                           <span>{user.phone}</span>
                         </div>
+                      )}
+                      {!user.email && !user.phone && (
+                        <span className="text-xs text-slate-400 italic">Sem contacto</span>
                       )}
                     </div>
                   </div>

@@ -24,7 +24,7 @@ interface Student {
   name: string;
   email: string;
   phone?: string;
-  enrollment_number?: string;
+  username?: string;
   bi_number?: string;
   status: string;
   registration_status?: string;
@@ -267,9 +267,9 @@ export function RegistrationSettingsModal({
                     </span>
                   )}
                 </div>
-                {student.enrollment_number && (
+                {student.username && (
                   <p className="text-xs text-slate-500 mt-1 font-mono">
-                    Nº Matrícula: {student.enrollment_number}
+                    Username: {student.username}
                   </p>
                 )}
               </div>
@@ -384,8 +384,8 @@ export function RegistrationSettingsModal({
             <div className="p-6">
               <div className="bg-slate-50 rounded-xl p-4 mb-4">
                 <p className="font-bold text-lg text-[#004B87] text-center">{student.name}</p>
-                {student.enrollment_number && (
-                  <p className="text-sm text-slate-500 text-center font-mono">{student.enrollment_number}</p>
+                {student.username && (
+                  <p className="text-sm text-slate-500 text-center font-mono">{student.username}</p>
                 )}
               </div>
 

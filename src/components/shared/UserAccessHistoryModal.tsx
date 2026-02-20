@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Clock,
-  MapPin,
   Monitor,
   Smartphone,
   Tablet,
@@ -15,119 +14,17 @@ import {
   Search,
   Calendar,
   Activity,
-  Shield,
-  Wifi
+  Wifi,
+  Loader2
 } from "lucide-react";
 import { SystemUser } from "../Users/UsersList";
-
-interface AccessLog {
-  id: number;
-  date: string;
-  time: string;
-  ip: string;
-  location: string;
-  device: string;
-  browser: string;
-  status: "success" | "failed";
-  action: string;
-}
+import userService, { AccessLog } from "@/services/userService";
 
 interface UserAccessHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: SystemUser | null;
 }
-
-const MOCK_ACCESS_LOGS: AccessLog[] = [
-  {
-    id: 1,
-    date: "2025-01-25",
-    time: "14:30:15",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Desktop",
-    browser: "Chrome 120",
-    status: "success",
-    action: "Login"
-  },
-  {
-    id: 2,
-    date: "2025-01-25",
-    time: "09:15:42",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Mobile",
-    browser: "Safari iOS",
-    status: "success",
-    action: "Login"
-  },
-  {
-    id: 3,
-    date: "2025-01-24",
-    time: "16:45:30",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Desktop",
-    browser: "Chrome 120",
-    status: "success",
-    action: "Logout"
-  },
-  {
-    id: 4,
-    date: "2025-01-24",
-    time: "08:20:18",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Desktop",
-    browser: "Chrome 120",
-    status: "success",
-    action: "Login"
-  },
-  {
-    id: 5,
-    date: "2025-01-23",
-    time: "23:15:05",
-    ip: "41.220.12.89",
-    location: "Beira, Moçambique",
-    device: "Tablet",
-    browser: "Firefox 121",
-    status: "failed",
-    action: "Tentativa de Login"
-  },
-  {
-    id: 6,
-    date: "2025-01-23",
-    time: "15:30:22",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Desktop",
-    browser: "Chrome 120",
-    status: "success",
-    action: "Login"
-  },
-  {
-    id: 7,
-    date: "2025-01-22",
-    time: "11:10:45",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Mobile",
-    browser: "Chrome Android",
-    status: "success",
-    action: "Login"
-  },
-  {
-    id: 8,
-    date: "2025-01-21",
-    time: "14:55:30",
-    ip: "197.234.221.123",
-    location: "Maputo, Moçambique",
-    device: "Desktop",
-    browser: "Chrome 120",
-    status: "success",
-    action: "Login"
-  }
-];
 
 export function UserAccessHistoryModal({
   isOpen,
@@ -136,13 +33,51 @@ export function UserAccessHistoryModal({
 }: UserAccessHistoryModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "failed">("all");
+  const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
+  const [stats, setStats] = useState({ totalAccess: 0, successful: 0, failed: 0, uniqueIps: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      loadAccessLogs();
+    } else {
+      setAccessLogs([]);
+      setSearchTerm("");
+      setStatusFilter("all");
+    }
+  }, [isOpen, user]);
+
+  const loadAccessLogs = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      // Buscar logs para este user - tenta pelo user_id
+      const response = await userService.getAccessLogs({
+        user_id: user.id,
+        limit: 100,
+      });
+      setAccessLogs(response.data || []);
+      setStats({
+        totalAccess: Number(response.stats?.total_access) || 0,
+        successful: Number(response.stats?.successful) || 0,
+        failed: Number(response.stats?.failed) || 0,
+        uniqueIps: Number(response.stats?.unique_ips) || 0,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar logs de acesso:', error);
+      setAccessLogs([]);
+      setStats({ totalAccess: 0, successful: 0, failed: 0, uniqueIps: 0 });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!user) return null;
 
-  const filteredLogs = MOCK_ACCESS_LOGS.filter(log => {
-    const matchesSearch = log.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.ip.includes(searchTerm) ||
-                         log.device.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = accessLogs.filter(log => {
+    const matchesSearch = (log.ip_address || '').includes(searchTerm) ||
+                         (log.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (log.browser || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || log.status === statusFilter;
 
@@ -150,25 +85,27 @@ export function UserAccessHistoryModal({
   });
 
   const getDeviceIcon = (device: string) => {
-    if (device.toLowerCase().includes("mobile")) return Smartphone;
-    if (device.toLowerCase().includes("tablet")) return Tablet;
+    if (device?.toLowerCase().includes("mobile")) return Smartphone;
+    if (device?.toLowerCase().includes("tablet")) return Tablet;
     return Monitor;
   };
 
-  const stats = {
-    totalAccess: MOCK_ACCESS_LOGS.length,
-    successful: MOCK_ACCESS_LOGS.filter(l => l.status === "success").length,
-    failed: MOCK_ACCESS_LOGS.filter(l => l.status === "failed").length,
-    uniqueLocations: new Set(MOCK_ACCESS_LOGS.map(l => l.location)).size
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case 'login': return 'Login';
+      case 'logout': return 'Logout';
+      case 'login_failed': return 'Tentativa de Login';
+      default: return action;
+    }
   };
 
   const hasFilters = searchTerm !== "" || statusFilter !== "all";
 
-  // Group logs by date
   const groupedLogs: Record<string, AccessLog[]> = {};
   filteredLogs.forEach(log => {
-    if (!groupedLogs[log.date]) groupedLogs[log.date] = [];
-    groupedLogs[log.date].push(log);
+    const date = log.created_at.split(' ')[0] || log.created_at.split('T')[0];
+    if (!groupedLogs[date]) groupedLogs[date] = [];
+    groupedLogs[date].push(log);
   });
 
   const formatDateHeader = (dateStr: string) => {
@@ -186,6 +123,11 @@ export function UserAccessHistoryModal({
       month: "long",
       year: "numeric"
     });
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("pt-PT", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   return (
@@ -228,10 +170,10 @@ export function UserAccessHistoryModal({
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <MapPin className="h-3 w-3 text-purple-300" />
-                  <span className="text-[10px] text-purple-200 font-medium uppercase">Locais</span>
+                  <Wifi className="h-3 w-3 text-purple-300" />
+                  <span className="text-[10px] text-purple-200 font-medium uppercase">IPs</span>
                 </div>
-                <p className="text-xl font-bold text-white">{stats.uniqueLocations}</p>
+                <p className="text-xl font-bold text-white">{stats.uniqueIps}</p>
               </div>
             </div>
           </div>
@@ -243,7 +185,7 @@ export function UserAccessHistoryModal({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Buscar por local, IP ou dispositivo..."
+                placeholder="Buscar por IP, dispositivo ou browser..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9 border-slate-200 text-sm"
@@ -273,13 +215,20 @@ export function UserAccessHistoryModal({
 
         {/* Logs list */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-          {filteredLogs.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mx-auto mb-3" />
+              <p className="text-slate-500 text-sm">Carregando registros...</p>
+            </div>
+          ) : filteredLogs.length === 0 ? (
             <div className="text-center py-16">
               <div className="h-16 w-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Clock className="h-8 w-8 text-slate-300" />
               </div>
               <p className="text-slate-500 font-medium">Nenhum registro encontrado</p>
-              <p className="text-sm text-slate-400 mt-1">Tente ajustar os filtros</p>
+              <p className="text-sm text-slate-400 mt-1">
+                {accessLogs.length === 0 ? "Este usuário ainda não possui registros de acesso" : "Tente ajustar os filtros"}
+              </p>
             </div>
           ) : (
             Object.entries(groupedLogs).map(([date, logs]) => (
@@ -328,7 +277,7 @@ export function UserAccessHistoryModal({
                           {/* Main info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="font-bold text-sm text-slate-800">{log.action}</span>
+                              <span className="font-bold text-sm text-slate-800">{getActionLabel(log.action)}</span>
                               <Badge className={`text-[10px] px-1.5 py-0 ${
                                 isSuccess
                                   ? "bg-green-100 text-green-700 border-green-200"
@@ -336,25 +285,24 @@ export function UserAccessHistoryModal({
                               }`}>
                                 {isSuccess ? "OK" : "Falhou"}
                               </Badge>
-                              <span className="text-xs text-slate-400 ml-auto font-mono">{log.time}</span>
+                              {log.details && (
+                                <span className="text-[10px] text-slate-400 italic">{log.details}</span>
+                              )}
+                              <span className="text-xs text-slate-400 ml-auto font-mono">{formatTime(log.created_at)}</span>
                             </div>
 
                             <div className="flex items-center gap-4 text-xs text-slate-500">
                               <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {log.location}
-                              </span>
-                              <span className="flex items-center gap-1">
                                 <DeviceIcon className="h-3 w-3" />
-                                {log.device}
+                                {log.device || 'Desktop'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Globe className="h-3 w-3" />
-                                {log.browser}
+                                {log.browser || 'Unknown'}
                               </span>
                               <span className="flex items-center gap-1 font-mono">
                                 <Wifi className="h-3 w-3" />
-                                {log.ip}
+                                {log.ip_address || 'N/A'}
                               </span>
                             </div>
                           </div>
@@ -371,7 +319,7 @@ export function UserAccessHistoryModal({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            {filteredLogs.length} de {MOCK_ACCESS_LOGS.length} registros
+            {filteredLogs.length} de {accessLogs.length} registros
             {hasFilters && (
               <button
                 onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}

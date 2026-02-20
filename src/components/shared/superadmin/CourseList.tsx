@@ -83,10 +83,10 @@ export function CourseList({
 
   const getTipoCursoLabel = (tipo: string) => {
     const labels: Record<string, string> = {
-      'tecnico': 'T\u00e9cnico',
-      'tecnico_superior': 'T\u00e9cnico Superior',
-      'tecnico_profissional': 'T\u00e9cnico Profissional',
-      'curta_duracao': 'Curta Dura\u00e7\u00e3o'
+      'tecnico': 'Técnico',
+      'tecnico_superior': 'Técnico Superior',
+      'tecnico_profissional': 'Técnico Profissional',
+      'curta_duracao': 'Curta Duração'
     };
     return labels[tipo] || tipo;
   };
@@ -105,7 +105,7 @@ export function CourseList({
     if (tipo === 'tecnico_superior') {
       return `${valor} ${valor === 1 ? 'Ano' : 'Anos'}`;
     }
-    return `${valor} ${valor === 1 ? 'M\u00eas' : 'Meses'}`;
+    return `${valor} ${valor === 1 ? 'Mês' : 'Meses'}`;
   };
 
   const safeCourses = Array.isArray(courses) ? courses : [];
@@ -130,7 +130,7 @@ export function CourseList({
 
   const handleExportCourses = () => {
     const csvContent = [
-      ["ID", "Nome", "C\u00f3digo", "Categoria", "Tipo", "Dura\u00e7\u00e3o", "Mensalidade", "Status"],
+      ["ID", "Nome", "Código", "Categoria", "Tipo", "Duração", "Mensalidade", "Status"],
       ...filteredCourses.map(c => [
         c.id,
         c.nome,
@@ -154,10 +154,10 @@ export function CourseList({
 
   const typeFilterOptions = [
     { value: "all", label: "Todos os Tipos" },
-    { value: "tecnico", label: "\u{1F4C5} T\u00e9cnico" },
-    { value: "tecnico_superior", label: "\u{1F4DA} T\u00e9cnico Superior" },
-    { value: "tecnico_profissional", label: "\u{1F393} T\u00e9cnico Profissional" },
-    { value: "curta_duracao", label: "\u26A1 Curta Dura\u00e7\u00e3o" },
+    { value: "tecnico", label: "\u{1F4C5} Técnico" },
+    { value: "tecnico_superior", label: "\u{1F4DA} Técnico Superior" },
+    { value: "tecnico_profissional", label: "\u{1F393} Técnico Profissional" },
+    { value: "curta_duracao", label: "\u26A1 Curta Duração" },
   ];
 
   const statusFilterOptions = [
@@ -172,7 +172,7 @@ export function CourseList({
       <PageHeader>
         <div>
           <PageHeaderTitle icon={<BookOpen className="h-8 w-8" />}>
-            Gest\u00e3o de Cursos
+            Gestão de Cursos
           </PageHeaderTitle>
           <PageHeaderSubtitle>
             {stats.total} curso{stats.total !== 1 ? 's' : ''} cadastrado{stats.total !== 1 ? 's' : ''}
@@ -208,7 +208,7 @@ export function CourseList({
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-3">
         <SearchBar
-          placeholder="Buscar por nome ou c\u00f3digo..."
+          placeholder="Buscar por nome ou código..."
           value={searchTerm}
           onChange={setSearchTerm}
         />
@@ -244,7 +244,7 @@ export function CourseList({
           title={hasActiveFilters ? "Nenhum curso encontrado" : "Nenhum curso cadastrado"}
           description={hasActiveFilters
             ? "Tente ajustar os filtros de busca"
-            : "Comece adicionando o primeiro curso da institui\u00e7\u00e3o"
+            : "Comece adicionando o primeiro curso da instituição"
           }
           action={!hasActiveFilters && !readOnly ? (
             <GradientButton onClick={onAddCourse}>
@@ -265,14 +265,14 @@ export function CourseList({
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Tipo</span>
               </div>
               <div className="col-span-2">
-                <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Dura\u00e7\u00e3o</span>
+                <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Duração</span>
               </div>
               <div className={readOnly && !onViewCourse ? "col-span-4" : "col-span-3"}>
                 <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">Mensalidade</span>
               </div>
               {(!readOnly || onViewCourse) && (
                 <div className="col-span-1 text-right">
-                  <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">{readOnly ? 'Detalhes' : 'A\u00e7\u00f5es'}</span>
+                  <span className="text-slate-700 font-bold text-sm uppercase tracking-wide">{readOnly ? 'Detalhes' : 'Ações'}</span>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect,useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,12 +7,10 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   UserPlus, Mail, Phone, Calendar, MapPin,
   User, AlertCircle, Sparkles, ChevronRight, CheckCircle2,
-  Key, Copy, RefreshCw, Eye, EyeOff, BookOpen, X, ShieldAlert, Hash,
-  Printer, ArrowRight
+  Key, Copy, BookOpen, X, ShieldAlert, Hash,
+  Printer, ArrowRight, Info, RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generateUsername } from "./registration-student-modal/utils/generateUsername";
-import { generatePassword } from "./registration-student-modal/utils/generatePassword";
 import studentService from "@/services/studentService";
 import { useSettingsData } from "@/hooks/useSettingsData";
 import { InscriptionPaymentTab, PaymentMethod, PaymentStatus } from "./inscription-modal/InscriptionPaymentTab";
@@ -69,7 +67,6 @@ interface InscriptionFormData {
   emergency_contact_2?: string;
   notes?: string;
   enrollment_year: number;
-  enrollment_number: string; // API field (mantido para compatibilidade)
   username: string;
   password: string;
   status: 'ativo' | 'inativo';
@@ -96,60 +93,16 @@ export function InscriptionStudentModal({
 
 
 
-  const dayRef = useRef<HTMLInputElement | null>(null);
-const monthRef = useRef<HTMLInputElement | null>(null);
-const yearRef = useRef<HTMLInputElement | null>(null);
-
-const pad2 = (v: string) => v.padStart(2, "0");
-
-const clampInt = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
-
-const getAge = (yyyy: number, mm: number, dd: number) => {
-  const today = new Date();
-  const birth = new Date(yyyy, mm - 1, dd);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
-};
-
-const parseBirthDateFromText = (text: string) => {
-  const digits = text.replace(/\D/g, "");
-  // aceita DDMMYYYY
-  if (digits.length === 8) {
-    const dd = digits.slice(0, 2);
-    const mm = digits.slice(2, 4);
-    const yyyy = digits.slice(4, 8);
-    return { dd, mm, yyyy };
-  }
-  // aceita DD/MM/YYYY (ou qualquer separador)
-  const parts = text.split(/\D+/).filter(Boolean);
-  if (parts.length >= 3) {
-    const [dd, mm, yyyy] = parts;
-    return { dd: (dd || "").slice(0, 2), mm: (mm || "").slice(0, 2), yyyy: (yyyy || "").slice(0, 4) };
-  }
-  return null;
-};
-
-const normalizeBirthParts = (day: string, month: string, year: string) => {
-  const currentYear = new Date().getFullYear();
-
-  const dNum = Number(day);
-  const d = Number.isFinite(dNum) && dNum >= 1 && dNum <= 31 ? dNum : 0;
-
-  const mNum = Number(month);
-  const m = Number.isFinite(mNum) && mNum >= 1 && mNum <= 12 ? mNum : 0;
-
-  const yNum = Number(year);
-  const y = Number.isFinite(yNum) && yNum >= 1900 && yNum <= currentYear ? yNum : 0;
-
-  return {
-    day: d ? pad2(String(d)) : "",
-    month: m ? pad2(String(m)) : "",
-    year: y ? String(y) : "",
+  // Helper para calcular idade a partir de uma data ISO (YYYY-MM-DD)
+  const getAge = (isoDate: string) => {
+    if (!isoDate) return null;
+    const today = new Date();
+    const birth = new Date(isoDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 && age <= 120 ? age : null;
   };
-};
 
 
 
@@ -163,8 +116,7 @@ const normalizeBirthParts = (day: string, month: string, year: string) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedCredentials, setSavedCredentials] = useState<{ username: string; password: string; studentId: number } | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copiedField, setCopiedField] = useState<'username' | 'password' | null>(null);
+  const [copiedField, setCopiedField] = useState<'username' | null>(null);
 
   // Error Toast State
   const [errorToast, setErrorToast] = useState<string | null>(null);
@@ -176,18 +128,13 @@ const normalizeBirthParts = (day: string, month: string, year: string) => {
     bi_number: '',
     address: '',
     gender: '' as 'M' | 'F' | '',
-    birthDay: '',
-    birthMonth: '',
-    birthYear: '',
+    birth_date: '', // formato YYYY-MM-DD (input type="date")
     emergency_contact_1: '',
     emergency_contact_2: '',
     notes: '',
-    username: '',
-    password: '',
-    student_number: '', // Renomeado conceitualmente (enrollment_number na API)
     // Campos de pagamento (se inscrição for paga)
     paymentMethod: 'cash' as PaymentMethod,
-    paymentStatus: 'pending' as PaymentStatus, // pending, paid, exempt
+    paymentStatus: 'pending' as PaymentStatus,
     paymentReference: ''
   });
 
@@ -206,29 +153,6 @@ const normalizeBirthParts = (day: string, month: string, year: string) => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Gerar número de estudante automaticamente
-  const generateStudentNumber = (): string => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-    return `EST${year}${random}`;
-  };
-
-  // Auto-gerar credenciais quando o nome é digitado
-  useEffect(() => {
-    if (formData.name.trim().length >= 3) {
-      const newUsername = generateUsername(formData.name);
-      const newPassword = generatePassword(10);
-      const newStudentNumber = generateStudentNumber();
-
-      setFormData(prev => ({
-        ...prev,
-        username: prev.username || newUsername,
-        password: prev.password || newPassword,
-        student_number: prev.student_number || newStudentNumber
-      }));
-    }
-  }, [formData.name]);
-
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -236,21 +160,7 @@ const normalizeBirthParts = (day: string, month: string, year: string) => {
     }
   };
 
-  const regenerateUsername = () => {
-    if (formData.name.trim().length >= 3) {
-      setFormData(prev => ({ ...prev, username: generateUsername(formData.name) }));
-    }
-  };
-
-  const regeneratePassword = () => {
-    setFormData(prev => ({ ...prev, password: generatePassword(10) }));
-  };
-
-  const regenerateStudentNumber = () => {
-    setFormData(prev => ({ ...prev, student_number: generateStudentNumber() }));
-  };
-
-  const copyToClipboard = async (text: string, field: 'username' | 'password') => {
+  const copyToClipboard = async (text: string, field: 'username') => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
@@ -308,53 +218,12 @@ const validateForm = () => {
     }
   }
 
-  // Credenciais
-  if (!formData.username.trim()) {
-    newErrors.username = "Username é obrigatório";
-    showError("Por favor, defina um username para acesso ao portal.");
-  } else if (formData.username.length < 5) {
-    newErrors.username = "Mínimo 5 caracteres";
-    showError("O username deve ter pelo menos 5 caracteres para maior segurança.");
-  }
-
-  if (!formData.password.trim()) {
-    newErrors.password = "Password é obrigatória";
-    showError("Por favor, defina uma password para o estudante.");
-  } else if (formData.password.length < 6) {
-    newErrors.password = "Mínimo 6 caracteres";
-    showError("Por favor, escolha uma password mais forte com pelo menos 6 caracteres.");
-  }
-
   // Data de nascimento (se preenchida)
-  if (formData.birthDay || formData.birthMonth || formData.birthYear) {
-    const day = parseInt(formData.birthDay, 10);
-    const month = parseInt(formData.birthMonth, 10);
-    const year = parseInt(formData.birthYear, 10);
-
-    if (!formData.birthDay || !day || day < 1 || day > 31) {
-      newErrors.birthDate = "Dia inválido";
-    }
-    if (!formData.birthMonth || !month || month < 1 || month > 12) {
-      newErrors.birthDate = "Mês inválido";
-    }
-    if (!formData.birthYear || !year || year < 1900 || year > new Date().getFullYear()) {
-      newErrors.birthDate = "Ano inválido";
-    }
-
-    // validação real (31/02 etc)
-    if (!newErrors.birthDate && formData.birthDay && formData.birthMonth && formData.birthYear) {
-      const test = new Date(year, month - 1, day);
-      const ok =
-        test.getFullYear() === year &&
-        test.getMonth() === month - 1 &&
-        test.getDate() === day;
-
-      if (!ok) {
-        newErrors.birthDate = "Data inválida";
-      }
-    }
-
-    if (newErrors.birthDate) {
+  if (formData.birth_date) {
+    const birthYear = new Date(formData.birth_date).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (birthYear < 1900 || birthYear > currentYear) {
+      newErrors.birth_date = "Data de nascimento inválida";
       showError("A data de nascimento inserida não é válida.");
     }
   }
@@ -389,11 +258,7 @@ const validateForm = () => {
       setActiveTab("payment");
     }
     // Aba "Credenciais"
-    else if (
-      validationErrors.username ||
-      validationErrors.password ||
-      validationErrors.student_number
-    ) {
+    else if (validationErrors.username) {
       setActiveTab("credentials");
     }
 
@@ -404,15 +269,7 @@ const validateForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Montar data de nascimento
-      let birth_date = undefined;
-      if (formData.birthDay && formData.birthMonth && formData.birthYear) {
-        const day = formData.birthDay.padStart(2, '0');
-        const month = formData.birthMonth.padStart(2, '0');
-        birth_date = `${formData.birthYear}-${month}-${day}`;
-      }
-
-      // Dados para API - COM credenciais (inscrição)
+      // Dados para API - senha gerada automaticamente pelo backend (1º acesso = username)
       const studentData = {
         name: formData.name,
         email: formData.email,
@@ -420,14 +277,11 @@ const validateForm = () => {
         bi_number: formData.bi_number.toUpperCase(),
         address: formData.address || undefined,
         gender: formData.gender as 'M' | 'F',
-        birth_date,
+        birth_date: formData.birth_date || undefined,
         emergency_contact_1: formData.emergency_contact_1 || undefined,
         emergency_contact_2: formData.emergency_contact_2 || undefined,
         notes: formData.notes || undefined,
-        enrollment_number: formData.student_number,
         enrollment_year: new Date().getFullYear(),
-        username: formData.username,
-        password: formData.password,
         status: 'ativo' as const,
         // Taxa de inscrição congelada (valor no momento da inscrição)
         inscription_fee_amount: inscriptionIsPaid ? inscriptionFee : 0,
@@ -457,37 +311,39 @@ const validateForm = () => {
 
       // Sucesso - result contém o estudante criado
       const studentId = Number(result.id);
-      console.log('✅ Estudante criado com sucesso! ID:', studentId);
+      const returnedUsername = result.credentials?.username || result.username || 'STD---';
+      console.log('✅ Estudante criado com sucesso! ID:', studentId, 'Username:', returnedUsername);
       setSavedCredentials({
-        username: formData.username,
-        password: formData.password,
+        username: returnedUsername,
+        password: returnedUsername, // 1º acesso: senha = username
         studentId: studentId
       });
       console.log('✅ Mostrando modal de sucesso...');
       setShowSuccess(true);
-      onSuccess(studentId, { username: formData.username, password: formData.password });
+      onSuccess(studentId, { username: returnedUsername, password: returnedUsername });
 
     } catch (error: any) {
       console.error("Erro ao inscrever estudante:", error);
-      const errorMessage = error.message || error.toString();
 
-      // Tratar erros específicos com mensagens profissionais
-      if (errorMessage.toLowerCase().includes('username')) {
-        setErrors({ username: 'Username já em uso' });
-        setActiveTab('credentials');
-        showError('Este username já está a ser utilizado por outro estudante. Por favor, escolha um username diferente.');
+      // A API retorna { field, message } para erros de duplicata
+      const errorMessage = error.message || error.toString();
+      const errorField = error.field || '';
+
+      // Tratar por campo específico retornado pela API
+      if (errorField === 'bi_number') {
+        setErrors({ bi_number: 'BI já cadastrado' });
+        setActiveTab('personal');
+        showError(errorMessage);
+      } else if (errorField === 'email') {
+        setErrors({ email: 'Email já cadastrado' });
+        setActiveTab('personal');
+        showError(errorMessage);
+      } else if (errorField === 'username') {
+        showError(errorMessage);
       } else if (errorMessage.toLowerCase().includes('email')) {
         setErrors({ email: 'Email já cadastrado' });
         setActiveTab('personal');
-        showError('Este endereço de email já está registado no sistema. Verifique se o estudante já possui cadastro.');
-      } else if (errorMessage.toLowerCase().includes('bi') || errorMessage.toLowerCase().includes('bi_number')) {
-        setErrors({ bi_number: 'BI já cadastrado' });
-        setActiveTab('personal');
-        showError('Este número de BI já está registado no sistema. Verifique se o estudante já possui cadastro.');
-      } else if (errorMessage.toLowerCase().includes('enrollment') || errorMessage.toLowerCase().includes('student_number')) {
-        setErrors({ student_number: 'Número já existe' });
-        setActiveTab('credentials');
-        showError('Este número de estudante já existe. Clique no botão de regenerar para gerar um novo.');
+        showError(errorMessage);
       } else {
         showError(errorMessage || 'Ocorreu um erro ao processar a inscrição. Por favor, tente novamente.');
       }
@@ -499,9 +355,8 @@ const validateForm = () => {
   const handleClose = () => {
     setFormData({
       name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
-      birthDay: '', birthMonth: '', birthYear: '',
+      birth_date: '',
       emergency_contact_1: '', emergency_contact_2: '', notes: '',
-      username: '', password: '', student_number: '',
       paymentMethod: 'cash', paymentStatus: 'pending', paymentReference: ''
     });
     setErrors({});
@@ -518,9 +373,8 @@ const validateForm = () => {
       // Fechar este modal primeiro
       setFormData({
         name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
-        birthDay: '', birthMonth: '', birthYear: '',
+        birth_date: '',
         emergency_contact_1: '', emergency_contact_2: '', notes: '',
-        username: '', password: '', student_number: '',
         paymentMethod: 'cash', paymentStatus: 'pending', paymentReference: ''
       });
       setErrors({});
@@ -770,8 +624,8 @@ const validateForm = () => {
               <div class="value">${formData.name}</div>
             </div>
             <div class="info-item">
-              <div class="label">Código do Estudante</div>
-              <div class="value" style="color: #004B87; font-family: monospace;">${formData.student_number}</div>
+              <div class="label">Username</div>
+              <div class="value" style="color: #004B87; font-family: monospace;">${savedCredentials.username}</div>
             </div>
             <div class="info-item">
               <div class="label">Email</div>
@@ -793,19 +647,19 @@ const validateForm = () => {
         </div>
 
         <div class="credentials-section">
-          <h2>🔐 Credenciais de Acesso ao Portal</h2>
+          <h2>🔐 Acesso ao Portal do Estudante</h2>
           <div class="credentials-grid">
             <div class="credential-box">
               <div class="label">Username</div>
               <div class="value">${savedCredentials.username}</div>
             </div>
             <div class="credential-box">
-              <div class="label">Password</div>
-              <div class="value">${savedCredentials.password}</div>
+              <div class="label">Senha do 1º Acesso</div>
+              <div class="value">${savedCredentials.username}</div>
             </div>
           </div>
           <div class="warning-box">
-            <p>⚠️ IMPORTANTE: Guarde estas credenciais em local seguro. Não poderão ser recuperadas!</p>
+            <p>⚠️ No primeiro acesso, usar o username como senha. O sistema pedirá para definir uma nova senha pessoal.</p>
           </div>
         </div>
 
@@ -900,55 +754,40 @@ const validateForm = () => {
                     <p className="font-semibold text-slate-800">{formData.name}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">Nº Estudante:</span>
-                    <p className="font-mono font-bold text-[#004B87]">{formData.student_number}</p>
+                    <span className="text-slate-500">Username:</span>
+                    <p className="font-mono font-bold text-[#004B87]">{savedCredentials?.username || '-'}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Credenciais */}
+              {/* Username + Instrução Primeiro Acesso */}
               <div className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border border-[#004B87]/20 rounded-xl p-4 mb-6">
                 <h3 className="text-xs font-bold text-[#004B87] uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Key className="h-3 w-3" />
-                  Credenciais de Acesso ao Portal
+                  Acesso ao Portal
                 </h3>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase">Username</span>
-                      <p className="font-mono font-bold text-[#004B87]">{savedCredentials.username}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(savedCredentials.username, 'username')}
-                      className="h-8 w-8 p-0"
-                    >
-                      {copiedField === 'username' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                    </Button>
+                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase">Username</span>
+                    <p className="font-mono font-bold text-[#004B87]">{savedCredentials.username}</p>
                   </div>
-
-                  <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase">Password</span>
-                      <p className="font-mono font-bold text-[#F5821F]">{savedCredentials.password}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(savedCredentials.password, 'password')}
-                      className="h-8 w-8 p-0"
-                    >
-                      {copiedField === 'password' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(savedCredentials.username, 'username')}
+                    className="h-8 w-8 p-0"
+                  >
+                    {copiedField === 'username' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
 
-                <p className="text-[10px] text-amber-700 mt-3 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Anote estas credenciais! Não poderão ser recuperadas.
-                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-[11px] text-amber-800 font-semibold flex items-start gap-1.5">
+                    <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                    No primeiro acesso, o estudante deverá usar o username como senha. O sistema irá pedir para definir uma nova senha pessoal.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1080,7 +919,7 @@ const validateForm = () => {
                   <span className="text-xs font-bold uppercase">Info</span>
                 </div>
                 <p className="text-[11px] text-blue-100 leading-relaxed">
-                  A inscrição gera o número de estudante e credenciais de acesso. A matrícula num curso é feita posteriormente.
+                  A inscrição gera o username e credenciais de acesso ao portal. A matrícula num curso é feita posteriormente.
                 </p>
               </div>
             </div>
@@ -1221,142 +1060,34 @@ const validateForm = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-  <Label className="text-slate-600 font-semibold ml-1">Data de Nascimento</Label>
-
-  <div className="relative">
-    <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10" />
-
-    <div
-      className={cn(
-        "flex items-center gap-1 border-2 rounded-xl h-12 pl-11 pr-3 bg-white transition-all",
-        "focus-within:ring-2 focus-within:ring-[#F5821F]/20 focus-within:border-[#F5821F]",
-        errors.birthDate ? "border-red-500 bg-red-50" : "border-slate-200"
-      )}
-      onPaste={(e) => {
-        const text = e.clipboardData.getData("text");
-        const parsed = parseBirthDateFromText(text);
-        if (!parsed) return;
-
-        e.preventDefault();
-
-        const normalized = normalizeBirthParts(parsed.dd, parsed.mm, parsed.yyyy);
-        handleInputChange("birthDay", normalized.day);
-        handleInputChange("birthMonth", normalized.month);
-        handleInputChange("birthYear", normalized.year);
-
-        // se completou o ano, foca no ano
-        if (normalized.year.length === 4) yearRef.current?.focus();
-      }}
-    >
-      <input
-        ref={dayRef}
-        inputMode="numeric"
-        autoComplete="bday-day"
-        value={formData.birthDay}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
-          handleInputChange("birthDay", raw);
-
-          if (raw.length === 2) monthRef.current?.focus();
-        }}
-        onBlur={() => {
-          if (!formData.birthDay) return;
-          const normalized = normalizeBirthParts(formData.birthDay, formData.birthMonth, formData.birthYear);
-          handleInputChange("birthDay", normalized.day);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Backspace" && !formData.birthDay) {
-            // nada a fazer (é o primeiro)
-          }
-        }}
-        placeholder="DD"
-        maxLength={2}
-        className="w-10 text-center outline-none bg-transparent font-semibold text-slate-800 placeholder:text-slate-300"
-      />
-
-      <span className="text-slate-300 font-bold select-none">/</span>
-
-      <input
-        ref={monthRef}
-        inputMode="numeric"
-        autoComplete="bday-month"
-        value={formData.birthMonth}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
-          handleInputChange("birthMonth", raw);
-
-          if (raw.length === 2) yearRef.current?.focus();
-        }}
-        onBlur={() => {
-          if (!formData.birthMonth) return;
-          const normalized = normalizeBirthParts(formData.birthDay, formData.birthMonth, formData.birthYear);
-          handleInputChange("birthMonth", normalized.month);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Backspace" && !formData.birthMonth) {
-            dayRef.current?.focus();
-          }
-        }}
-        placeholder="MM"
-        maxLength={2}
-        className="w-10 text-center outline-none bg-transparent font-semibold text-slate-800 placeholder:text-slate-300"
-      />
-
-      <span className="text-slate-300 font-bold select-none">/</span>
-
-      <input
-        ref={yearRef}
-        inputMode="numeric"
-        autoComplete="bday-year"
-        value={formData.birthYear}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-          handleInputChange("birthYear", raw);
-        }}
-        onBlur={() => {
-          if (!formData.birthYear) return;
-          const normalized = normalizeBirthParts(formData.birthDay, formData.birthMonth, formData.birthYear);
-          handleInputChange("birthYear", normalized.year);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Backspace" && !formData.birthYear) {
-            monthRef.current?.focus();
-          }
-        }}
-        placeholder="AAAA"
-        maxLength={4}
-        className="w-16 text-center outline-none bg-transparent font-semibold text-slate-800 placeholder:text-slate-300"
-      />
-
-      {/* Badge de idade (opcional, bem profissional) */}
-      {formData.birthDay && formData.birthMonth && formData.birthYear?.length === 4 && (() => {
-        const d = parseInt(formData.birthDay, 10);
-        const m = parseInt(formData.birthMonth, 10);
-        const y = parseInt(formData.birthYear, 10);
-        if (!d || !m || !y) return null;
-        const age = getAge(y, m, d);
-        if (age < 0 || age > 120) return null;
-        return (
-          <span className="ml-auto text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
-            {age} anos
-          </span>
-        );
-      })()}
-    </div>
-  </div>
-
-  {errors.birthDate && (
-    <p className="text-xs text-red-600 flex items-center gap-1">
-      <AlertCircle className="h-3 w-3" />
-      {errors.birthDate}
-    </p>
-  )}
-
-  {/* Helper text (opcional) */}
-  <p className="text-[11px] text-slate-400 ml-1">
-    Dica: podes colar assim “24/08/2001” ou “24082001”.
-  </p>
-</div>
+                          <Label className="text-slate-600 font-semibold ml-1">Data de Nascimento</Label>
+                          <div className="relative">
+                            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
+                            <input
+                              type="date"
+                              value={formData.birth_date}
+                              max={new Date().toISOString().split('T')[0]}
+                              min="1900-01-01"
+                              onChange={(e) => handleInputChange('birth_date', e.target.value)}
+                              className={cn(
+                                "w-full h-12 pl-11 pr-4 border-2 rounded-xl outline-none font-semibold text-slate-800",
+                                "focus:ring-2 focus:ring-[#F5821F]/20 focus:border-[#F5821F] transition-all",
+                                errors.birth_date ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
+                              )}
+                            />
+                          </div>
+                          {formData.birth_date && (() => {
+                            const age = getAge(formData.birth_date);
+                            return age !== null ? (
+                              <p className="text-[11px] text-slate-500 ml-1">{age} anos</p>
+                            ) : null;
+                          })()}
+                          {errors.birth_date && (
+                            <p className="text-xs text-red-600 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />{errors.birth_date}
+                            </p>
+                          )}
+                        </div>
 
 
                           <div className="space-y-2">
@@ -1457,107 +1188,56 @@ const validateForm = () => {
                           <Key className="h-5 w-5" />
                         </div>
                         <div>
-                          <Label className="font-bold text-slate-700 leading-none">Credenciais de Acesso</Label>
-                          <p className="text-xs text-slate-500 mt-1">Geradas automaticamente. Pode editar se necessário.</p>
+                          <Label className="font-bold text-slate-700 leading-none">Acesso ao Portal</Label>
+                          <p className="text-xs text-slate-500 mt-1">Username gerado automaticamente pelo sistema.</p>
                         </div>
                       </div>
 
-                      {/* Student Number - RENOMEADO */}
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1 flex items-center gap-2">
-                          <Hash className="h-4 w-4" />
-                          Número de Estudante
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={formData.student_number}
-                            onChange={(e) => handleInputChange('student_number', e.target.value)}
-                            className="h-12 rounded-xl font-mono flex-1"
-                            placeholder="EST20260001"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={regenerateStudentNumber}
-                            className="h-12 px-4 rounded-xl"
-                            title="Gerar novo número"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
+                      {/* Username preview */}
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Hash className="h-4 w-4 text-blue-600" />
+                          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Username (atribuído pelo sistema)</p>
                         </div>
-                        <p className="text-xs text-slate-400 ml-1">
-                          Este é o identificador único do estudante no sistema.
-                        </p>
-                      </div>
-
-                      {/* Username */}
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">
-                          Username <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={formData.username}
-                            onChange={(e) => handleInputChange('username', e.target.value)}
-                            className={cn("h-12 rounded-xl font-mono flex-1", errors.username && "border-red-500 bg-red-50")}
-                            placeholder="username"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={regenerateUsername}
-                            className="h-12 px-4 rounded-xl"
-                            title="Gerar novo username"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
+                        <div className="bg-white border-2 border-blue-300 rounded-lg px-4 py-2.5">
+                          <span className="font-mono font-bold text-[#004B87] text-lg tracking-wide">
+                            {(() => {
+                              const name = formData.name.trim();
+                              const year = new Date().getFullYear();
+                              if (!name) return `STUD??.0001.${year}`;
+                              const parts = name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+                              const first = (parts[0] || '').replace(/[^A-Z]/g, '').charAt(0);
+                              const last = parts.length > 1 ? (parts[parts.length - 1] || '').replace(/[^A-Z]/g, '').charAt(0) : '';
+                              const initials = (first + last).padEnd(2, 'X');
+                              return `STUD${initials}.0001.${year}`;
+                            })()}
+                          </span>
                         </div>
-                        {errors.username && (
-                          <p className="text-xs text-red-600 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {errors.username}
-                          </p>
+                        {!formData.name.trim() && (
+                          <p className="text-[10px] text-amber-600 mt-2">Preencha o nome para ver o username</p>
                         )}
                       </div>
 
-                      {/* Password */}
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">
-                          Password <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              value={formData.password}
-                              onChange={(e) => handleInputChange('password', e.target.value)}
-                              className={cn("h-12 rounded-xl font-mono pr-12", errors.password && "border-red-500 bg-red-50")}
-                              placeholder="password"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-                            >
-                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                            </button>
+                      {/* Explicação primeiro acesso */}
+                      <div className="bg-[#004B87]/5 border border-[#004B87]/20 rounded-xl p-4 space-y-3">
+                        <h4 className="text-sm font-bold text-[#004B87] flex items-center gap-2">
+                          <Info className="h-4 w-4" />
+                          Como funciona o primeiro acesso?
+                        </h4>
+                        <div className="space-y-2 text-[13px] text-slate-600">
+                          <div className="flex items-start gap-2">
+                            <span className="bg-[#004B87] text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</span>
+                            <span>O estudante acede ao portal e insere o seu <strong>username</strong> no campo de login.</span>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={regeneratePassword}
-                            className="h-12 px-4 rounded-xl"
-                            title="Gerar nova password"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-start gap-2">
+                            <span className="bg-[#004B87] text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</span>
+                            <span>No campo de senha, insere novamente o <strong>username</strong> como senha temporária.</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="bg-[#F5821F] text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
+                            <span>O sistema detecta o primeiro acesso e pede para <strong>definir uma senha pessoal</strong> (mín. 6 caracteres).</span>
+                          </div>
                         </div>
-                        {errors.password && (
-                          <p className="text-xs text-red-600 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {errors.password}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -1582,18 +1262,23 @@ const validateForm = () => {
                         </div>
                         <hr className="border-slate-200" />
                         <div className="flex justify-between">
-                          <span className="text-sm text-slate-600">Nº Estudante:</span>
-                          <span className="text-sm font-mono font-bold text-slate-700">{formData.student_number || '-'}</span>
-                        </div>
-                        <div className="flex justify-between">
                           <span className="text-sm text-slate-600">Username:</span>
-                          <span className="text-sm font-mono font-bold text-[#004B87]">{formData.username || '-'}</span>
+                          <span className="text-sm font-mono font-bold text-[#004B87]">
+                            {(() => {
+                              const name = formData.name.trim();
+                              const year = new Date().getFullYear();
+                              if (!name) return '-';
+                              const parts = name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+                              const first = (parts[0] || '').replace(/[^A-Z]/g, '').charAt(0);
+                              const last = parts.length > 1 ? (parts[parts.length - 1] || '').replace(/[^A-Z]/g, '').charAt(0) : '';
+                              const initials = (first + last).padEnd(2, 'X');
+                              return `STUD${initials}.XXXX.${year}`;
+                            })()}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-slate-600">Password:</span>
-                          <span className="text-sm font-mono font-bold text-[#F5821F]">
-                            {showPassword ? formData.password : '••••••••••'}
-                          </span>
+                          <span className="text-sm text-slate-600">1º Acesso:</span>
+                          <span className="text-sm font-mono font-bold text-slate-500">username = senha</span>
                         </div>
                       </div>
                     </div>

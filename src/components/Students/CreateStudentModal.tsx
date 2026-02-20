@@ -26,7 +26,6 @@ interface StudentFormData {
   notes?: string;
   class_id?: number;
   enrollment_year: number;
-  enrollment_number: string;
   status: 'ativo' | 'inativo';
 }
 
@@ -38,7 +37,6 @@ interface Class {
   students: number;
 }
 
-// ✅ Props ATUALIZADAS - SEM courseId e availableCourses
 interface CreateStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -46,8 +44,7 @@ interface CreateStudentModalProps {
   availableClasses: Class[];
   preSelectedClassId?: number;
   preSelectedClassName?: string;
-  // ❌ REMOVIDO: courseId: string;
-  // ❌ REMOVIDO: availableCourses: APICourse[];
+  
 }
 
 export function CreateStudentModal({
@@ -90,19 +87,12 @@ export function CreateStudentModal({
     }
   }, [preSelectedClassId]);
 
-  // Auto-gerar username baseado no nome
+  // Username é gerado automaticamente pela API como STD###
   useEffect(() => {
-    if (autoGenerateCredentials && formData.name) {
-      const generateUsername = (name: string) => {
-        const parts = name.trim().toLowerCase().split(/\s+/);
-        if (parts.length >= 2) {
-          return parts[0] + '.' + parts[parts.length - 1];
-        }
-        return parts[0] || '';
-      };
-      setFormData(prev => ({ ...prev, usuario: generateUsername(formData.name) }));
+    if (autoGenerateCredentials) {
+      setFormData(prev => ({ ...prev, usuario: '' }));
     }
-  }, [formData.name, autoGenerateCredentials]);
+  }, [autoGenerateCredentials]);
 
   const isClassPreSelected = Boolean(preSelectedClassId && preSelectedClassName);
   const selectedClass = availableClasses.find(c => c.id === formData.class_id);
@@ -112,13 +102,6 @@ export function CreateStudentModal({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-  };
-
-  // Gerar número de matrícula automaticamente
-  const generateEnrollmentNumber = (): string => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    return `${year}${random}`;
   };
 
   const validateForm = () => {
@@ -160,7 +143,6 @@ export function CreateStudentModal({
     }
 
     // Validação de credenciais
-    if (!formData.usuario.trim()) newErrors.usuario = 'Username é obrigatório';
     if (!formData.senha.trim()) {
       newErrors.senha = 'Senha é obrigatória';
     } else if (formData.senha.length < 5) {
@@ -193,7 +175,6 @@ export function CreateStudentModal({
         const studentData: StudentFormData = {
           name: formData.name,
           email: formData.email,
-          username: formData.usuario || undefined,
           password: formData.senha || undefined,
           phone: formData.phone || undefined,
           bi_number: formData.bi_number.toUpperCase(),
@@ -204,7 +185,6 @@ export function CreateStudentModal({
           emergency_contact_2: formData.emergency_contact_2 || undefined,
           notes: formData.notes || undefined,
           class_id: formData.class_id > 0 ? formData.class_id : undefined,
-          enrollment_number: generateEnrollmentNumber(),
           enrollment_year: new Date().getFullYear(),
           status: 'ativo'
         };
@@ -592,42 +572,50 @@ export function CreateStudentModal({
                       </label>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">Username</Label>
-                        <div className="relative">
-                          <User className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
-                          <Input
-                            placeholder="username"
-                            value={formData.usuario}
-                            onChange={(e) => handleInputChange('usuario', e.target.value)}
-                            className="h-12 pl-11 rounded-xl"
-                            disabled={autoGenerateCredentials}
-                          />
-                        </div>
+                    <div className="mb-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                      <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">Nome de Utilizador (gerado automaticamente)</p>
+                      <div className="bg-white border-2 border-blue-300 rounded-lg px-4 py-2.5">
+                        <span className="font-mono font-bold text-[#004B87] text-sm tracking-wide">
+                          {(() => {
+                            const name = formData.name.trim();
+                            const year = new Date().getFullYear();
+                            if (!name) return `STUD??.0001.${year}`;
+                            const parts = name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
+                            const first = (parts[0] || '').replace(/[^A-Z]/g, '').charAt(0);
+                            const last = parts.length > 1 ? (parts[parts.length - 1] || '').replace(/[^A-Z]/g, '').charAt(0) : '';
+                            const initials = (first + last).padEnd(2, 'X');
+                            return `STUD${initials}.0001.${year}`;
+                          })()}
+                        </span>
                       </div>
+                      {!formData.name.trim() && (
+                        <p className="text-[10px] text-amber-600 mt-2">Preencha o nome para ver o username</p>
+                      )}
+                      {formData.name.trim() && (
+                        <p className="text-[10px] text-blue-600 mt-2">O número sequencial será confirmado pelo sistema ao guardar</p>
+                      )}
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-slate-600 font-semibold ml-1">Senha</Label>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Senha de acesso"
-                            value={formData.senha}
-                            onChange={(e) => handleInputChange('senha', e.target.value)}
-                            className="h-12 pl-4 pr-12 rounded-xl"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-3 text-slate-400 hover:text-slate-600"
-                          >
-                            {showPassword ? '🙈' : '👁️'}
-                          </button>
-                        </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-600 font-semibold ml-1">Senha</Label>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Senha de acesso"
+                          value={formData.senha}
+                          onChange={(e) => handleInputChange('senha', e.target.value)}
+                          className="h-12 pl-4 pr-12 rounded-xl"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-3 text-slate-400 hover:text-slate-600"
+                        >
+                          {showPassword ? '🙈' : '👁️'}
+                        </button>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-400">O estudante usará o username ou nº de matrícula + senha para fazer login.</p>
+                    <p className="text-xs text-slate-400">O estudante usará o username (STD###) ou nº de matrícula + senha para fazer login.</p>
                   </div>
 
                   <div className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border-2 border-[#004B87]/20 rounded-2xl p-6">

@@ -162,7 +162,7 @@ export function RegistrationStudentModal({
       return (
         (s.name?.toLowerCase() || "").includes(query) ||
         (s.email?.toLowerCase() || "").includes(query) ||
-        (s.enrollment_number?.toLowerCase() || "").includes(query)
+        (s.username?.toLowerCase() || "").includes(query)
       );
     });
   }, [students, studentSearch, formData.studentId]);
@@ -187,7 +187,21 @@ export function RegistrationStudentModal({
 
         setStudents(studentsData);
         setCourses(coursesData);
-        setClasses(classesData);
+
+        // classService returns fields in English (name, schedule, code, schedule_days).
+        // CourseTab expects Portuguese field names (nome, turno, codigo, dias_semana).
+        // Map here so CourseTab filters work correctly.
+        const mappedClasses: ClassItem[] = (classesData as ClassItem[]).map((c) => ({
+          id: c.id,
+          nome: c.name ?? c.nome ?? '',
+          codigo: c.code ?? c.codigo ?? null,
+          dias_semana: c.schedule_days ?? c.dias_semana ?? null,
+          curso: c.curso ?? null,
+          turno: (c.schedule ?? c.turno ?? null) as ClassItem['turno'],
+          capacity: c.capacity ?? null,
+          students: c.students ?? null,
+        }));
+        setClasses(mappedClasses);
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
         toast.error("Erro ao carregar dados");
@@ -237,7 +251,7 @@ export function RegistrationStudentModal({
       // Pré-selecionar o estudante automaticamente
       onChangeField("studentId", student.id);
       onChangeField("studentName", student.name || "");
-      onChangeField("studentCode", student.enrollment_number || `MAT${student.id}`);
+      onChangeField("studentCode", student.username || `MAT${student.id}`);
       onChangeField("registrationType", "new"); // Primeira matrícula
     }
   }, [isOpen, preSelectedStudentId, students]);
@@ -248,7 +262,7 @@ export function RegistrationStudentModal({
   const handleSelectStudent = (student: Student) => {
     onChangeField("studentId", student.id);
     onChangeField("studentName", student.name || "");
-    onChangeField("studentCode", student.enrollment_number || `MAT${student.id}`);
+    onChangeField("studentCode", student.username || `MAT${student.id}`);
     setStudentSearch("");
   };
 
@@ -293,10 +307,7 @@ export function RegistrationStudentModal({
     onChangeField("className", classItem.nome);
   };
 
-  // O código de matrícula (enrollment_number) agora é gerado automaticamente
-  // pelo backend na criação da matrícula (via course_sequences).
-  // Formato: {PREFIXO_CURSO}-{SEQUENCIAL:06d}-{ANO}
-  // Ex: IB-000001-2026, IA-000002-2026
+  // O username (STUDXX.0001.ANO) é gerado automaticamente pelo backend.
 
   // -----------------------------
   // Validation
@@ -342,7 +353,8 @@ export function RegistrationStudentModal({
         if (!formData.turno) return "Selecione o turno (manhã, tarde ou noite)";
         return null;
       case "payment":
-        if (!formData.enrollmentFeeIsento && (!formData.enrollmentFee || Number(formData.enrollmentFee) <= 0)) return "Defina a taxa de matrícula";
+        // 0 is a valid fee (means free). Only block if fee is null/undefined or negative.
+        if (!formData.enrollmentFeeIsento && (formData.enrollmentFee == null || Number(formData.enrollmentFee) < 0)) return "Defina a taxa de matrícula";
         if (!formData.monthlyFee || Number(formData.monthlyFee) <= 0) return "Defina a mensalidade";
         return null;
       case "confirmation":
@@ -416,7 +428,7 @@ export function RegistrationStudentModal({
     }
 
     // ✅ Mapeamento para API
-    // enrollment_number é gerado automaticamente pelo backend via course_sequences
+    // username é gerado automaticamente pelo backend
     const mappedData = {
       student_id: formData.studentId,
       course_id: formData.courseId,

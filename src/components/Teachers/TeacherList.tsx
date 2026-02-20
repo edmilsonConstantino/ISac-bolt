@@ -353,14 +353,14 @@ export function TeacherList({
             return (
               <EntityCard
                 key={teacher.id}
-                className={teacherHasAlerts ? 'ring-2 ring-amber-300' : ''}
+                className=""
               >
                 {/* ALERTAS no topo (se existirem) */}
                 {teacherHasAlerts && (
-                  <div className="mb-3 p-2.5 bg-amber-50 border-l-4 border-amber-400 rounded-lg">
+                  <div className="mb-2 p-2 bg-amber-50 border-l-4 border-amber-400 rounded-lg">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs text-amber-800 space-y-0.5 leading-relaxed">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-[11px] text-amber-800 space-y-0 leading-relaxed">
                         {teacher.classes === 0 && <p>• Sem turma atribuída</p>}
                         {teacher.hasPendingGrades && <p>• Notas pendentes</p>}
                         {teacher.hasScheduleConflict && <p>• Conflito de horário</p>}
@@ -426,7 +426,7 @@ export function TeacherList({
                 </EntityCardHeader>
 
                 {/* Informações de Contato */}
-                <InfoPanel className="mb-4">
+                <InfoPanel className="mb-2">
                   <InfoRow icon={<Mail className="h-3 w-3" />}>{teacher.email}</InfoRow>
 
                   {teacher.phone && (
@@ -444,7 +444,7 @@ export function TeacherList({
 
                 {/* Curso e Turnos - COMPACTADO */}
                 {(teacher.cursos || teacher.turnos) && (
-                  <div className="bg-purple-50 rounded-lg p-2 space-y-1.5 mb-3 border border-purple-100">
+                  <div className="bg-purple-50 rounded-lg p-1.5 space-y-1 mb-2 border border-purple-100">
                     {teacher.cursos && (
                       <div className="flex items-center gap-1.5 text-xs">
                         <BookOpen className="h-3 w-3 text-purple-600 flex-shrink-0" />
@@ -465,8 +465,8 @@ export function TeacherList({
 
                 {/* Carga Horária - COMPACTADO */}
                 {teacher.weeklyHours !== undefined && (
-                  <div className="mb-3">
-                    <div className={`flex items-center justify-between p-2 rounded-lg border ${workloadStatus.color}`}>
+                  <div className="mb-2">
+                    <div className={`flex items-center justify-between p-1.5 rounded-lg border ${workloadStatus.color}`}>
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         <span className="text-[11px] font-semibold">{teacher.weeklyHours}h/sem</span>
@@ -477,13 +477,13 @@ export function TeacherList({
                 )}
 
                 {/* Estatísticas - MUITO MAIS COMPACTO */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className={`text-center py-1.5 px-2 rounded-lg border ${
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className={`text-center py-1 px-2 rounded-lg border ${
                     teacher.classes === 0
                       ? 'bg-red-50 border-red-200'
                       : 'bg-blue-50 border-blue-100'
                   }`}>
-                    <div className={`text-lg font-bold leading-none ${
+                    <div className={`text-base font-bold leading-none ${
                       teacher.classes === 0 ? 'text-red-600' : 'text-[#004B87]'
                     }`}>
                       {teacher.classes}
@@ -491,8 +491,8 @@ export function TeacherList({
                     <div className="text-[9px] text-slate-500 mt-0.5 font-medium">Turmas</div>
                   </div>
 
-                  <div className="text-center py-1.5 px-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                    <div className="text-lg font-bold text-emerald-600 leading-none">
+                  <div className="text-center py-1 px-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <div className="text-base font-bold text-emerald-600 leading-none">
                       {teacher.students}
                     </div>
                     <div className="text-[9px] text-slate-500 mt-0.5 font-medium">Estudantes</div>
@@ -500,7 +500,7 @@ export function TeacherList({
                 </div>
 
                 {/* Última Atividade - COMPACTO */}
-                <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-100">
+                <div className="mb-2 flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 rounded-lg p-1.5 border border-slate-100">
                   <Activity className="h-3 w-3 text-[#F5821F]" />
                   <span className="text-[11px]">{getLastActivityLabel(teacher.lastActivity)}</span>
                 </div>

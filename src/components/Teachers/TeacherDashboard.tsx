@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,9 @@ import {
   TrendingUp,
   Settings,
   Menu,
-  X
+  X,
+  Lock,
+  Loader2
 } from "lucide-react";
 import { StudentList } from "@/components/Students/StudentList";
 import { ClassModal } from "@/components/shared/CreateClassModal";
@@ -29,10 +31,11 @@ import { AttendanceModal } from "@/components/shared/AttendanceModal";
 import { AnnouncementModal } from "@/components/shared/AnnouncementModal";
 import { UploadMaterialModal } from "@/components/shared/UploadMaterialModal";
 import { GradeManagementModal } from "@/components/shared/GradeManagementModal";
+import { ChangePasswordModal } from "@/components/shared/ChangePasswordModal";
 import { ClassList } from "@/components/Classes/ClassList";
-import { useClassData, useStudentData, useAssignmentData } from "@/hooks/useData";
+import { useAssignmentData } from "@/hooks/useData";
 import { Class, Student, Permission } from "@/types";
-import classService from "@/services/classService";
+import classService, { Class as ServiceClass } from "@/services/classService";
 import { toast } from "sonner";
 
 interface TeacherDashboardProps {
@@ -48,14 +51,66 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
     : 'Docente';
   
   const teacherId = user?.id ?? 0;
-  
-  const { classes, addClass, updateClass } = useClassData();
-  const { students, getStudentsByClass } = useStudentData();
+
   const { assignments, addAssignment } = useAssignmentData();
-  
+
+  // Dados reais da API
+  const [teacherClasses, setTeacherClasses] = useState<ServiceClass[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [changePasswordModal, setChangePasswordModal] = useState(false);
+
   // Estado para controlar o menu mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Carregar turmas do professor da API
+  useEffect(() => {
+    if (!teacherId) return;
+    const loadTeacherClasses = async () => {
+      setIsLoadingClasses(true);
+      try {
+        const classes = await classService.getByTeacher(teacherId);
+        setTeacherClasses(classes);
+
+        // Carregar estudantes de todas as turmas
+        setIsLoadingStudents(true);
+        const studentsMap: Student[] = [];
+        for (const cls of classes) {
+          if (!cls.id) continue;
+          try {
+            const classStudents = await classService.getClassStudents(cls.id);
+            classStudents.forEach((s: Record<string, unknown>) => {
+              if (!studentsMap.find(st => st.id === (s.id as number))) {
+                studentsMap.push({
+                  id: s.id as number,
+                  name: (s.nome || s.name || '') as string,
+                  email: (s.email || '') as string,
+                  phone: (s.telefone || s.phone || '') as string,
+                  classId: cls.id!,
+                  className: cls.name,
+                  grade: Number(s.nota_final) || 0,
+                  attendance: Number(s.frequencia) || 0,
+                  status: ((s.status as string) === 'ativo' ? 'active' : 'inactive') as Student['status'],
+                  enrollmentDate: (s.data_matricula || '') as string
+                });
+              }
+            });
+          } catch {
+            // Silently skip classes with no students
+          }
+        }
+        setAllStudents(studentsMap);
+      } catch (error) {
+        console.error('Erro ao carregar turmas:', error);
+      } finally {
+        setIsLoadingClasses(false);
+        setIsLoadingStudents(false);
+      }
+    };
+    loadTeacherClasses();
+  }, [teacherId]);
   
   const [studentModal, setStudentModal] = useState({
     isOpen: false,
@@ -74,8 +129,6 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
   const [attendanceModal, setAttendanceModal] = useState(false);
   const [announcementModal, setAnnouncementModal] = useState(false);
   const [uploadMaterialModal, setUploadMaterialModal] = useState(false);
-  const [generalSettingsModal, setGeneralSettingsModal] = useState(false);
-  
   const [gradeModal, setGradeModal] = useState({
     isOpen: false,
     classData: null as Class | null,
@@ -90,10 +143,10 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
   };
   
   const dashboardStats = {
-    totalClasses: classes.length,
-    totalStudents: classes.reduce((sum, c) => sum + c.students, 0),
+    totalClasses: teacherClasses.length,
+    totalStudents: allStudents.length,
     pendingAssignments: assignments.reduce((sum, a) => sum + (a.total - a.submissions), 0),
-    nextClass: "Business English"
+    nextClass: teacherClasses.length > 0 ? teacherClasses[0].name : "Nenhuma"
   };
   
   const handleViewStudents = async (classItem: Class) => {
@@ -130,19 +183,43 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
     });
   };
   
-  const handleSaveClass = (classData: Partial<Class>) => {
+  const handleSaveClass = async (classData: Partial<Class>) => {
     if (classModal.classData?.id) {
-      updateClass(classModal.classData.id, classData);
+      try {
+        await classService.update(classModal.classData.id, classData as ServiceClass);
+        // Recarregar turmas
+        const updated = await classService.getByTeacher(teacherId);
+        setTeacherClasses(updated);
+        toast.success('Turma atualizada com sucesso!');
+      } catch {
+        toast.error('Erro ao atualizar turma');
+      }
     }
   };
   
-  const handleLaunchGrades = (classItem: Class) => {
-    const classStudents = getStudentsByClass(classItem.id);
-    setGradeModal({
-      isOpen: true,
-      classData: classItem,
-      students: classStudents
-    });
+  const handleLaunchGrades = async (classItem: Class) => {
+    try {
+      const apiStudents = await classService.getClassStudents(classItem.id!);
+      const mapped: Student[] = apiStudents.map((s: Record<string, unknown>) => ({
+        id: s.id as number,
+        name: (s.nome || s.name || '') as string,
+        email: (s.email || '') as string,
+        phone: (s.telefone || '') as string,
+        classId: classItem.id!,
+        className: classItem.name,
+        grade: Number(s.nota_final) || 0,
+        attendance: Number(s.frequencia) || 0,
+        status: ((s.status as string) === 'ativo' ? 'active' : 'inactive') as Student['status'],
+        enrollmentDate: (s.data_matricula || '') as string
+      }));
+      setGradeModal({
+        isOpen: true,
+        classData: classItem,
+        students: mapped
+      });
+    } catch {
+      toast.error('Erro ao carregar estudantes');
+    }
   };
   
   const handleSaveGrades = (gradeData: any) => {
@@ -216,7 +293,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setGeneralSettingsModal(true)}
+                onClick={() => setActiveTab('settings')}
                 className="h-9 w-9 rounded-lg bg-[#003868] hover:bg-[#002850] text-slate-200 hover:text-white transition-colors"
                 title="Configurações do Sistema"
               >
@@ -351,13 +428,25 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
             <button
               onClick={() => handleTabChange("materials")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "materials" 
-                  ? 'bg-[#F5821F] text-white' 
+                activeTab === "materials"
+                  ? 'bg-[#F5821F] text-white'
                   : 'text-slate-200 hover:bg-white/10'
               }`}
             >
               <Upload className="h-5 w-5" />
               <span className="font-medium">Materiais</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange("settings")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === "settings"
+                  ? 'bg-[#F5821F] text-white'
+                  : 'text-slate-200 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="h-5 w-5" />
+              <span className="font-medium">Definições</span>
             </button>
           </nav>
 
@@ -367,7 +456,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               variant="ghost"
               className="w-full justify-start text-slate-200 hover:bg-white/10 hover:text-white"
               onClick={() => {
-                setGeneralSettingsModal(true);
+                setActiveTab('settings');
                 setIsMobileMenuOpen(false);
               }}
             >
@@ -429,7 +518,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Desktop Tabs */}
-          <TabsList className="hidden lg:grid w-full grid-cols-5 h-auto p-1">
+          <TabsList className="hidden lg:grid w-full grid-cols-6 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span>Dashboard</span>
@@ -449,6 +538,10 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
             <TabsTrigger value="materials" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               <span>Materiais</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span>Definições</span>
             </TabsTrigger>
           </TabsList>
 
@@ -583,20 +676,48 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
           </TabsContent>
 
           <TabsContent value="classes" className="space-y-6">
-            <ClassList 
-              onViewStudents={handleViewStudents}
-              onViewDetails={handleManageClass}
-            />
+            {isLoadingClasses ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
+                <p className="text-slate-500">Carregando turmas...</p>
+              </div>
+            ) : teacherClasses.length === 0 ? (
+              <Card className="shadow-elegant">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <BookOpen className="h-12 w-12 text-slate-300 mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-600 mb-1">Nenhuma turma atribuída</h3>
+                  <p className="text-sm text-slate-400">Você ainda não possui turmas associadas ao seu perfil.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <ClassList
+                classes={teacherClasses as unknown as Class[]}
+                permissions={teacherPermissions}
+                currentUserRole="teacher"
+                onViewStudents={handleViewStudents}
+                onManageClass={handleManageClass}
+                onCreateClass={() => {}}
+                onAddStudentToClass={() => {}}
+                onLaunchGrades={handleLaunchGrades}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="students" className="space-y-6">
-            <StudentList
-              students={students}
-              permissions={teacherPermissions}
-              currentUserRole="teacher"
-              showClassInfo={true}
-              onSendEmailToAll={handleSendEmailToAll}
-            />
+            {isLoadingStudents ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
+                <p className="text-slate-500">Carregando estudantes...</p>
+              </div>
+            ) : (
+              <StudentList
+                students={allStudents}
+                permissions={teacherPermissions}
+                currentUserRole="teacher"
+                showClassInfo={true}
+                onSendEmailToAll={handleSendEmailToAll}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="assignments" className="space-y-4 lg:space-y-6">
@@ -660,9 +781,9 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
           <TabsContent value="materials" className="space-y-4 lg:space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="text-lg font-semibold">Materiais de Ensino</h3>
-              <Button 
-                variant="outline" 
-                onClick={() => setUploadMaterialModal(true)} 
+              <Button
+                variant="outline"
+                onClick={() => setUploadMaterialModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 w-full sm:w-auto"
               >
                 <Upload className="h-4 w-4 mr-2" />
@@ -670,8 +791,8 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-              <Card 
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer" 
+              <Card
+                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
                 onClick={() => setUploadMaterialModal(true)}
               >
                 <CardContent className="flex flex-col items-center justify-center h-40">
@@ -682,8 +803,8 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
                   </p>
                 </CardContent>
               </Card>
-              <Card 
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer" 
+              <Card
+                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
                 onClick={() => setUploadMaterialModal(true)}
               >
                 <CardContent className="flex flex-col items-center justify-center h-40">
@@ -694,8 +815,8 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
                   </p>
                 </CardContent>
               </Card>
-              <Card 
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer" 
+              <Card
+                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
                 onClick={() => setUploadMaterialModal(true)}
               >
                 <CardContent className="flex flex-col items-center justify-center h-40">
@@ -704,6 +825,75 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
                   <p className="text-sm text-muted-foreground text-center">
                     PDFs, exercícios e materiais escritos
                   </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4 lg:space-y-6">
+            <div className="max-w-2xl">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5 text-[#004B87]" />
+                Definições da Conta
+              </h3>
+
+              {/* Informações do Perfil */}
+              <Card className="shadow-elegant mb-4">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5 text-blue-600" />
+                    Informações do Perfil
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Nome</p>
+                      <p className="text-sm font-semibold text-slate-800">{displayName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Email</p>
+                      <p className="text-sm font-semibold text-slate-800">{user?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Username</p>
+                      <p className="text-sm font-semibold text-slate-800">{user?.username || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Perfil</p>
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-200">Docente</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Segurança */}
+              <Card className="shadow-elegant">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-orange-500" />
+                    Segurança
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Gerencie a segurança da sua conta
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Alterar Senha</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Recomendamos alterar a senha periodicamente para maior segurança
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setChangePasswordModal(true)}
+                      className="bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87] text-white"
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Alterar Senha
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -739,32 +929,37 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         isOpen={createAssignmentModal}
         onClose={() => setCreateAssignmentModal(false)}
         onSave={handleCreateAssignment}
-        availableClasses={classes}
+        availableClasses={teacherClasses as unknown as Class[]}
         teacherId={teacherId}
       />
-      
+
       <AttendanceModal
         isOpen={attendanceModal}
         onClose={() => setAttendanceModal(false)}
         onSave={handleSaveAttendance}
-        availableClasses={classes}
-        getStudentsByClass={getStudentsByClass}
+        availableClasses={teacherClasses as unknown as Class[]}
+        getStudentsByClass={(classId: number) => allStudents.filter(s => s.classId === classId)}
       />
-      
+
       <AnnouncementModal
         isOpen={announcementModal}
         onClose={() => setAnnouncementModal(false)}
         onSave={handleCreateAnnouncement}
-        availableClasses={classes}
+        availableClasses={teacherClasses as unknown as Class[]}
         teacherId={teacherId}
       />
-      
+
       <UploadMaterialModal
         isOpen={uploadMaterialModal}
         onClose={() => setUploadMaterialModal(false)}
         onSave={handleUploadMaterial}
-        availableClasses={classes}
+        availableClasses={teacherClasses as unknown as Class[]}
         teacherId={teacherId}
+      />
+
+      <ChangePasswordModal
+        isOpen={changePasswordModal}
+        onClose={() => setChangePasswordModal(false)}
       />
       
       {gradeModal.classData && (

@@ -2,7 +2,7 @@
 import apiClient from './api';
 
 export interface LoginCredentials {
-  identifier: string; // ← Aceita email OU enrollment_number
+  identifier: string; // ← Aceita username OU email
   senha: string;
 }
 
@@ -43,7 +43,7 @@ class AuthService {
       console.log('🔒 Senha fornecida:', credentials.senha ? 'SIM' : 'NÃO');
       
       const response = await apiClient.post<LoginResponse>('/auth/login.php', {
-        identifier: credentials.identifier, // ← Pode ser email OU enrollment_number
+        identifier: credentials.identifier, // ← Pode ser username OU email
         senha: credentials.senha
       });
       

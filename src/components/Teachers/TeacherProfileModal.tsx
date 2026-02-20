@@ -78,7 +78,6 @@ interface TeacherProfileModalProps {
   onClose: () => void;
   teacher: Teacher | null;
   onSave?: (updatedTeacher: Teacher) => void;
-  availableClasses?: any[];
 }
 
 export function TeacherProfileModal({
@@ -86,15 +85,16 @@ export function TeacherProfileModal({
   onClose,
   teacher,
   onSave,
-  availableClasses = []
 }: TeacherProfileModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Teacher | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [courses, setCourses] = useState<Course[]>([]);
   const [teacherClasses, setTeacherClasses] = useState<AssignedClass[]>([]);
+  const [allClasses, setAllClasses] = useState<AssignedClass[]>([]);
   const [showAssignClasses, setShowAssignClasses] = useState(false);
   const [activeTab, setActiveTab] = useState<'perfil' | 'turmas' | 'historico'>('perfil');
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   useEffect(() => {
     if (teacher && isOpen) {
@@ -105,6 +105,7 @@ export function TeacherProfileModal({
       setActiveTab('perfil');
       loadCourses();
       loadTeacherClasses(teacher.id);
+      loadAllClasses();
     }
   }, [teacher, isOpen]);
 
@@ -119,11 +120,43 @@ export function TeacherProfileModal({
     }
   };
 
-  const loadTeacherClasses = (teacherId: number) => {
-    const assigned = availableClasses.filter(
-      cls => cls.teacher_id === teacherId || cls.teacherId === teacherId
-    );
-    setTeacherClasses(assigned);
+  const loadTeacherClasses = async (teacherId: number) => {
+    try {
+      setLoadingClasses(true);
+      const classes = await classService.getByTeacher(teacherId);
+      setTeacherClasses(classes.map(cls => ({
+        id: cls.id!,
+        name: cls.name,
+        code: cls.code,
+        curso: cls.curso,
+        schedule: cls.schedule,
+        students: cls.students,
+        room: cls.room,
+        teacher_id: cls.teacher_id ?? undefined,
+      })));
+    } catch (error) {
+      console.error('Erro ao carregar turmas do docente:', error);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  const loadAllClasses = async () => {
+    try {
+      const classes = await classService.getAll();
+      setAllClasses(classes.map(cls => ({
+        id: cls.id!,
+        name: cls.name,
+        code: cls.code,
+        curso: cls.curso,
+        schedule: cls.schedule,
+        students: cls.students,
+        room: cls.room,
+        teacher_id: cls.teacher_id ?? undefined,
+      })));
+    } catch (error) {
+      console.error('Erro ao carregar todas as turmas:', error);
+    }
   };
 
   if (!teacher || !formData) return null;
@@ -203,22 +236,24 @@ export function TeacherProfileModal({
 
   const handleUnassignClass = async (classId: number) => {
     try {
-      await classService.update(classId, { teacher_id: null } as any);
+      await classService.assignTeacher(classId, null);
       setTeacherClasses(prev => prev.filter(c => c.id !== classId));
       toast.success("Turma desatribuída com sucesso");
-    } catch (error) {
-      toast.error("Erro ao desatribuir turma");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Erro ao desatribuir turma";
+      toast.error(msg);
     }
   };
 
   const handleAssignClass = async (classId: number) => {
     try {
-      await classService.update(classId, { teacher_id: teacher.id } as any);
-      const cls = availableClasses.find(c => c.id === classId);
+      await classService.assignTeacher(classId, teacher.id);
+      const cls = allClasses.find(c => c.id === classId);
       if (cls) setTeacherClasses(prev => [...prev, cls]);
       toast.success("Turma atribuída com sucesso");
-    } catch (error) {
-      toast.error("Erro ao atribuir turma");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Erro ao atribuir turma";
+      toast.error(msg);
     }
   };
 
@@ -294,7 +329,7 @@ export function TeacherProfileModal({
 
   const getAvailableToAssign = () => {
     const assignedIds = teacherClasses.map(c => c.id);
-    return availableClasses.filter(cls => {
+    return allClasses.filter(cls => {
       if (assignedIds.includes(cls.id)) return false;
       if (cls.teacher_id && cls.teacher_id !== teacher.id) return false;
       const matchesCourse = cursosArray.length === 0 || cursosArray.some(c => cls.curso === c || cls.code?.includes(c));

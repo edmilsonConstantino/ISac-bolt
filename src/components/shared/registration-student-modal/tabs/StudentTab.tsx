@@ -138,7 +138,7 @@ export function StudentTab({
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded">
-                            {student.enrollment_number || `MAT${student.id}`}
+                            {student.username || `MAT${student.id}`}
                           </span>
 
                           {/* curso legado - opcional */}

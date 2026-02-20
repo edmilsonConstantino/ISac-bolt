@@ -89,7 +89,8 @@ export function useRegistrationValidation({
     }
 
     if (activeTab === "payment") {
-      if (!formData.enrollmentFee || formData.enrollmentFee <= 0) {
+      // 0 is valid (free). Only block if null/undefined or negative.
+      if (formData.enrollmentFee == null || formData.enrollmentFee < 0) {
         toast.error("Defina a taxa de matrícula");
         setActiveTab("payment");
         return;

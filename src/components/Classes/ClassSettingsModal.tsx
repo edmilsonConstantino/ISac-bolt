@@ -96,6 +96,12 @@ export function ClassSettingsModal({
   }, [isOpen, classData]);
 
   useEffect(() => {
+    if (isOpen && teachers.length === 0) {
+      loadTeachers();
+    }
+  }, [isOpen, teachers.length]);
+
+  useEffect(() => {
     if (activeTab === 'teacher' && isAdmin && teachers.length === 0) {
       loadTeachers();
     }

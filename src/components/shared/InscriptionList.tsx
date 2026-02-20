@@ -8,12 +8,16 @@ import {
   UserPlus, Search, RefreshCw, BookOpen, Edit2,
   CheckCircle2, XCircle, Calendar, Mail, Key, Settings,
   Grid3x3, List, Users, Trash2, AlertTriangle, Download,
-  User, Phone, CreditCard, Save, X, Loader2
+  User, Phone, CreditCard, Save, X, Loader2, GraduationCap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InscriptionStudentModal } from "./InscriptionStudentModal";
 import { InscriptionSettingsModal } from "./InscriptionSettingsModal";
+import { RegistrationStudentModal } from "./reusable/RegistrationStudentModal";
+import registrationService from "@/services/registrationService";
+import type { CreateRegistrationData } from "@/services/registrationService";
+import type { Registration } from "./RegistrationList";
 import { SearchBar, ViewToggle } from "@/components/ui/search-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -25,13 +29,13 @@ interface InscribedStudent {
   email: string;
   bi_number: string;
   username: string;
-  enrollment_number: string;
   gender: 'M' | 'F';
   phone?: string;
   birth_date?: string;
   address?: string;
   status: 'ativo' | 'inativo';
   created_at: string;
+  has_registration: 0 | 1;
 }
 
 interface InscriptionListProps {
@@ -61,6 +65,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
     address: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [regModal, setRegModal] = useState<{ isOpen: boolean; studentId: number | null }>({ isOpen: false, studentId: null });
 
   const API_URL = 'http://localhost/API-LOGIN/api';
 
@@ -145,8 +150,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
         s.name.toLowerCase().includes(term) ||
         s.email.toLowerCase().includes(term) ||
         s.username.toLowerCase().includes(term) ||
-        s.bi_number.toLowerCase().includes(term) ||
-        s.enrollment_number.toLowerCase().includes(term)
+        s.bi_number.toLowerCase().includes(term)
       );
     }
 
@@ -166,6 +170,18 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
       onProceedToRegistration(studentId);
     }
     setIsModalOpen(false);
+  };
+
+  const handleSaveRegistration = async (registrationData: Partial<Registration>) => {
+    try {
+      await registrationService.create(registrationData as unknown as CreateRegistrationData);
+      toast.success('Matrícula criada com sucesso!');
+      setRegModal({ isOpen: false, studentId: null });
+      fetchInscribedStudents();
+    } catch (error) {
+      console.error('Erro ao criar matrícula:', error);
+      toast.error('Erro ao criar matrícula');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -278,7 +294,6 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 ║                                                                ║
 ║  DADOS DA INSCRIÇÃO                                            ║
 ║  ─────────────────────────────────────────────────────────     ║
-║  Nº Matrícula:  ${student.enrollment_number.padEnd(45)}║
 ║  Username:      ${student.username.padEnd(45)}║
 ║  Data Inscrição: ${formatDate(student.created_at).padEnd(44)}║
 ║  Status:        ${(student.status === 'ativo' ? 'Activo' : 'Inactivo').padEnd(45)}║
@@ -296,7 +311,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `recibo_inscricao_${student.enrollment_number}_${student.name.replace(/\s+/g, '_')}.txt`;
+    link.download = `recibo_inscricao_${student.username}_${student.name.replace(/\s+/g, '_')}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -523,9 +538,9 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
                       <BookOpen className="h-3 w-3 text-[#F5821F]" />
-                      Nº Matrícula
+                      Username
                     </span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700">{student.enrollment_number}</span>
+                    <span className="font-mono font-bold text-[11px] text-slate-700">{student.username}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -548,26 +563,39 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
                 </div>
 
                 {/* Botões de ação */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenEditModal(student)}
-                    className="flex-1 h-9 text-xs border-2 border-[#004B87]/20 text-[#004B87] hover:bg-[#004B87] hover:text-white hover:border-[#004B87] transition-all font-semibold rounded-xl"
-                  >
-                    <Edit2 className="h-3.5 w-3.5 mr-1.5" />
-                    Editar
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenEditModal(student)}
+                      className="flex-1 h-9 text-xs border-2 border-[#004B87]/20 text-[#004B87] hover:bg-[#004B87] hover:text-white hover:border-[#004B87] transition-all font-semibold rounded-xl"
+                    >
+                      <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                      Editar
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadReceipt(student)}
-                    className="flex-1 h-9 text-xs border-2 border-[#F5821F]/30 text-[#F5821F] hover:bg-[#F5821F] hover:text-white hover:border-[#F5821F] transition-all font-semibold rounded-xl"
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1.5" />
-                    Recibo
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadReceipt(student)}
+                      className="flex-1 h-9 text-xs border-2 border-[#F5821F]/30 text-[#F5821F] hover:bg-[#F5821F] hover:text-white hover:border-[#F5821F] transition-all font-semibold rounded-xl"
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Recibo
+                    </Button>
+                  </div>
+
+                  {!student.has_registration && (
+                    <Button
+                      size="sm"
+                      onClick={() => setRegModal({ isOpen: true, studentId: student.id })}
+                      className="w-full h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all"
+                    >
+                      <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
+                      Matricular
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -632,7 +660,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
                   </div>
 
                   <div className="col-span-2 text-center">
-                    <span className="font-mono text-sm">{student.enrollment_number}</span>
+                    <span className="font-mono text-sm">{student.username}</span>
                   </div>
 
                   <div className="col-span-2 text-center">
@@ -675,6 +703,17 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
                       <Download className="h-3.5 w-3.5" />
                     </Button>
 
+                    {!student.has_registration && (
+                      <Button
+                        size="sm"
+                        onClick={() => setRegModal({ isOpen: true, studentId: student.id })}
+                        className="h-8 w-8 p-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        title="Matricular Estudante"
+                      >
+                        <GraduationCap className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -716,6 +755,14 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
       <InscriptionSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      <RegistrationStudentModal
+        isOpen={regModal.isOpen}
+        onClose={() => setRegModal({ isOpen: false, studentId: null })}
+        isEditing={false}
+        onSave={handleSaveRegistration}
+        preSelectedStudentId={regModal.studentId}
       />
 
       {/* Modal de Confirmação de Rejeição */}

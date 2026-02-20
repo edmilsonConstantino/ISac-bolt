@@ -447,41 +447,86 @@ export function CourseTab({
                 </div>
               ) : turmasFiltradasPorTurno.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2">
-                  {turmasFiltradasPorTurno.map((classItem) => (
-                    <button
-                      key={classItem.id}
-                      onClick={() => onSelectClass(classItem)}
-                      type="button"
-                      className={cn(
-                        "flex items-center p-3 rounded-xl border-2 transition-all text-left",
-                        formData.classId === classItem.id
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 bg-white hover:border-blue-300"
-                      )}
-                    >
-                      <GraduationCap
+                  {turmasFiltradasPorTurno.map((classItem) => {
+                    const capacity = classItem.capacity ?? 0;
+                    const occupied = classItem.students ?? 0;
+                    const available = capacity > 0 ? Math.max(0, capacity - occupied) : null;
+                    const isFull = capacity > 0 && occupied >= capacity;
+                    const fillPct = capacity > 0 ? Math.min(100, Math.round((occupied / capacity) * 100)) : 0;
+                    const isAlmostFull = !isFull && fillPct >= 80;
+                    const isSelected = formData.classId === classItem.id;
+
+                    return (
+                      <button
+                        key={classItem.id}
+                        onClick={() => !isFull && onSelectClass(classItem)}
+                        type="button"
+                        disabled={isFull}
                         className={cn(
-                          "h-5 w-5 mr-3",
-                          formData.classId === classItem.id
-                            ? "text-blue-600"
-                            : "text-slate-400"
+                          "flex flex-col p-3 rounded-xl border-2 transition-all text-left w-full",
+                          isFull
+                            ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                            : isSelected
+                            ? "border-blue-500 bg-blue-50 shadow-md"
+                            : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
                         )}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-700">
-                          {classItem.nome}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {classItem.codigo} • {classItem.dias_semana}
-                        </p>
-                      </div>
-                      {classItem.turno && (
-                        <span className="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-600 capitalize">
-                          {classItem.turno}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                      >
+                        {/* Linha principal */}
+                        <div className="flex items-center gap-3 w-full">
+                          <GraduationCap
+                            className={cn(
+                              "h-5 w-5 flex-shrink-0",
+                              isFull ? "text-slate-300" : isSelected ? "text-blue-600" : "text-slate-400"
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              "text-sm font-semibold truncate",
+                              isFull ? "text-slate-400" : "text-slate-700"
+                            )}>
+                              {classItem.nome}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {[classItem.codigo, classItem.dias_semana].filter(Boolean).join(' • ')}
+                            </p>
+                          </div>
+
+                          {/* Badge de vagas */}
+                          {capacity > 0 && (
+                            <span className={cn(
+                              "text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
+                              isFull
+                                ? "bg-red-100 text-red-600"
+                                : isAlmostFull
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            )}>
+                              {isFull ? "Sem vagas" : `${available} vaga${available !== 1 ? 's' : ''}`}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Barra de capacidade */}
+                        {capacity > 0 && (
+                          <div className="mt-2 w-full">
+                            <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                              <span>{occupied}/{capacity} alunos</span>
+                              <span>{fillPct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  isFull ? "bg-red-500" : isAlmostFull ? "bg-amber-400" : "bg-emerald-500"
+                                )}
+                                style={{ width: `${fillPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500 text-center py-6 bg-slate-50 rounded-xl">

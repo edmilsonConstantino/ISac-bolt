@@ -18,8 +18,8 @@ function EntityCard({ children, className, onClick }: EntityCardProps) {
       )}
       onClick={onClick}
     >
-      <div className="h-1.5 bg-gradient-to-r from-[#004B87] via-[#F5821F] to-[#FF9933]" />
-      <CardContent className="p-5">
+      <div className="h-1 bg-gradient-to-r from-[#004B87] via-[#F5821F] to-[#FF9933]" />
+      <CardContent className="p-4">
         {children}
       </CardContent>
     </Card>
@@ -34,7 +34,7 @@ interface EntityCardHeaderProps {
 
 function EntityCardHeader({ children, action, className }: EntityCardHeaderProps) {
   return (
-    <div className={cn("flex items-start gap-3 mb-4", className)}>
+    <div className={cn("flex items-start gap-3 mb-2.5", className)}>
       {children}
       {action && <div className="flex-shrink-0">{action}</div>}
     </div>

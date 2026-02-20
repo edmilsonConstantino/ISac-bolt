@@ -1,5 +1,5 @@
 // src/components/shared/GradeManagementModal.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,29 +7,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
+import {
   GraduationCap,
   Save,
-  X,
   Users,
   Calculator,
   BookOpen,
-  MessageSquare, // ✅ Corrigido - removido o "2"
+  MessageSquare,
   Ear,
   PenTool,
   Eye,
   Star,
   TrendingUp,
-  FileText
+  FileText,
+  Loader2,
+  CheckCircle2,
+  ArrowRightCircle
 } from "lucide-react";
 import { Student, Class } from "../../types";
+import gradeService from "@/services/gradeService";
+import { toast } from "sonner";
 
 interface StudentGrade {
   studentId: number;
@@ -63,9 +67,18 @@ interface GradeManagementModalProps {
   students: Student[];
 }
 
-export function GradeManagementModal({ 
-  isOpen, 
-  onClose, 
+// Period key → numeric period_number for API
+const PERIOD_NUMBER: Record<string, number> = {
+  bimestre1: 1,
+  bimestre2: 2,
+  bimestre3: 3,
+  bimestre4: 4,
+  final:     5,
+};
+
+export function GradeManagementModal({
+  isOpen,
+  onClose,
   onSave,
   classData,
   students
@@ -73,13 +86,16 @@ export function GradeManagementModal({
   const [selectedPeriod, setSelectedPeriod] = useState('bimestre1');
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
+  const [isSaving, setIsSaving]   = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const periods = [
-    { value: 'bimestre1', label: '1º Bimestre' },
-    { value: 'bimestre2', label: '2º Bimestre' },
-    { value: 'bimestre3', label: '3º Bimestre' },
-    { value: 'bimestre4', label: '4º Bimestre' },
-    { value: 'final', label: 'Avaliação Final' }
+    { value: 'bimestre1', label: '1st Period' },
+    { value: 'bimestre2', label: '2nd Period' },
+    { value: 'bimestre3', label: '3rd Period' },
+    { value: 'bimestre4', label: '4th Period' },
+    { value: 'final',     label: 'Final Evaluation' }
   ];
 
   const skillsConfig = [
@@ -98,31 +114,55 @@ export function GradeManagementModal({
     { key: 'projects', label: 'Projetos', weight: 20 }
   ];
 
-  // Initialize grades when modal opens
+  // Load grades from backend when modal opens or period changes
   useEffect(() => {
-    if (isOpen && students.length > 0) {
-      const initialGrades = students.map(student => ({
-        studentId: student.id,
-        studentName: student.name,
-        listening: 0,
-        speaking: 0,
-        reading: 0,
-        writing: 0,
-        grammar: 0,
-        vocabulary: 0,
-        pronunciation: 0,
-        participation: 0,
-        homework: 0,
-        tests: 0,
-        projects: 0,
-        strengths: '',
-        weaknesses: '',
-        recommendations: '',
-        finalGrade: 0
-      }));
-      setGrades(initialGrades);
-    }
-  }, [isOpen, students]);
+    if (!isOpen || !classData?.id || students.length === 0) return;
+
+    const periodNum = PERIOD_NUMBER[selectedPeriod] ?? 1;
+    setIsLoading(true);
+
+    gradeService
+      .getByClass(classData.id, periodNum)
+      .then((apiGrades) => {
+        setGrades(
+          students.map((student) => {
+            const api = apiGrades.find((g) => g.student_id === student.id);
+            return {
+              studentId:       student.id,
+              studentName:     student.name,
+              listening:       Number(api?.grade_listening     ?? 0),
+              speaking:        Number(api?.grade_speaking      ?? 0),
+              reading:         Number(api?.grade_reading       ?? 0),
+              writing:         Number(api?.grade_writing       ?? 0),
+              grammar:         Number(api?.grade_grammar       ?? 0),
+              vocabulary:      Number(api?.grade_vocabulary    ?? 0),
+              pronunciation:   Number(api?.grade_pronunciation ?? 0),
+              participation:   Number(api?.grade_participation ?? 0),
+              homework:        Number(api?.grade_homework      ?? 0),
+              tests:           Number(api?.grade_tests         ?? 0),
+              projects:        Number(api?.grade_projects      ?? 0),
+              strengths:       api?.strengths       ?? '',
+              weaknesses:      api?.improvements    ?? '',
+              recommendations: api?.recommendations ?? '',
+              finalGrade:      Number(api?.final_grade         ?? 0),
+            };
+          })
+        );
+      })
+      .catch(() => {
+        // Fallback: blank grades
+        setGrades(
+          students.map((student) => ({
+            studentId: student.id, studentName: student.name,
+            listening: 0, speaking: 0, reading: 0, writing: 0,
+            grammar: 0, vocabulary: 0, pronunciation: 0,
+            participation: 0, homework: 0, tests: 0, projects: 0,
+            strengths: '', weaknesses: '', recommendations: '', finalGrade: 0,
+          }))
+        );
+      })
+      .finally(() => setIsLoading(false));
+  }, [isOpen, selectedPeriod, students, classData?.id]);
 
   const updateGrade = (studentId: number, field: keyof StudentGrade, value: number | string) => {
     setGrades(prev => prev.map(grade => {
@@ -172,14 +212,57 @@ export function GradeManagementModal({
     return { label: 'Reprovado', color: 'bg-red-100 text-red-800' };
   };
 
-  const handleSave = () => {
-    onSave({
-      classId: classData.id,
-      period: selectedPeriod,
-      grades
-    });
-    onClose();
-  };
+  const handleSave = useCallback(async () => {
+    if (!classData?.id) return;
+    const periodNum = PERIOD_NUMBER[selectedPeriod] ?? 1;
+    setIsSaving(true);
+    try {
+      await Promise.all(
+        grades.map((grade) =>
+          gradeService.save({
+            class_id:            classData.id,
+            student_id:          grade.studentId,
+            period_number:       periodNum,
+            grade_participation: grade.participation,
+            grade_homework:      grade.homework,
+            grade_tests:         grade.tests,
+            grade_projects:      grade.projects,
+            grade_listening:     grade.listening,
+            grade_speaking:      grade.speaking,
+            grade_reading:       grade.reading,
+            grade_writing:       grade.writing,
+            grade_grammar:       grade.grammar,
+            grade_vocabulary:    grade.vocabulary,
+            grade_pronunciation: grade.pronunciation,
+            strengths:           grade.strengths       || null,
+            improvements:        grade.weaknesses      || null,
+            recommendations:     grade.recommendations || null,
+          })
+        )
+      );
+      toast.success('Grades saved successfully!');
+      onSave({ classId: classData.id, period: selectedPeriod, grades });
+    } catch (err: any) {
+      toast.error(err.message || 'Error saving grades');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [grades, classData, selectedPeriod, onSave]);
+
+  const handleFinalizeLevel = useCallback(async (studentId: number, studentName: string) => {
+    if (!classData?.id) return;
+    setIsFinalizing(true);
+    try {
+      const result = await gradeService.finalizeLevel(classData.id, studentId);
+      toast.success(
+        `Level finalized for ${studentName}! Final: ${result.final_grade} — ${result.level_status.replace('_', ' ')}`
+      );
+    } catch (err: any) {
+      toast.error(err.message || 'Error finalizing level');
+    } finally {
+      setIsFinalizing(false);
+    }
+  }, [classData]);
 
   const handleClose = () => {
     setGrades([]);
@@ -214,7 +297,15 @@ export function GradeManagementModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Selec0. de Período */}
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Loading grades…</span>
+            </div>
+          )}
+
+          {/* Period selector */}
           <div className="flex items-center gap-4">
             <div className="space-y-2">
               <Label>Período Avaliativo</Label>
@@ -336,13 +427,27 @@ export function GradeManagementModal({
                               <div className="text-xs text-muted-foreground">Média Final</div>
                             </div>
 
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedStudent(grade.studentId)}
-                            >
-                              Detalhes
-                            </Button>
+                            <div className="flex flex-col gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedStudent(grade.studentId)}
+                              >
+                                Detalhes
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 text-xs"
+                                disabled={isFinalizing}
+                                onClick={() => handleFinalizeLevel(grade.studentId, grade.studentName)}
+                              >
+                                {isFinalizing
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <><ArrowRightCircle className="h-3 w-3 mr-1" />Finalize Level</>
+                                }
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -649,12 +754,14 @@ export function GradeManagementModal({
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Notas
+          <Button onClick={handleSave} disabled={isSaving || isLoading}>
+            {isSaving
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+              : <><Save className="h-4 w-4 mr-2" />Save Period Grades</>
+            }
           </Button>
         </div>
       </DialogContent>

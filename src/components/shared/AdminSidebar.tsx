@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  Users, BookOpen, DollarSign, Settings, GraduationCap, Shield, 
-  BarChart3, ChevronLeft, ChevronRight, Home, FileText, 
-  LucideIcon, ClipboardList, ChevronDown, PenLine, UserCircle2
+  Users, BookOpen, DollarSign, Settings, GraduationCap, Shield,
+  BarChart3, ChevronLeft, ChevronRight, Home, FileText,
+  LucideIcon, ClipboardList, ChevronDown, PenLine, UserCircle2,
+  ArrowRightCircle
 } from "lucide-react";
 // --- Tipagens ---
-export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "registrations" | "inscriptions" | "users" | "grades";
+export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "registrations" | "inscriptions" | "users" | "grades" | "transitions";
 export interface MenuItem {
   id: AdminView;
   label: string;
@@ -38,7 +39,8 @@ export const menuItems: MenuItem[] = [
   { id: "courses", label: "Cursos", icon: BookOpen },
   { id: "payments", label: "Pagamentos", icon: DollarSign, badge: 12 },
   { id: "users", label: "Usuários", icon: Shield },
-  { id: "grades", label: "Notas", icon: BarChart3 },
+  { id: "grades",       label: "Notas",       icon: BarChart3        },
+  { id: "transitions",  label: "Transitions", icon: ArrowRightCircle },
 ];
 
 export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings, userName, userEmail }: AdminSidebarProps) {
