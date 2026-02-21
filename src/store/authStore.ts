@@ -26,6 +26,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   mustChangePassword: boolean;
+  resetContext: 'first_access' | 'admin_reset' | null;
 
   login: (credentials: { identifier: string; senha: string }) => Promise<UserProfile | null>;
   logout: () => Promise<void>;
@@ -43,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
         error: null,
         mustChangePassword: false,
+        resetContext: null,
 
         login: async (credentials): Promise<UserProfile | null> => {
           set({ isLoading: true, error: null });
@@ -80,13 +82,15 @@ export const useAuthStore = create<AuthState>()(
             };
 
             const mustChangePassword = !!response.data.must_change_password;
+            const resetContext = (response.data.reset_context as 'first_access' | 'admin_reset') ?? null;
 
             set({
               user: userWithProfile,
               isAuthenticated: true,
               isLoading: false,
               error: null,
-              mustChangePassword
+              mustChangePassword,
+              resetContext,
             });
 
             // Guardar user com role normalizado
@@ -153,7 +157,7 @@ export const useAuthStore = create<AuthState>()(
         },
 
         clearError: () => set({ error: null }),
-        clearMustChangePassword: () => set({ mustChangePassword: false })
+        clearMustChangePassword: () => set({ mustChangePassword: false, resetContext: null })
       }),
       {
         name: 'auth-storage',

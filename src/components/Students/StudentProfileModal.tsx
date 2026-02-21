@@ -790,9 +790,10 @@ export function StudentProfileModal({
               </div>
             )}
 
-            <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
-              <p className="text-xs text-slate-600">
-                ℹ️ A senha deve ter no mínimo 6 caracteres
+            <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-lg space-y-1">
+              <p className="text-xs text-amber-800 font-semibold">O que acontece após o reset:</p>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                O estudante fará login com a senha temporária definida aqui e será obrigado a criar uma nova senha pessoal antes de aceder ao sistema.
               </p>
             </div>
           </div>

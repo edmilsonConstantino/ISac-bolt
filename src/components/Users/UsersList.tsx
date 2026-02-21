@@ -516,7 +516,6 @@ export function UsersList({
         isOpen={credentialsModal.isOpen}
         onClose={() => setCredentialsModal({ isOpen: false, user: null })}
         user={credentialsModal.user}
-        onResetPassword={(userId) => console.log("Reset password for user:", userId)}
       />
 
       <UserAccessHistoryModal

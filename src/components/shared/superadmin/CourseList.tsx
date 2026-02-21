@@ -24,7 +24,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 
 interface Categoria {
   id: number;
-  nome: string;
+  name: string;
 }
 
 interface Nivel {
@@ -115,7 +115,10 @@ export function CourseList({
       course.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.codigo.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesType = filterType === "all" || course.tipo_curso === filterType;
+    const categoriaName = course.categoria?.name || '';
+    const matchesType = filterType === "all" ||
+      categoriaName === filterType ||
+      course.tipo_curso === filterType;
     const matchesStatus = filterStatus === "all" || course.status === filterStatus;
 
     return matchesSearch && matchesType && matchesStatus;
@@ -135,7 +138,7 @@ export function CourseList({
         c.id,
         c.nome,
         c.codigo,
-        c.categoria?.nome || "Sem categoria",
+        c.categoria?.name || getTipoCursoLabel(c.tipo_curso || '') || "Sem categoria",
         getTipoCursoLabel(c.tipo_curso || ''),
         getDuracaoText(c.tipo_curso || '', c.duracao_valor),
         formatCurrency(c.mensalidade),
@@ -152,12 +155,18 @@ export function CourseList({
 
   const hasActiveFilters = searchTerm !== "" || filterType !== "all" || filterStatus !== "all";
 
+  // Derivar opções de categoria dinamicamente dos cursos existentes
+  const uniqueCategories = Array.from(
+    new Map(
+      safeCourses
+        .filter(c => c.categoria?.name)
+        .map(c => [c.categoria!.name, c.categoria!.name])
+    ).values()
+  ).sort();
+
   const typeFilterOptions = [
-    { value: "all", label: "Todos os Tipos" },
-    { value: "tecnico", label: "\u{1F4C5} Técnico" },
-    { value: "tecnico_superior", label: "\u{1F4DA} Técnico Superior" },
-    { value: "tecnico_profissional", label: "\u{1F393} Técnico Profissional" },
-    { value: "curta_duracao", label: "\u26A1 Curta Duração" },
+    { value: "all", label: "Todas as Categorias" },
+    ...uniqueCategories.map(name => ({ value: name, label: name })),
   ];
 
   const statusFilterOptions = [
@@ -323,12 +332,20 @@ export function CourseList({
                   </div>
                 </div>
 
-                {/* Type Column */}
+                {/* Type / Category Column */}
                 <div className="col-span-2">
-                  <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
-                    <span className="mr-1.5">{getTipoCursoIcon(course.tipo_curso || '')}</span>
-                    {getTipoCursoLabel(course.tipo_curso || '')}
-                  </Badge>
+                  {course.categoria?.name ? (
+                    <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                      {course.categoria.name}
+                    </Badge>
+                  ) : course.tipo_curso ? (
+                    <Badge className="bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">
+                      <span className="mr-1">{getTipoCursoIcon(course.tipo_curso)}</span>
+                      {getTipoCursoLabel(course.tipo_curso)}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Sem categoria</span>
+                  )}
                 </div>
 
                 {/* Duration Column */}

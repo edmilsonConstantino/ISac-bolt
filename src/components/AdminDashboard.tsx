@@ -1,5 +1,6 @@
 // src/components/AdminDashboard.tsx - CÓDIGO COMPLETO
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useAuthStore } from "@/store/authStore";
 import studentService, { Student as APIStudent } from "@/services/studentService";
 import classService, { Class as APIClass } from "@/services/classService";
@@ -508,6 +509,18 @@ const loadRegistrations = async () => {
   }
 };
 
+  // ── Auto-refresh: volta ao tab ou a cada 60s ──────────────────────────
+  const refreshAll = useCallback(() => {
+    if (!isAuthenticated) return;
+    loadUsers();
+    loadCourses();
+    loadClasses();
+    loadRegistrations();
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useAutoRefresh(refreshAll, { interval: 60_000 });
+  // ─────────────────────────────────────────────────────────────────────
+
 const handleAddRegistration = () => {
   console.log('Abrindo modal de matrícula');
   setRegistrationModal({
@@ -675,6 +688,17 @@ const handleDeleteRegistration = async (registrationId: number) => {
   const handleCloseStudentProfileModal = () => {
     setIsStudentProfileModalOpen(false);
     setSelectedStudent(null);
+  };
+
+  const handleResetStudentPassword = async (studentId: number, newPassword: string) => {
+    try {
+      await studentService.update({ id: studentId, password: newPassword });
+      toast.success("Senha resetada. O estudante será obrigado a definir uma nova senha no próximo acesso.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Erro ao resetar senha";
+      console.error("Erro ao resetar senha:", error);
+      toast.error(msg);
+    }
   };
 
   const handleLaunchGrades = (classItem: Class) => {
@@ -1429,6 +1453,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       currentUserRole="admin"
       onSave={handleSaveStudentProfile}
       onViewPaymentDetails={handleViewPaymentDetails}
+      onResetPassword={handleResetStudentPassword}
     />
 
     <GeneralSettingsModal

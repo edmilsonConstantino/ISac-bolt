@@ -51,9 +51,9 @@ export function UserAccessHistoryModal({
     if (!user) return;
     setIsLoading(true);
     try {
-      // Buscar logs para este user - tenta pelo user_id
       const response = await userService.getAccessLogs({
         user_id: user.id,
+        user_type: user.role,
         limit: 100,
       });
       setAccessLogs(response.data || []);

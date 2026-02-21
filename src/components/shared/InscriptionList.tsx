@@ -1,5 +1,6 @@
 // InscriptionList.tsx - ESTILO MODERNO COM TOGGLE GRID/LISTA
 import { useState, useEffect } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,6 +142,9 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
     fetchInscribedStudents();
   }, []);
 
+  // Auto-refresh: recarrega ao voltar ao tab ou a cada 30s
+  useAutoRefresh(fetchInscribedStudents, { interval: 30_000 });
+
   useEffect(() => {
     let filtered = students;
 
@@ -175,8 +179,24 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
   const handleSaveRegistration = async (registrationData: Partial<Registration>) => {
     try {
       await registrationService.create(registrationData as unknown as CreateRegistrationData);
+
+      // Capturar o ID antes de limpar o modal
+      const enrolledId = regModal.studentId;
+
       toast.success('Matrícula criada com sucesso!');
       setRegModal({ isOpen: false, studentId: null });
+
+      // Actualização local imediata — botão desaparece sem esperar pela API
+      if (enrolledId !== null) {
+        setStudents(prev =>
+          prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
+        );
+        setFilteredStudents(prev =>
+          prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
+        );
+      }
+
+      // Sincronizar com a API em segundo plano
       fetchInscribedStudents();
     } catch (error) {
       console.error('Erro ao criar matrícula:', error);

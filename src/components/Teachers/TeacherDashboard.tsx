@@ -18,8 +18,6 @@ import {
   CheckSquare,
   TrendingUp,
   Settings,
-  Menu,
-  X,
   Lock,
   Loader2
 } from "lucide-react";
@@ -47,8 +45,11 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
   const logout = useAuthStore((s) => s.logout);
   
   const displayName = user
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Docente'
+    ? (user.nome || '').trim() ||
+      `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+      user.username || 'Docente'
     : 'Docente';
+  const firstName = displayName.split(/\s+/)[0];
   
   const teacherId = user?.id ?? 0;
 
@@ -61,8 +62,6 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [changePasswordModal, setChangePasswordModal] = useState(false);
 
-  // Estado para controlar o menu mobile
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
 
   // Carregar turmas do professor da API
@@ -255,12 +254,6 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
     console.log("Material enviado:", materialData);
   };
 
-  // Função para mudar de tab e fechar menu mobile
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    setIsMobileMenuOpen(false);
-  };
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header estilizado - Responsivo */}
@@ -332,188 +325,51 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               </Button>
             </div>
 
-            {/* Mobile: Hamburger Menu */}
+            {/* Mobile: Logout */}
             <div className="lg:hidden flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="h-10 w-10 rounded-lg bg-[#003868] hover:bg-[#002850] text-white"
+              <button
+                onClick={async () => { try { await logout(); if (onLogout) onLogout(); } catch (e) { console.error(e); } }}
+                className="h-9 w-9 bg-[#003868] hover:bg-red-600/20 rounded-lg flex items-center justify-center text-slate-200 hover:text-red-400 transition-colors"
               >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
         <div className="h-1 bg-gradient-to-r from-[#F5821F] via-[#FF9933] to-[#F5821F]"></div>
       </header>
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 top-[65px]"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Mobile Menu Drawer */}
-      <div className={`lg:hidden fixed top-[65px] right-0 h-[calc(100vh-65px)] w-72 bg-gradient-to-b from-[#004B87] to-[#003868] shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
-        <div className="p-6 space-y-6">
-          {/* Perfil Mobile */}
-          <div className="flex items-center gap-3 pb-6 border-b border-white/10">
-            <div className="h-12 w-12 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-full flex items-center justify-center font-bold text-white shadow-md">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-semibold text-white text-sm">{displayName}</p>
-              <p className="text-xs text-slate-300 flex items-center gap-1">
-                <BookOpen className="h-3 w-3" />
-                Docente
-              </p>
-            </div>
-          </div>
-
-          {/* Menu Items */}
-          <nav className="space-y-2">
-            <button
-              onClick={() => handleTabChange("dashboard")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "dashboard" 
-                  ? 'bg-[#F5821F] text-white' 
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="h-5 w-5" />
-              <span className="font-medium">Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange("classes")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "classes" 
-                  ? 'bg-[#F5821F] text-white' 
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <BookOpen className="h-5 w-5" />
-              <span className="font-medium">Turmas</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange("students")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "students" 
-                  ? 'bg-[#F5821F] text-white' 
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <Users className="h-5 w-5" />
-              <span className="font-medium">Estudantes</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange("assignments")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "assignments" 
-                  ? 'bg-[#F5821F] text-white' 
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <FileText className="h-5 w-5" />
-              <span className="font-medium">Trabalhos</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange("materials")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "materials"
-                  ? 'bg-[#F5821F] text-white'
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <Upload className="h-5 w-5" />
-              <span className="font-medium">Materiais</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange("settings")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "settings"
-                  ? 'bg-[#F5821F] text-white'
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="font-medium">Definições</span>
-            </button>
-          </nav>
-
-          {/* Menu Footer */}
-          <div className="pt-6 border-t border-white/10 space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-slate-200 hover:bg-white/10 hover:text-white"
-              onClick={() => {
-                setActiveTab('settings');
-                setIsMobileMenuOpen(false);
-              }}
-            >
-              <Settings className="h-4 w-4 mr-3" />
-              Configurações
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-400 hover:bg-red-500/20 hover:text-red-300"
-              onClick={async () => {
-                try {
-                  await logout();
-                  if (onLogout) onLogout();
-                } catch (e) {
-                  console.error('Logout falhou', e);
-                }
-              }}
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Espaçador para compensar o header fixed */}
-      <div className="h-[65px] lg:h-[85px]"></div>
+      <div className="h-[66px] lg:h-[85px]"></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
-        {/* Welcome Section */}
-        <div className="mb-6 lg:mb-8 bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-xl lg:rounded-2xl p-6 lg:p-8 shadow-lg">
-          <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-8 pb-20 lg:pb-8">
+        {/* Welcome Section — desktop */}
+        <div className="hidden lg:block mb-8 bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-8 shadow-lg">
+          <h2 className="text-3xl font-bold text-white mb-2">
             Painel Do {displayName}!
           </h2>
           <p className="text-white/90 text-sm">
-            Gerencie estudantes, turmas e atividades de forma eficiente. 
+            Gerencie estudantes, turmas e atividades de forma eficiente.
           </p>
         </div>
 
-        {/* Botões de Acesso Rápido - Mobile Only */}
-        <div className="lg:hidden flex gap-3 mb-6">
-          <Button
-            onClick={() => handleTabChange("classes")}
-            className="flex-1 bg-[#004B87] hover:bg-[#003868] text-white h-12 text-base font-semibold rounded-lg shadow-md"
-          >
-            <BookOpen className="h-5 w-5 mr-2" />
-            Turmas
-          </Button>
-
-          <Button
-            onClick={() => handleTabChange("students")}
-            className="flex-1 bg-[#F5821F] hover:bg-[#E07020] text-white h-12 text-base font-semibold rounded-lg shadow-md"
-          >
-            <Users className="h-5 w-5 mr-2" />
-            Estudantes
-          </Button>
+        {/* Welcome Section — mobile (compact, same style as student portal) */}
+        <div className="lg:hidden mb-4 bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-5 shadow-lg flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">
+              Olá, {firstName}!
+            </h2>
+            <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-[#FF9933]" />
+              {dashboardStats.totalClasses} turma(s) · {dashboardStats.totalStudents} estudante(s)
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-inner">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -546,136 +402,102 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 lg:space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-              <Card className="shadow-elegant">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base lg:text-lg flex items-center gap-2">
-                    <BookOpen className="h-4 lg:h-5 w-4 lg:w-5 text-blue-600" />
-                    Turmas Ativas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl lg:text-3xl font-bold text-blue-600">{dashboardStats.totalClasses}</div>
-                  <p className="text-xs lg:text-sm text-muted-foreground">Turmas sendo lecionadas</p>
-                </CardContent>
-              </Card>
 
-              <Card className="shadow-elegant">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base lg:text-lg flex items-center gap-2">
-                    <Users className="h-4 lg:h-5 w-4 lg:w-5 text-orange-500" />
-                    Total Estudantes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl lg:text-3xl font-bold text-orange-500">{dashboardStats.totalStudents}</div>
-                  <p className="text-xs lg:text-sm text-muted-foreground">Estudantes matriculados</p>
-                </CardContent>
-              </Card>
+            {/* Mobile: gradient section header */}
+            <div className="lg:hidden bg-gradient-to-r from-[#004B87] to-[#0066B3] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <BarChart3 className="h-5 w-5" />
+                <h2 className="text-lg font-bold">Início</h2>
+              </div>
+              <p className="text-blue-200 text-sm">Visão geral das suas actividades</p>
+            </div>
 
-              <Card className="shadow-elegant">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base lg:text-lg flex items-center gap-2">
-                    <FileText className="h-4 lg:h-5 w-4 lg:w-5 text-yellow-600" />
-                    Trabalhos Criados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl lg:text-3xl font-bold text-yellow-600">{assignments.length}</div>
-                  <p className="text-xs lg:text-sm text-muted-foreground">Total de trabalhos</p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-elegant">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base lg:text-lg flex items-center gap-2">
-                    <Calendar className="h-4 lg:h-5 w-4 lg:w-5 text-green-600" />
-                    Próxima Aula
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-base lg:text-lg font-semibold">{dashboardStats.nextClass}</div>
-                  <p className="text-xs lg:text-sm text-muted-foreground">Segunda, 14:00</p>
-                </CardContent>
-              </Card>
+            {/* Stats — 2 cols on mobile, 4 on desktop */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+              {[
+                { icon: BookOpen,  label: "Turmas Ativas",     value: dashboardStats.totalClasses,  sub: "Turmas a leccionar", color: "text-[#004B87]",   bg: "bg-blue-50",    border: "border-l-[#004B87]"  },
+                { icon: Users,     label: "Total Estudantes",  value: dashboardStats.totalStudents, sub: "Matriculados",       color: "text-[#F5821F]",   bg: "bg-orange-50",  border: "border-l-[#F5821F]"  },
+                { icon: FileText,  label: "Trabalhos",         value: assignments.length,           sub: "Criados",            color: "text-amber-600",   bg: "bg-amber-50",   border: "border-l-amber-500"  },
+                { icon: Calendar,  label: "Próxima Aula",      value: dashboardStats.nextClass,     sub: "Turma agendada",     color: "text-emerald-600", bg: "bg-emerald-50", border: "border-l-emerald-500" },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className={`bg-white rounded-2xl border border-slate-100 border-l-4 ${stat.border} shadow-sm p-4 lg:p-5`}>
+                    <div className={`h-8 w-8 ${stat.bg} rounded-xl flex items-center justify-center mb-3 lg:hidden`}>
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                    <div className={`hidden lg:flex items-center gap-2 mb-2 text-base font-semibold`}>
+                      <Icon className={`h-5 w-5 ${stat.color}`} />
+                      {stat.label}
+                    </div>
+                    <div className={`text-2xl lg:text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+                    <p className="text-xs text-slate-500 mt-0.5">{stat.sub}</p>
+                    <p className="text-[10px] text-slate-400 lg:hidden mt-0.5">{stat.label}</p>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-              <Card className="shadow-elegant">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-                    <TrendingUp className="h-5 w-5" />
-                    Resumo da Semana
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Aulas ministradas</span>
-                      <span className="font-semibold text-blue-600">12</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Trabalhos criados</span>
-                      <span className="font-semibold text-green-600">8</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Presença média</span>
-                      <span className="font-semibold text-blue-600">92%</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Materiais enviados</span>
-                      <span className="font-semibold text-orange-500">5</span>
-                    </div>
+              {/* Resumo da semana */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 lg:p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-7 w-7 bg-[#004B87] rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-3.5 w-3.5 text-white" />
                   </div>
-                </CardContent>
-              </Card>
+                  <p className="font-semibold text-slate-800 text-sm lg:text-base">Resumo da Semana</p>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { label: "Aulas ministradas",   value: "12", color: "text-[#004B87]"   },
+                    { label: "Trabalhos criados",   value: "8",  color: "text-emerald-600" },
+                    { label: "Presença média",       value: "92%",color: "text-[#004B87]"   },
+                    { label: "Materiais enviados",   value: "5",  color: "text-[#F5821F]"   },
+                  ].map((row) => (
+                    <div key={row.label} className="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0">
+                      <span className="text-sm text-slate-500">{row.label}</span>
+                      <span className={`text-sm font-bold ${row.color}`}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <Card className="shadow-elegant">
-                <CardHeader>
-                  <CardTitle className="text-base lg:text-lg">Ações Rápidas</CardTitle>
-                  <CardDescription className="text-xs lg:text-sm">Tarefas frequentes do dia a dia</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      className="h-auto p-3 flex flex-col items-center gap-2"
-                      onClick={() => setCreateAssignmentModal(true)}
+              {/* Ações Rápidas */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 lg:p-5">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Ações Rápidas</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Criar Trabalho",   Icon: Plus,        color: "text-[#004B87]", bg: "bg-blue-50",    action: () => setCreateAssignmentModal(true) },
+                    { label: "Marcar Presença",  Icon: CheckSquare, color: "text-emerald-600",bg: "bg-emerald-50",action: () => setAttendanceModal(true) },
+                    { label: "Criar Aviso",       Icon: Bell,        color: "text-[#F5821F]", bg: "bg-orange-50",  action: () => setAnnouncementModal(true) },
+                    { label: "Upload Material",  Icon: Upload,      color: "text-purple-600", bg: "bg-purple-50",  action: () => setUploadMaterialModal(true) },
+                  ].map((a) => (
+                    <button
+                      key={a.label}
+                      onClick={a.action}
+                      className="flex flex-col items-center gap-2 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md active:scale-95 transition-all"
                     >
-                      <Plus className="h-5 w-5 text-blue-600" />
-                      <span className="text-xs">Criar Trabalho</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-auto p-3 flex flex-col items-center gap-2"
-                      onClick={() => setAttendanceModal(true)}
-                    >
-                      <CheckSquare className="h-5 w-5 text-green-600" />
-                      <span className="text-xs">Marcar Presença</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-auto p-3 flex flex-col items-center gap-2"
-                      onClick={() => setAnnouncementModal(true)}
-                    >
-                      <Bell className="h-5 w-5 text-orange-500" />
-                      <span className="text-xs">Criar Aviso</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-auto p-3 flex flex-col items-center gap-2"
-                      onClick={() => setUploadMaterialModal(true)}
-                    >
-                      <Upload className="h-5 w-5 text-blue-600" />
-                      <span className="text-xs">Upload Material</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className={`h-10 w-10 ${a.bg} rounded-xl flex items-center justify-center`}>
+                        <a.Icon className={`h-5 w-5 ${a.color}`} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700 text-center leading-tight">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="classes" className="space-y-6">
+          <TabsContent value="classes" className="space-y-4 lg:space-y-6">
+            {/* Mobile: gradient section header */}
+            <div className="lg:hidden bg-gradient-to-r from-[#004B87] to-[#0066B3] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="h-5 w-5" />
+                <h2 className="text-lg font-bold">Minhas Turmas</h2>
+              </div>
+              <p className="text-blue-200 text-sm">{dashboardStats.totalClasses} turma(s) atribuída(s)</p>
+            </div>
+
             {isLoadingClasses ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
@@ -703,7 +525,16 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
             )}
           </TabsContent>
 
-          <TabsContent value="students" className="space-y-6">
+          <TabsContent value="students" className="space-y-4 lg:space-y-6">
+            {/* Mobile: gradient section header */}
+            <div className="lg:hidden bg-gradient-to-r from-[#004B87] to-[#0066B3] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-5 w-5" />
+                <h2 className="text-lg font-bold">Estudantes</h2>
+              </div>
+              <p className="text-blue-200 text-sm">{dashboardStats.totalStudents} estudante(s) nas suas turmas</p>
+            </div>
+
             {isLoadingStudents ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
@@ -721,181 +552,238 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
           </TabsContent>
 
           <TabsContent value="assignments" className="space-y-4 lg:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+
+            {/* Mobile: gradient section header + create button */}
+            <div className="lg:hidden bg-gradient-to-r from-amber-500 to-[#F5821F] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-5 w-5" />
+                    <h2 className="text-lg font-bold">Trabalhos</h2>
+                  </div>
+                  <p className="text-amber-100 text-sm">{assignments.length} trabalho(s) criado(s)</p>
+                </div>
+                <button
+                  onClick={() => setCreateAssignmentModal(true)}
+                  className="h-10 w-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+                >
+                  <Plus className="h-5 w-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop: header + button */}
+            <div className="hidden lg:flex justify-between items-center">
               <h3 className="text-lg font-semibold">Trabalhos e Atividades</h3>
-              <Button 
-                variant="outline" 
-                onClick={() => setCreateAssignmentModal(true)} 
-                className="bg-blue-600 hover:bg-blue-700 text-white border-0 w-full sm:w-auto"
+              <Button
+                variant="outline"
+                onClick={() => setCreateAssignmentModal(true)}
+                className="bg-[#004B87] hover:bg-[#003868] text-white border-0"
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Criar Trabalho
               </Button>
             </div>
-            <div className="space-y-4">
-              {assignments.map((assignment) => (
-                <Card key={assignment.id} className="shadow-elegant">
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                      <div>
-                        <CardTitle className="text-base lg:text-lg">{assignment.title}</CardTitle>
-                        <CardDescription className="text-xs lg:text-sm">{assignment.class}</CardDescription>
+
+            {/* Assignment cards */}
+            <div className="space-y-3">
+              {assignments.map((assignment) => {
+                const pct = assignment.total > 0 ? Math.round((assignment.submissions / assignment.total) * 100) : 0;
+                return (
+                  <div key={assignment.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    {/* Card header */}
+                    <div className="px-4 pt-4 pb-3 border-b border-slate-50">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 text-sm truncate">{assignment.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">{assignment.class}</p>
+                        </div>
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full">
+                          Prazo: {new Date(assignment.dueDate).toLocaleDateString('pt-BR')}
+                        </span>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        Prazo: {new Date(assignment.dueDate).toLocaleDateString('pt-BR')}
-                      </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                    {/* Stats row */}
+                    <div className="px-4 py-3 flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-1">
                         <div className="text-center">
-                          <div className="text-xl lg:text-2xl font-bold text-blue-600">
-                            {assignment.submissions}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Entregues</div>
+                          <p className="text-xl font-bold text-[#004B87]">{assignment.submissions}</p>
+                          <p className="text-[10px] text-slate-400">Entregues</p>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl lg:text-2xl font-bold text-muted-foreground">
-                            {assignment.total}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Total</div>
+                          <p className="text-xl font-bold text-slate-400">{assignment.total}</p>
+                          <p className="text-[10px] text-slate-400">Total</p>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl lg:text-2xl font-bold text-yellow-600">
-                            {assignment.total - assignment.submissions}
+                          <p className="text-xl font-bold text-[#F5821F]">{assignment.total - assignment.submissions}</p>
+                          <p className="text-[10px] text-slate-400">Pendentes</p>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="flex-1 hidden sm:block">
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-[#004B87] to-[#F5821F] h-2 rounded-full transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
-                          <div className="text-xs text-muted-foreground">Pendentes</div>
+                          <p className="text-[10px] text-slate-400 mt-0.5 text-right">{pct}% entregues</p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                      <button className="flex-shrink-0 px-3 py-2 rounded-xl border-2 border-[#004B87]/20 text-[#004B87] text-xs font-semibold hover:bg-[#004B87] hover:text-white transition-all">
                         Ver Entregas
-                      </Button>
+                      </button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
+
+              {assignments.length === 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+                  <FileText className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium text-sm">Sem trabalhos criados</p>
+                  <button
+                    onClick={() => setCreateAssignmentModal(true)}
+                    className="mt-4 px-4 py-2 bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                  >
+                    Criar primeiro trabalho
+                  </button>
+                </div>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="materials" className="space-y-4 lg:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+
+            {/* Mobile: gradient section header */}
+            <div className="lg:hidden bg-gradient-to-r from-purple-600 to-[#004B87] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Upload className="h-5 w-5" />
+                    <h2 className="text-lg font-bold">Materiais</h2>
+                  </div>
+                  <p className="text-purple-200 text-sm">Envie conteúdos para as suas turmas</p>
+                </div>
+                <button
+                  onClick={() => setUploadMaterialModal(true)}
+                  className="h-10 w-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+                >
+                  <Plus className="h-5 w-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop: header + button */}
+            <div className="hidden lg:flex justify-between items-center">
               <h3 className="text-lg font-semibold">Materiais de Ensino</h3>
               <Button
                 variant="outline"
                 onClick={() => setUploadMaterialModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-0 w-full sm:w-auto"
+                className="bg-[#004B87] hover:bg-[#003868] text-white border-0"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Material
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-              <Card
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
-                onClick={() => setUploadMaterialModal(true)}
-              >
-                <CardContent className="flex flex-col items-center justify-center h-40">
-                  <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Upload de Áudio</h3>
-                  <p className="text-sm text-muted-foreground text-center">
-                    Envie arquivos de áudio para suas turmas
-                  </p>
-                </CardContent>
-              </Card>
-              <Card
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
-                onClick={() => setUploadMaterialModal(true)}
-              >
-                <CardContent className="flex flex-col items-center justify-center h-40">
-                  <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Upload de Vídeo</h3>
-                  <p className="text-sm text-muted-foreground text-center">
-                    Envie vídeos educativos
-                  </p>
-                </CardContent>
-              </Card>
-              <Card
-                className="shadow-elegant border-dashed border-2 border-muted-foreground/25 hover:border-blue-600 transition-colors cursor-pointer"
-                onClick={() => setUploadMaterialModal(true)}
-              >
-                <CardContent className="flex flex-col items-center justify-center h-40">
-                  <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Upload de Documentos</h3>
-                  <p className="text-sm text-muted-foreground text-center">
-                    PDFs, exercícios e materiais escritos
-                  </p>
-                </CardContent>
-              </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
+              {[
+                { label: "Upload de Áudio",      desc: "Arquivos de áudio para as turmas",    icon: Upload, color: "text-purple-600", bg: "bg-purple-50" },
+                { label: "Upload de Vídeo",      desc: "Vídeos educativos",                   icon: Upload, color: "text-[#004B87]",  bg: "bg-blue-50"   },
+                { label: "Upload de Documentos", desc: "PDFs, exercícios e materiais escritos",icon: Upload, color: "text-[#F5821F]",  bg: "bg-orange-50" },
+              ].map((m) => (
+                <button
+                  key={m.label}
+                  onClick={() => setUploadMaterialModal(true)}
+                  className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-[#004B87] hover:shadow-md active:scale-[0.98] transition-all p-6 flex flex-col items-center gap-3 text-center"
+                >
+                  <div className={`h-14 w-14 ${m.bg} rounded-2xl flex items-center justify-center`}>
+                    <m.icon className={`h-7 w-7 ${m.color}`} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm">{m.label}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{m.desc}</p>
+                  </div>
+                </button>
+              ))}
             </div>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4 lg:space-y-6">
+
+            {/* Mobile: gradient section header */}
+            <div className="lg:hidden bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0">
+                  {firstName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{displayName}</p>
+                  <p className="text-blue-200 text-xs font-mono">@{user?.username}</p>
+                  <span className="mt-1 inline-block text-[10px] font-semibold px-2 py-0.5 bg-white/20 rounded-full border border-white/30">
+                    Docente
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="max-w-2xl">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              {/* Desktop: title */}
+              <h3 className="hidden lg:flex items-center gap-2 text-lg font-semibold mb-4">
                 <Settings className="h-5 w-5 text-[#004B87]" />
                 Definições da Conta
               </h3>
 
-              {/* Informações do Perfil */}
-              <Card className="shadow-elegant mb-4">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5 text-blue-600" />
-                    Informações do Perfil
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Nome</p>
-                      <p className="text-sm font-semibold text-slate-800">{displayName}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Email</p>
-                      <p className="text-sm font-semibold text-slate-800">{user?.email || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Username</p>
-                      <p className="text-sm font-semibold text-slate-800">{user?.username || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Perfil</p>
-                      <Badge className="bg-blue-100 text-blue-700 border-blue-200">Docente</Badge>
-                    </div>
+              {/* Perfil */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-7 w-7 bg-[#004B87] rounded-lg flex items-center justify-center">
+                    <GraduationCap className="h-3.5 w-3.5 text-white" />
                   </div>
-                </CardContent>
-              </Card>
+                  <p className="font-semibold text-slate-800 text-sm">Informações do Perfil</p>
+                </div>
+                <div className="space-y-1">
+                  {[
+                    { label: "Nome",     value: displayName },
+                    { label: "Email",    value: user?.email || 'N/A' },
+                    { label: "Username", value: user?.username || 'N/A' },
+                  ].map((row) => (
+                    <div key={row.label} className="flex justify-between py-2.5 border-b border-slate-50 last:border-0">
+                      <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">{row.label}</span>
+                      <span className="text-xs font-semibold text-slate-800 text-right max-w-[60%] truncate">{row.value}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between py-2.5">
+                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Perfil</span>
+                    <Badge className="bg-[#004B87]/10 text-[#004B87] border-[#004B87]/20 text-[10px]">Docente</Badge>
+                  </div>
+                </div>
+              </div>
 
               {/* Segurança */}
-              <Card className="shadow-elegant">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Lock className="h-5 w-5 text-orange-500" />
-                    Segurança
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Gerencie a segurança da sua conta
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Alterar Senha</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Recomendamos alterar a senha periodicamente para maior segurança
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => setChangePasswordModal(true)}
-                      className="bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87] text-white"
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Alterar Senha
-                    </Button>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-7 w-7 bg-amber-50 rounded-lg flex items-center justify-center">
+                    <Lock className="h-3.5 w-3.5 text-[#F5821F]" />
                   </div>
-                </CardContent>
-              </Card>
+                  <p className="font-semibold text-slate-800 text-sm">Segurança</p>
+                </div>
+                <div className="flex items-center justify-between gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">Alterar Senha</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Recomendamos alterar a senha periodicamente
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setChangePasswordModal(true)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white text-sm font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    Alterar
+                  </button>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -971,6 +859,41 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
           students={gradeModal.students}
         />
       )}
+
+      {/* ── Bottom Navigation (mobile only) ─────────────────────────────────── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-t border-slate-200 shadow-2xl">
+        <div className="flex">
+          {([
+            { id: "dashboard",   Icon: BarChart3,  label: "Início"      },
+            { id: "classes",     Icon: BookOpen,   label: "Turmas"      },
+            { id: "students",    Icon: Users,      label: "Estudantes"  },
+            { id: "assignments", Icon: FileText,   label: "Trabalhos"   },
+            { id: "settings",    Icon: Settings,   label: "Definições"  },
+          ] as { id: string; Icon: React.ElementType; label: string }[]).map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-1 relative transition-colors ${
+                  isActive ? "text-[#004B87]" : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <tab.Icon
+                  className={`h-5 w-5 transition-transform ${isActive ? "scale-110" : ""}`}
+                  strokeWidth={isActive ? 2.5 : 1.5}
+                />
+                <span className={`text-[10px] transition-all ${isActive ? "font-bold text-[#004B87]" : "font-medium"}`}>
+                  {tab.label}
+                </span>
+                {isActive && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-[#004B87] rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

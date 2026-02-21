@@ -284,7 +284,7 @@ export interface AppState {
 
 // TIPOS DE PAGAMENTO
 
-export type PaymentStatus = 'paid' | 'pending' | 'overdue' | 'partial' | 'advance';
+export type PaymentStatus = 'paid' | 'pending' | 'overdue' | 'partial' | 'advance' | 'awaiting_confirmation' | 'cancelled';
 export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'mpesa' | 'other';
 
 export interface Payment {

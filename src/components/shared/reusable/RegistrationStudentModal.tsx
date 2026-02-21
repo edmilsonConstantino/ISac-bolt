@@ -435,8 +435,9 @@ export function RegistrationStudentModal({
       class_id: formData.classId || null,
       period: formData.period,
       enrollment_date: formData.enrollmentDate,
-      status: formData.status,
-      payment_status: formData.paymentStatus,
+      // Pagamento já foi validado (isEnrollmentPaid=true) → matrícula activa
+      status: isEnrollmentPaid ? 'active' : formData.status,
+      payment_status: isEnrollmentPaid ? 'paid' : formData.paymentStatus,
       enrollment_fee: formData.enrollmentFee,
       monthly_fee: formData.monthlyFee,
       observations: formData.observations,

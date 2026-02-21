@@ -64,6 +64,7 @@ export interface UpdateStudentData {
   emergency_contact_2?: string;
   notes?: string;
   status?: 'ativo' | 'inativo';
+  password?: string;
 }
 
 class StudentService {

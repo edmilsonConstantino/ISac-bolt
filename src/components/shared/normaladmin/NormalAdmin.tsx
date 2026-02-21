@@ -1,6 +1,7 @@
 // src/components/shared/normaladmin/NormalAdmin.tsx
 // Academic Admin - Usa a mesma navbar/sidebar do SuperAdmin
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useAuthStore } from "@/store/authStore";
 import studentService, { Student as APIStudent } from "@/services/studentService";
 import classService, { Class as APIClass } from "@/services/classService";
@@ -341,6 +342,17 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
+  // ── Auto-refresh: volta ao tab ou a cada 60s ──────────────────────────
+  const refreshAll = useCallback(() => {
+    if (!isAuthenticated) return;
+    loadCourses();
+    loadClasses();
+    loadRegistrations();
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useAutoRefresh(refreshAll, { interval: 60_000 });
+  // ─────────────────────────────────────────────────────────────────────
+
   // Funções de pagamento
   const getStudentPaymentInfo = (studentId: number, name: string, className: string) => {
     return {
@@ -555,6 +567,17 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const handleCloseStudentProfileModal = () => {
     setIsStudentProfileModalOpen(false);
     setSelectedStudent(null);
+  };
+
+  const handleResetStudentPassword = async (studentId: number, newPassword: string) => {
+    try {
+      await studentService.update({ id: studentId, password: newPassword });
+      toast.success("Senha resetada. O estudante será obrigado a definir uma nova senha no próximo acesso.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Erro ao resetar senha";
+      console.error("Erro ao resetar senha:", error);
+      toast.error(msg);
+    }
   };
 
   const handleViewPaymentDetails = (student: Student) => {
@@ -1169,6 +1192,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         currentUserRole="admin"
         onSave={handleSaveStudentProfile}
         onViewPaymentDetails={handleViewPaymentDetails}
+        onResetPassword={handleResetStudentPassword}
       />
 
       <GeneralSettingsModal

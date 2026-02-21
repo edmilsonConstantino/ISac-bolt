@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Lock, CheckCircle2, AlertCircle, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import apiClient from "@/services/api";
 import { cn } from "@/lib/utils";
@@ -17,11 +17,12 @@ export function SetPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const { user, clearMustChangePassword } = useAuthStore();
+  const { user, clearMustChangePassword, resetContext } = useAuthStore();
   const navigate = useNavigate();
 
   const role = user?.role ?? '';
   const username = user?.username ?? '';
+  const isAdminReset = resetContext === 'admin_reset';
 
   // Regras de validação da senha
   const rules = [
@@ -74,8 +75,8 @@ export function SetPasswordScreen() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-2">Senha Definida!</h2>
-          <p className="text-slate-500">A sua senha foi guardada com sucesso. A redirecionar...</p>
+          <h2 className="text-2xl font-black text-slate-800 mb-2">Senha Definida com Sucesso!</h2>
+          <p className="text-slate-500">A sua senha foi guardada em segurança. A redirecionar...</p>
         </div>
       </div>
     );
@@ -86,24 +87,48 @@ export function SetPasswordScreen() {
       <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-8 py-8 text-white text-center">
-          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <ShieldCheck className="h-8 w-8 text-[#F5821F]" />
+        {isAdminReset ? (
+          <div className="bg-gradient-to-r from-[#7C2D12] to-[#C2410C] px-8 py-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ShieldAlert className="h-8 w-8 text-orange-300" />
+            </div>
+            <h1 className="text-2xl font-black mb-1">Redefinição de Senha</h1>
+            <p className="text-orange-200 text-sm">
+              Olá, <span className="font-bold text-white">{user?.nome || username}</span>
+            </p>
           </div>
-          <h1 className="text-2xl font-black mb-1">Primeiro Acesso</h1>
-          <p className="text-blue-200 text-sm">
-            Bem-vindo, <span className="font-bold text-white">{user?.nome || username}</span>!
-          </p>
-        </div>
+        ) : (
+          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-8 py-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck className="h-8 w-8 text-[#F5821F]" />
+            </div>
+            <h1 className="text-2xl font-black mb-1">Primeiro Acesso</h1>
+            <p className="text-blue-200 text-sm">
+              Bem-vindo, <span className="font-bold text-white">{user?.nome || username}</span>!
+            </p>
+          </div>
+        )}
 
         {/* Body */}
         <div className="px-8 py-8">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <p className="text-[13px] text-amber-800 leading-relaxed">
-              Detectámos que este é o seu <strong>primeiro acesso</strong> ao sistema.
-              Por segurança, defina agora a sua senha pessoal.
-            </p>
-          </div>
+          {isAdminReset ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[13px] text-red-800 leading-relaxed">
+                  <strong>Alerta de Segurança:</strong> Detectámos que a sua senha foi resetada pelo administrador.
+                  Por motivos de segurança, é necessário que defina uma nova senha pessoal para continuar a aceder ao sistema.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <p className="text-[13px] text-amber-800 leading-relaxed">
+                Detectámos que este é o seu <strong>primeiro acesso</strong> ao sistema.
+                Por segurança, defina agora a sua senha pessoal.
+              </p>
+            </div>
+          )}
 
           {/* Username info */}
           <div className="bg-slate-50 rounded-xl px-4 py-3 mb-6 flex items-center gap-3">
@@ -189,7 +214,7 @@ export function SetPasswordScreen() {
               disabled={!allOk || isLoading}
               className="w-full h-12 bg-[#F5821F] hover:bg-[#E07318] text-white rounded-xl font-bold text-base disabled:opacity-50 shadow-lg shadow-orange-500/20"
             >
-              {isLoading ? "A guardar..." : "Definir Senha e Entrar"}
+              {isLoading ? "A guardar..." : isAdminReset ? "Definir Nova Senha" : "Definir Senha e Entrar"}
             </Button>
           </form>
         </div>
