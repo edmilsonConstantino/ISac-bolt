@@ -41,12 +41,24 @@ export interface StudentItem {
 
 export type StudentDTO = StudentItem;
 
+/** Nível de um curso (retornado por niveis.php?curso_id=X) */
+export interface NivelItem {
+  id: number;
+  nivel: number;           // número ordinal (1, 2, 3…)
+  nome: string;
+  duracao_meses: number;
+  mensalidade?: number | null;
+  enrollment_fee?: number | null;
+}
+
 /** Estrutura mínima do curso que o modal precisa */
 export interface CourseItem {
   codigo: string;
   nome: string;
   mensalidade?: number | null;
   taxa_matricula?: number | null;
+  tem_niveis?: boolean;
+  preco_por_nivel?: boolean;
 
   [key: string]: unknown;
 }
@@ -82,6 +94,7 @@ export type RegistrationSavePayload = Partial<Registration> & {
   period: string;
   enrollment_date: string;
   class_id?: number | null;
+  nivel_id?: number | null;
 
   // credenciais só entram quando for primeira matrícula
   username?: string;
@@ -127,7 +140,12 @@ export interface CourseTabProps extends BaseTabProps {
   filteredClasses: ClassItem[];
   isLoadingCourses: boolean;
 
+  niveis: NivelItem[];
+  selectedNivel: NivelItem | null;
+  isLoadingNiveis: boolean;
+
   onSelectCourse: (course: CourseItem) => void;
+  onSelectNivel:  (nivel: NivelItem) => void;
   onSelectClass: (classItem: ClassItem) => void;
 
   /** util */
@@ -166,6 +184,8 @@ export interface CourseDTO {
   nome: string;
   mensalidade?: number | null;
   taxa_matricula?: number | null;
+  tem_niveis?: boolean;
+  preco_por_nivel?: boolean;
 }
 
 export interface ClassDTO {
@@ -177,6 +197,7 @@ export interface ClassDTO {
   turno?: Turno | null;
   capacity?: number | null;  // capacidade_maxima
   students?: number | null;  // vagas_ocupadas
+  nivel_id?: number | null;
 }
 
 export interface RegistrationDTO {

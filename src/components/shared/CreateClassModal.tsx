@@ -14,12 +14,13 @@ import {
   GraduationCap, Calendar, Clock, MapPin, Hash,
   Sparkles, ChevronRight, CheckCircle2, AlertCircle,
   Building, CheckCircle, Edit2, UserPlus,
-  Sun, Sunset, Moon, Search, Loader2, X
+  Sun, Sunset, Moon, Search, Loader2, X, Layers
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Class, Permission } from "../../types";
 import courseService from '@/services/courseService';
+import nivelService from '@/services/nivelService';
 import { SelectStudentModal } from './SelectStudentModal';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
@@ -54,12 +55,17 @@ export function ClassModal({
     end_date: '',
     room: '',
     status: 'active',
-    students: 0
+    students: 0,
+    nivel_id: null
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showSelectStudentModal, setShowSelectStudentModal] = useState(false);
   const [nomeEditavel, setNomeEditavel] = useState(false);
+
+  // Estados para níveis
+  const [niveisDisponiveis, setNiveisDisponiveis] = useState<any[]>([]);
+  const [isLoadingNiveis, setIsLoadingNiveis] = useState(false);
 
   // Estados para selecção de estudantes
   const [availableStudents, setAvailableStudents] = useState<any[]>([]);
@@ -74,9 +80,11 @@ export function ClassModal({
         const cursos = await courseService.getAll();
         const cursosFormatados = cursos.map(c => ({
           id: c.codigo,
+          id_num: c.id,
           nome: c.nome,
           sigla: c.codigo,
-          duracao: c.duracao_valor || c.duracao || 6
+          duracao: c.duracao_valor || (c as any).duracao || 6,
+          tem_niveis: (c as any).tem_niveis || false
         }));
         setCursosDisponiveis(cursosFormatados);
       } catch (error) {
@@ -98,6 +106,22 @@ export function ClassModal({
         setFormData(prev => ({ ...prev, duration: curso.duracao.toString() }));
       }
     }
+  }, [formData.curso, cursosDisponiveis]);
+
+  // Carregar níveis quando curso com tem_niveis=true é seleccionado
+  useEffect(() => {
+    const curso = cursosDisponiveis.find(c => c.id === formData.curso);
+    if (!curso || !curso.tem_niveis || !curso.id_num) {
+      setNiveisDisponiveis([]);
+      setFormData(prev => ({ ...prev, nivel_id: null }));
+      return;
+    }
+    setIsLoadingNiveis(true);
+    nivelService.listarNiveisPorCurso(curso.id_num)
+      .then(niveis => setNiveisDisponiveis(niveis))
+      .catch(() => setNiveisDisponiveis([]))
+      .finally(() => setIsLoadingNiveis(false));
+    setFormData(prev => ({ ...prev, nivel_id: null }));
   }, [formData.curso, cursosDisponiveis]);
 
   // Gerar código da turma
@@ -163,6 +187,8 @@ export function ClassModal({
     setAvailableStudents([]);
     setSelectedStudentIds([]);
     setStudentSearchTerm("");
+    // Reset níveis
+    setNiveisDisponiveis([]);
   }, [classData, isCreating, isOpen]);
 
   // Carregar estudantes disponíveis quando entrar na aba de estudantes
@@ -247,6 +273,7 @@ export function ClassModal({
     if (!formData.code?.trim()) errors.code = 'Código da turma é obrigatório';
     if (!formData.start_date) errors.start_date = 'Data de início é obrigatória';
     if (!formData.duration) errors.duration = 'Duração é obrigatória';
+    if (niveisDisponiveis.length > 0 && !formData.nivel_id) errors.nivel_id = 'Selecione o nível da turma';
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -270,7 +297,8 @@ export function ClassModal({
         status: formData.status || 'active',
         duration: duracaoMeses.toString(),
         schedule: formData.schedule || 'manha',
-        selectedStudentIds: selectedStudentIds.length > 0 ? selectedStudentIds : undefined
+        selectedStudentIds: selectedStudentIds.length > 0 ? selectedStudentIds : undefined,
+        nivel_id: formData.nivel_id || undefined
       };
 
       console.log('📤 Enviando (React shape) para onSave:', dadosReact);
@@ -343,7 +371,7 @@ export function ClassModal({
               </div>
               <div>
                 <h2 className="font-bold text-lg leading-none">Class Manager</h2>
-                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Setup Turma v2</span>
+                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Setup Turma v1</span>
               </div>
             </div>
 
@@ -472,6 +500,64 @@ export function ClassModal({
                       </p>
                     )}
                   </section>
+
+                  {/* SELETOR DE NÍVEL */}
+                  {(niveisDisponiveis.length > 0 || isLoadingNiveis) && (
+                    <section>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+                        <Layers className="h-3.5 w-3.5 text-[#004B87]" />
+                        Selecione o Nível da Turma
+                      </Label>
+
+                      {isLoadingNiveis ? (
+                        <div className="flex items-center justify-center py-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                          <Loader2 className="h-6 w-6 text-[#004B87] animate-spin mr-2" />
+                          <span className="text-sm text-slate-500">Carregando níveis...</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                          {niveisDisponiveis.map((nivel) => (
+                            <button
+                              key={nivel.id}
+                              type="button"
+                              onClick={() => handleInputChange('nivel_id', nivel.id)}
+                              disabled={!permissions.canEdit}
+                              className={cn(
+                                "flex items-center p-4 rounded-2xl border-2 transition-all text-left",
+                                formData.nivel_id === nivel.id
+                                  ? "border-[#004B87] bg-blue-50 shadow-md ring-4 ring-[#004B87]/10"
+                                  : "border-white bg-white hover:border-[#004B87]/50 shadow-sm",
+                                !permissions.canEdit && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <div className={cn(
+                                "h-9 w-9 rounded-xl flex items-center justify-center mr-3 flex-shrink-0 font-bold text-sm",
+                                formData.nivel_id === nivel.id ? "bg-[#004B87] text-white" : "bg-slate-100 text-slate-500"
+                              )}>
+                                {nivel.nivel}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-slate-700 leading-tight truncate">{nivel.nome}</p>
+                                {nivel.duracao_meses && (
+                                  <p className="text-[10px] text-slate-400 mt-0.5">{nivel.duracao_meses} meses</p>
+                                )}
+                              </div>
+                              {formData.nivel_id === nivel.id && (
+                                <CheckCircle2 className="h-4 w-4 text-[#004B87] ml-2 flex-shrink-0" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {formErrors.nivel_id && (
+                        <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
+                          <AlertCircle className="h-3 w-3" />
+                          {formErrors.nivel_id}
+                        </p>
+                      )}
+                    </section>
+                  )}
 
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -863,6 +949,14 @@ export function ClassModal({
                           {formData.schedule === 'noite' && '🌙 Noite'}
                         </span>
                       </div>
+                      {formData.nivel_id && niveisDisponiveis.length > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600">Nível:</span>
+                          <span className="text-sm font-semibold text-[#004B87]">
+                            {niveisDisponiveis.find(n => n.id === formData.nivel_id)?.nome || '-'}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-600">Capacidade:</span>
                         <span className="text-sm font-semibold text-[#F5821F]">{formData.capacity} estudantes</span>
@@ -956,7 +1050,7 @@ export function ClassModal({
                 ) : (
                   permissions.canEdit && (
                       <Button
-                        onClick={() => handleSave(false)}
+                        onClick={() => handleSave()}
                         className="bg-[#F5821F] text-white hover:bg-[#E07318] px-10 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-xl shadow-orange-500/30"
                       >
                         <CheckCircle2 className="h-4 w-4" /> {isCreating ? 'Criar Turma' : 'Salvar'}

@@ -62,6 +62,7 @@ export interface Student {
   phone?: string;
   classId: number;
   className: string;
+  courseId?: string;   // código do curso (curso_id)
   grade: number;
   status: 'active' | 'inactive' | 'graduated' | 'dropped';
   attendance?: number;

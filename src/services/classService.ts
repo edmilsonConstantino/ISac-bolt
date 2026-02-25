@@ -7,7 +7,8 @@ export interface Class {
   name: string;
   description?: string;
   subject?: string; // Disciplina/Matéria
-  curso?: string; // ID do curso (ex: 'INF', 'CONT')
+  curso?: string; // código do curso (ex: 'INF', 'CONT')
+  curso_nome?: string; // nome completo do curso
   teacher_id?: number | null;
   teacher_name?: string;
   semester?: string;
@@ -25,6 +26,7 @@ export interface Class {
   created_at?: string;
   updated_at?: string;
   selectedStudentIds?: number[]; // IDs dos estudantes a adicionar (criação)
+  nivel_id?: number | null;      // ID do nível (quando curso tem_niveis=true)
 }
 
 interface TurmaAPI {
@@ -175,6 +177,12 @@ class ClassService {
       console.log('✓ Turno:', data.schedule);
     }
 
+    // ✅ Mapear nivel_id
+    if (data.nivel_id != null) {
+      (mapped as any).nivel_id = data.nivel_id;
+      console.log('✓ nivel_id:', data.nivel_id);
+    }
+
     console.log('✅ Mapeamento completo:', mapped);
     console.log('✅ Campos obrigatórios mapeados:', {
       codigo: !!mapped.codigo,
@@ -196,6 +204,8 @@ class ClassService {
       description: data.observacoes || data.description,
       subject: data.disciplina || data.subject,
       curso: data.curso_codigo || data.curso || data.curso_id,
+      curso_nome: data.curso_nome || undefined,
+      semester: data.semestre || data.semester,
       teacher_id: data.professor_id || data.teacher_id,
       teacher_name: data.professor_nome || data.teacher_name,
       capacity: data.capacidade_maxima || data.max_students || data.capacity,
@@ -209,7 +219,8 @@ class ClassService {
       end_date: data.data_fim || data.end_date,
       status: this.mapStatusToReact(data.status),
       created_at: data.data_criacao || data.created_at,
-      updated_at: data.data_atualizacao || data.updated_at
+      updated_at: data.data_atualizacao || data.updated_at,
+      nivel_id: data.nivel_id ? Number(data.nivel_id) : null
     };
   }
 

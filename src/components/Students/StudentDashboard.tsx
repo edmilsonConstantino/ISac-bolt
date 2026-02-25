@@ -6,10 +6,49 @@ import {
   LogOut, Bell, GraduationCap, Trophy, Clock,
   Star, HelpCircle, Settings, AlertTriangle,
   CheckCircle, ChevronRight, Calendar, Loader2,
-  CreditCard, Receipt, Phone, MapPin, Mic, Eye,
-  BookMarked, MessageCircle, BarChart3, Shield,
-  TrendingUp, Zap,
+  CreditCard, Receipt, Phone, MapPin, Shield,
+  TrendingUp, Zap, Layers,
 } from "lucide-react";
+
+// ── Student progress (level progression) types ──────────────────────────────
+interface CurrentLevel {
+  id: number;
+  level_id: number;
+  level_number: number;
+  level_name: string;
+  course_id: number;
+  course_name: string;
+  status: 'in_progress' | 'awaiting_renewal' | 'recovery' | 'passed' | 'failed' | 'withdrawn';
+  attempt: number;
+  start_date: string | null;
+  end_date: string | null;
+  final_grade: number | null;
+  class_name: string | null;
+  next_level_id: number | null;
+  next_level_name: string | null;
+  next_level_number: number | null;
+}
+
+interface LevelHistory {
+  level_number: number;
+  level_name: string;
+  status: string;
+  final_grade: number | null;
+  attempt: number;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+interface StudentProgress {
+  success: boolean;
+  current_level: CurrentLevel | null;
+  history: LevelHistory[];
+  total_levels: number;
+  levels_passed: number;
+  progress_percent: number;
+  course_id: number | null;
+  course_name: string | null;
+}
 
 import { useStudentData } from "@/hooks/useData";
 import { usePaymentData } from "@/hooks/usePaymentData";
@@ -34,7 +73,13 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const { getStudentById }              = useStudentData();
   const { getStudentReadOnlyInfo }      = usePaymentData();
 
-  const [activeTab, setActiveTab]           = useState<Tab>("home");
+  const [activeTab, setActiveTab]           = useState<Tab>(
+    () => (sessionStorage.getItem("student_active_tab") as Tab) || "home"
+  );
+  const persistTab = (tab: Tab) => {
+    sessionStorage.setItem("student_active_tab", tab);
+    setActiveTab(tab);
+  };
   const [paymentModal, setPaymentModal]     = useState(false);
   const [settingsModal, setSettingsModal]   = useState(false);
   const [settingsTab, setSettingsTab]       = useState<"perfil" | "academico" | "seguranca">("perfil");
@@ -44,6 +89,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const [monthlyFee, setMonthlyFee]         = useState<number>(0);
   const [courseNames, setCourseNames]       = useState<string[]>([]);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
+  const [levelProgress, setLevelProgress]   = useState<StudentProgress | null>(null);
 
   // ── Load data ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -75,6 +121,19 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
       .finally(() => setGradesLoading(false));
   }, [studentClass?.id, currentStudentId]);
 
+  // Fetch academic level progression
+  useEffect(() => {
+    if (!currentStudentId) return;
+    fetch(`/api/student-progress.php?student_id=${currentStudentId}`)
+      .then((r) => r.json())
+      .then((data: StudentProgress) => {
+        if (data.success && (data.current_level || data.history.length > 0)) {
+          setLevelProgress(data);
+        }
+      })
+      .catch(() => {/* silently ignore — portal works without progress data */});
+  }, [currentStudentId]);
+
   // ── Derived values ────────────────────────────────────────────────────────────
   const studentData = currentStudentId ? getStudentById(currentStudentId) : null;
 
@@ -94,10 +153,10 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
     new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(n);
 
   const gradeColor = (v: number) =>
-    v >= 9 ? "text-emerald-600" : v >= 7 ? "text-blue-600" : v >= 5 ? "text-amber-600" : "text-red-600";
+    v >= 10 ? "text-emerald-600" : v >= 8 ? "text-blue-600" : "text-red-600";
 
   const gradeBarColor = (v: number) =>
-    v >= 7 ? "bg-emerald-500" : v >= 5 ? "bg-amber-500" : "bg-red-500";
+    v >= 10 ? "bg-emerald-500" : v >= 8 ? "bg-blue-500" : "bg-red-500";
 
   const scheduleLabel = (s?: string) =>
     s === "manha" ? "Manhã" : s === "tarde" ? "Tarde" : s === "noite" ? "Noite" : s ?? "—";
@@ -105,15 +164,14 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const statusBadge = (status: string | null | undefined) => {
     if (!status) return null;
     const map: Record<string, { label: string; cls: string }> = {
-      passed:   { label: "Aprovado",    cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-      recovery: { label: "Recuperação", cls: "bg-amber-100 text-amber-700 border-amber-200"     },
-      failed:   { label: "Reprovado",   cls: "bg-red-100 text-red-700 border-red-200"             },
+      passed: { label: "Aprovado",  cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      failed: { label: "Reprovado", cls: "bg-red-100 text-red-700 border-red-200"             },
     };
     return map[status] ?? null;
   };
 
   const PERIOD_LABEL: Record<number, string> = {
-    1: "1º Período", 2: "2º Período", 3: "3º Período", 4: "4º Período", 5: "Final",
+    1: "1º Bimestre", 2: "2º Bimestre", 3: "3º Bimestre", 4: "4º Bimestre",
   };
 
   const openSettings = (tab: "perfil" | "academico" | "seguranca" = "perfil") => {
@@ -155,7 +213,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
           {/* Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab("finance")}
+              onClick={() => persistTab("finance")}
               className="relative h-9 w-9 bg-[#003868] hover:bg-[#002850] rounded-lg flex items-center justify-center transition-colors"
             >
               <Bell className="h-4 w-4 text-slate-200" />
@@ -187,43 +245,53 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
         {activeTab === "home" && (
           <div className="space-y-4 p-4">
 
-            {/* Welcome card — estilo original */}
-            <div className="bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-1">
-                  Bem-vindo, {firstName}!
-                </h2>
-                <div className="flex flex-col gap-1 mt-1">
-                  {courseNames.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <GraduationCap className="h-4 w-4 text-[#FF9933] flex-shrink-0" />
-                      <span className="text-white/90 text-sm">
-                        {courseNames.length === 1 ? "Curso" : "Cursos"}:{" "}
-                        <span className="font-semibold">{courseNames.join(" · ")}</span>
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Star className="h-4 w-4 text-[#FF9933] flex-shrink-0" />
-                    <span className="text-white/90 text-sm">
-                      Turma: <span className="font-semibold">{studentClass?.name ?? "—"}</span>
-                    </span>
-                    {studentClass?.schedule && (
-                      <span className="text-white/70 text-xs px-2 py-0.5 bg-white/15 rounded-full">
-                        {scheduleLabel(studentClass.schedule)}
-                      </span>
-                    )}
-                  </div>
+            {/* Welcome card */}
+            <div className="bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl shadow-lg overflow-hidden">
+              {/* Top: greeting + avatar */}
+              <div className="flex items-start justify-between px-5 pt-5 pb-3">
+                <div>
+                  <p className="text-white/70 text-xs font-medium uppercase tracking-wider mb-0.5">Portal do Estudante</p>
+                  <h2 className="text-2xl font-bold text-white leading-tight">
+                    Bem-vindo, {firstName}!
+                  </h2>
+                </div>
+                <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-inner flex-shrink-0">
+                  {firstName.charAt(0).toUpperCase()}
                 </div>
               </div>
-              <div className="sm:w-56 flex-shrink-0">
-                <div className="flex justify-between text-xs text-white/80 mb-1.5">
-                  <span>Progresso Geral</span>
-                  <span className="font-semibold text-white">{studentData?.grade != null ? Math.round(Number(studentData.grade) * 10) : 0}%</span>
+
+              {/* Info chips row */}
+              <div className="flex items-center gap-2 px-5 pb-4 flex-wrap">
+                {courseNames.length > 0 && (
+                  <div className="flex items-center gap-1.5 bg-white/15 rounded-lg px-2.5 py-1.5">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#FF9933] flex-shrink-0" />
+                    <span className="text-white text-xs font-semibold">{courseNames.join(" · ")}</span>
+                  </div>
+                )}
+                {studentClass?.name && (
+                  <div className="flex items-center gap-1.5 bg-white/15 rounded-lg px-2.5 py-1.5">
+                    <Star className="h-3.5 w-3.5 text-[#FF9933] flex-shrink-0" />
+                    <span className="text-white text-xs font-semibold">{studentClass.name}</span>
+                  </div>
+                )}
+                {studentClass?.schedule && (
+                  <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5">
+                    <span className="text-white/80 text-xs">{scheduleLabel(studentClass.schedule)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress bar — full width at the bottom */}
+              <div className="bg-black/10 px-5 py-3">
+                <div className="flex justify-between text-xs text-white/80 mb-2">
+                  <span className="font-medium">Progresso Geral</span>
+                  <span className="font-bold text-white">
+                    {studentData?.grade != null ? Math.round(Number(studentData.grade) * 10) : 0}%
+                  </span>
                 </div>
-                <div className="w-full bg-white/20 rounded-full h-2.5">
+                <div className="w-full bg-white/20 rounded-full h-2">
                   <div
-                    className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] h-2.5 rounded-full transition-all"
+                    className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] h-2 rounded-full transition-all duration-500"
                     style={{ width: `${studentData?.grade != null ? Math.round(Number(studentData.grade) * 10) : 0}%` }}
                   />
                 </div>
@@ -244,11 +312,207 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   </p>
                 </div>
                 <button
-                  onClick={() => setActiveTab("finance")}
+                  onClick={() => persistTab("finance")}
                   className="h-8 px-3 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition-colors flex-shrink-0"
                 >
                   Ver
                 </button>
+              </div>
+            )}
+
+            {/* ── Minha Turma Card ──────────────────────────────── */}
+            {studentClass ? (
+              <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 bg-[#004B87] rounded-lg flex items-center justify-center">
+                      <Users className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm">Minha Turma</p>
+                  </div>
+                  <button
+                    onClick={() => persistTab("class")}
+                    className="text-xs text-[#004B87] font-semibold flex items-center gap-1 hover:underline"
+                  >
+                    Ver detalhes <ChevronRight className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-bold text-slate-800">{studentClass.name}</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                      Activa
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {levelProgress?.current_level && (
+                      <span className="text-xs text-slate-500">
+                        <span className="font-semibold text-purple-700">Nível {levelProgress.current_level.level_number}</span>
+                        {" · "}{levelProgress.current_level.level_name}
+                      </span>
+                    )}
+                    {studentClass.schedule && (
+                      <span className="text-xs text-slate-500">
+                        Turno: <span className="font-medium text-slate-700">{scheduleLabel(studentClass.schedule)}</span>
+                      </span>
+                    )}
+                    {studentClass.teacher_name && (
+                      <span className="text-xs text-slate-500">
+                        Prof. <span className="font-medium text-slate-700">{studentClass.teacher_name}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center gap-3">
+                <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Users className="h-5 w-5 text-slate-300" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-500">Turma não atribuída</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Contacte a secretaria para mais informações</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Academic Level Progress Card ──────────────────────────────── */}
+            {levelProgress && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 bg-purple-600 rounded-lg flex items-center justify-center">
+                      <Layers className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm">Percurso Académico</p>
+                  </div>
+                  {levelProgress.course_name && (
+                    <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 rounded-full px-2 py-0.5">
+                      {levelProgress.course_name}
+                    </span>
+                  )}
+                </div>
+
+                {/* Awaiting renewal notice */}
+                {levelProgress.current_level?.status === 'awaiting_renewal' && (
+                  <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-800">
+                        Parabéns! Aprovado no Nível {levelProgress.current_level.level_number}
+                        {levelProgress.current_level.final_grade != null
+                          ? ` — Nota: ${Number(levelProgress.current_level.final_grade).toFixed(1)}`
+                          : ''}
+                      </p>
+                      {levelProgress.current_level.next_level_name && (
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          Dirija-se à secretaria para renovar a sua matrícula
+                          {' '}e iniciar {levelProgress.current_level.next_level_name}.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress bar (level-based) */}
+                {levelProgress.total_levels > 0 && (
+                  <div className="px-4 pb-3">
+                    <div className="flex justify-between text-[11px] text-slate-500 mb-1.5">
+                      <span>{levelProgress.levels_passed} de {levelProgress.total_levels} níveis concluídos</span>
+                      <span className="font-bold text-purple-700">{levelProgress.progress_percent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-purple-700 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${levelProgress.progress_percent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Level timeline */}
+                <div className="border-t border-slate-100 divide-y divide-slate-50">
+                  {/* History rows */}
+                  {levelProgress.history.map((h) => {
+                    const isPassed    = h.status === 'passed';
+                    const isFailed    = h.status === 'failed';
+                    const isWithdrawn = h.status === 'withdrawn';
+                    return (
+                      <div key={`${h.level_number}-${h.attempt}`} className="flex items-center gap-3 px-4 py-2.5">
+                        <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
+                          isPassed    ? 'bg-emerald-100 text-emerald-700'
+                          : isFailed  ? 'bg-red-100 text-red-600'
+                          : isWithdrawn ? 'bg-slate-100 text-slate-400'
+                          : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {h.level_number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-semibold ${isPassed ? 'text-slate-700' : 'text-slate-400'}`}>
+                            {h.level_name}
+                            {h.attempt > 1 && <span className="ml-1 text-[10px] text-slate-400">({h.attempt}ª tent.)</span>}
+                          </p>
+                        </div>
+                        {isPassed && h.final_grade != null && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {Number(h.final_grade).toFixed(1)}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
+                          isPassed    ? 'bg-emerald-100 text-emerald-700'
+                          : isFailed  ? 'bg-red-100 text-red-600'
+                          : isWithdrawn ? 'bg-slate-100 text-slate-500'
+                          : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {isPassed ? '✓ Aprovado' : isFailed ? '✗ Reprovado' : isWithdrawn ? 'Desistiu' : h.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* Current level row */}
+                  {levelProgress.current_level && (
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-purple-50/50">
+                      <div className="h-6 w-6 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
+                        {levelProgress.current_level.level_number}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-purple-800">
+                          {levelProgress.current_level.level_name}
+                          {levelProgress.current_level.class_name && (
+                            <span className="ml-1 text-[10px] text-slate-400 font-normal">
+                              · {levelProgress.current_level.class_name}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
+                        levelProgress.current_level.status === 'awaiting_renewal'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : levelProgress.current_level.status === 'recovery'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {levelProgress.current_level.status === 'awaiting_renewal' ? '✓ Pronto p/ renovar'
+                          : levelProgress.current_level.status === 'recovery' ? 'Recuperação'
+                          : 'Em curso'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Future levels placeholder */}
+                  {levelProgress.total_levels > levelProgress.levels_passed + (levelProgress.current_level ? 1 : 0) && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] text-slate-300 font-bold">…</span>
+                      </div>
+                      <p className="text-xs text-slate-400 italic">
+                        {levelProgress.total_levels - levelProgress.levels_passed - (levelProgress.current_level ? 1 : 0)} nível(eis) por completar
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -257,7 +521,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1 mb-3">Ações Rápidas</p>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Financeiro", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50", action: () => setActiveTab("finance") },
+                  { label: "Financeiro", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50", action: () => persistTab("finance") },
                   { label: "Suporte",    icon: HelpCircle, color: "text-purple-600",  bg: "bg-purple-50",  action: () => window.open("https://wa.me/258840000000", "_blank") },
                   { label: "Perfil",     icon: Settings,   color: "text-[#004B87]",   bg: "bg-blue-50",    action: () => openSettings("perfil") },
                 ].map((a) => {
@@ -283,7 +547,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               <div>
                 <div className="flex items-center justify-between px-1 mb-3">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimas Notas</p>
-                  <button onClick={() => setActiveTab("grades")} className="text-xs text-[#004B87] font-semibold flex items-center gap-1">
+                  <button onClick={() => persistTab("grades")} className="text-xs text-[#004B87] font-semibold flex items-center gap-1">
                     Ver todas <ChevronRight className="h-3 w-3" />
                   </button>
                 </div>
@@ -301,19 +565,19 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                           className="bg-white rounded-xl border border-slate-100 p-4 flex items-center gap-4"
                         >
                           <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0 ${
-                            fg >= 7 ? "bg-emerald-50" : fg >= 5 ? "bg-amber-50" : "bg-red-50"
+                            fg >= 10 ? "bg-emerald-50" : "bg-red-50"
                           }`}>
                             <span className={gradeColor(fg)}>
-                              {g.final_grade !== null ? Number(g.final_grade).toFixed(1) : "—"}
+                              {g.final_grade !== null ? Number(g.final_grade) : "—"}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-slate-800 text-sm">
-                              {PERIOD_LABEL[g.period_number] ?? `Período ${g.period_number}`}
+                              {PERIOD_LABEL[g.period_number] ?? `Bimestre ${g.period_number}`}
                             </p>
-                            {g.components_grade != null && g.skills_grade != null && (
+                            {(g.grade_teste1 != null || g.grade_teste2 != null) && (
                               <p className="text-xs text-slate-400 mt-0.5">
-                                Avaliações: {Number(g.components_grade).toFixed(1)} · Skills: {Number(g.skills_grade).toFixed(1)}
+                                T1: {g.grade_teste1 ?? "—"} · T2: {g.grade_teste2 ?? "—"}
                               </p>
                             )}
                           </div>
@@ -368,11 +632,11 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   <span className="text-4xl font-bold">{averageGrade}</span>
                   <span className="text-amber-200 text-sm">/ 10</span>
                   <Badge className={`ml-2 border text-xs ${
-                    Number(averageGrade) >= 7 ? "bg-emerald-500/30 text-white border-emerald-300" :
-                    Number(averageGrade) >= 5 ? "bg-amber-500/30 text-white border-amber-300" :
-                    "bg-red-500/30 text-white border-red-300"
+                    Number(averageGrade) >= 10
+                      ? "bg-emerald-500/30 text-white border-emerald-300"
+                      : "bg-red-500/30 text-white border-red-300"
                   }`}>
-                    {Number(averageGrade) >= 7 ? "Aprovado" : Number(averageGrade) >= 5 ? "Recuperação" : "Reprovado"}
+                    {Number(averageGrade) >= 10 ? "Aprovado" : "Reprovado"}
                   </Badge>
                 </div>
               )}
@@ -394,12 +658,46 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               </div>
             )}
 
-            {/* No grades */}
+            {/* No grades yet — show 4 placeholder bimester cards */}
             {studentClass && !gradesLoading && studentGrades.length === 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-                <BarChart3 className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium text-sm">Ainda sem notas registadas</p>
-                <p className="text-xs text-slate-400 mt-1">As suas notas serão publicadas pelo professor</p>
+              <div className="space-y-3">
+                {([1, 2, 3, 4] as const).map((num) => (
+                  <div key={num} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl font-bold text-slate-300">—</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm">
+                          {PERIOD_LABEL[num]}
+                        </p>
+                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
+                          Aguardando lançamento
+                        </span>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-100 p-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        Notas do Bimestre
+                      </p>
+                      <div className="space-y-3">
+                        {([
+                          { label: "Teste 1",       weight: "20%" },
+                          { label: "Teste 2",       weight: "20%" },
+                          { label: "Exame Prático", weight: "30%" },
+                          { label: "Exame Teórico", weight: "30%" },
+                        ]).map((item) => (
+                          <div key={item.label} className="flex items-center gap-2.5">
+                            <span className="text-xs text-slate-400 w-28 flex-shrink-0">{item.label}</span>
+                            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden" />
+                            <span className="text-xs font-bold w-8 text-right flex-shrink-0 text-slate-300">—</span>
+                            <span className="text-[10px] text-slate-300 w-7 flex-shrink-0">{item.weight}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -410,11 +708,11 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   .slice()
                   .sort((a, b) => a.period_number - b.period_number)
                   .map((g) => {
-                    const fg      = Number(g.final_grade ?? 0);
-                    const isExp   = expandedPeriod === g.period_number;
-                    const sb      = statusBadge(g.status);
-                    const hasComp = g.grade_participation != null || g.grade_homework != null || g.grade_tests != null || g.grade_projects != null;
-                    const hasSkil = g.grade_listening != null || g.grade_speaking != null || g.grade_reading != null || g.grade_writing != null;
+                    const fg    = Number(g.final_grade ?? 0);
+                    const isExp = expandedPeriod === g.period_number;
+                    const sb    = statusBadge(g.status);
+                    const hasGrades = g.grade_teste1 != null || g.grade_teste2 != null
+                      || g.grade_exame_pratico != null || g.grade_exame_teorico != null;
 
                     return (
                       <div key={g.period_number} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -425,22 +723,17 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                           className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors"
                         >
                           <div className={`h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                            fg >= 7 ? "bg-emerald-100" : fg >= 5 ? "bg-amber-100" : "bg-red-100"
+                            fg >= 10 ? "bg-emerald-100" : "bg-red-100"
                           }`}>
                             <span className={`text-xl font-bold ${gradeColor(fg)}`}>
-                              {g.final_grade !== null ? Number(g.final_grade).toFixed(1) : "—"}
+                              {g.final_grade !== null ? Number(g.final_grade) : "—"}
                             </span>
                           </div>
 
                           <div className="flex-1 min-w-0 text-left">
                             <p className="font-semibold text-slate-800 text-sm">
-                              {PERIOD_LABEL[g.period_number] ?? `Período ${g.period_number}`}
+                              {PERIOD_LABEL[g.period_number] ?? `Bimestre ${g.period_number}`}
                             </p>
-                            {g.components_grade != null && g.skills_grade != null && (
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                Avaliações {Number(g.components_grade).toFixed(1)} · Skills {Number(g.skills_grade).toFixed(1)}
-                              </p>
-                            )}
                             {sb && (
                               <Badge className={`${sb.cls} border text-[10px] mt-1.5 inline-flex`}>{sb.label}</Badge>
                             )}
@@ -453,27 +746,25 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                         {isExp && (
                           <div className="border-t border-slate-100 p-4 space-y-5">
 
-                            {/* Assessment components */}
-                            {hasComp && (
+                            {/* 4 grade fields */}
+                            {hasGrades && (
                               <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                  Avaliações <span className="text-slate-300 font-normal">(60%)</span>
+                                  Notas do Bimestre
                                 </p>
                                 <div className="space-y-3">
                                   {([
-                                    { label: "Participação", value: g.grade_participation, weight: "20%", icon: MessageCircle },
-                                    { label: "Lição de casa", value: g.grade_homework,     weight: "20%", icon: BookOpen      },
-                                    { label: "Provas",        value: g.grade_tests,         weight: "40%", icon: BookMarked   },
-                                    { label: "Projetos",      value: g.grade_projects,      weight: "20%", icon: Star         },
-                                  ] as { label: string; value: number | null | undefined; weight: string; icon: typeof MessageCircle }[])
+                                    { label: "Teste 1",       value: g.grade_teste1,        weight: "20%" },
+                                    { label: "Teste 2",       value: g.grade_teste2,        weight: "20%" },
+                                    { label: "Exame Prático", value: g.grade_exame_pratico, weight: "30%" },
+                                    { label: "Exame Teórico", value: g.grade_exame_teorico, weight: "30%" },
+                                  ] as { label: string; value: number | null | undefined; weight: string }[])
                                     .filter((i) => i.value != null)
                                     .map((item) => {
-                                      const v    = Number(item.value);
-                                      const Icon = item.icon;
+                                      const v = Number(item.value);
                                       return (
                                         <div key={item.label} className="flex items-center gap-2.5">
-                                          <Icon className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                                          <span className="text-xs text-slate-600 w-24 flex-shrink-0">{item.label}</span>
+                                          <span className="text-xs text-slate-600 w-28 flex-shrink-0">{item.label}</span>
                                           <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
                                             <div
                                               className={`h-full rounded-full transition-all ${gradeBarColor(v)}`}
@@ -484,46 +775,6 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                                             {v.toFixed(1)}
                                           </span>
                                           <span className="text-[10px] text-slate-400 w-7 flex-shrink-0">{item.weight}</span>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Language skills */}
-                            {hasSkil && (
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                  Habilidades Linguísticas <span className="text-slate-300 font-normal">(40%)</span>
-                                </p>
-                                <div className="space-y-3">
-                                  {([
-                                    { label: "Listening",     value: g.grade_listening,     icon: Mic         },
-                                    { label: "Speaking",      value: g.grade_speaking,      icon: MessageCircle },
-                                    { label: "Reading",       value: g.grade_reading,       icon: Eye         },
-                                    { label: "Writing",       value: g.grade_writing,       icon: BookOpen    },
-                                    { label: "Grammar",       value: g.grade_grammar,       icon: BookMarked  },
-                                    { label: "Vocabulary",    value: g.grade_vocabulary,    icon: Star        },
-                                    { label: "Pronunciation", value: g.grade_pronunciation, icon: Mic         },
-                                  ] as { label: string; value: number | null | undefined; icon: typeof Mic }[])
-                                    .filter((i) => i.value != null)
-                                    .map((item) => {
-                                      const v    = Number(item.value);
-                                      const Icon = item.icon;
-                                      return (
-                                        <div key={item.label} className="flex items-center gap-2.5">
-                                          <Icon className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                                          <span className="text-xs text-slate-600 w-24 flex-shrink-0">{item.label}</span>
-                                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                                            <div
-                                              className={`h-full rounded-full transition-all ${gradeBarColor(v)}`}
-                                              style={{ width: `${(v / 10) * 100}%` }}
-                                            />
-                                          </div>
-                                          <span className={`text-xs font-bold w-8 text-right flex-shrink-0 ${gradeColor(v)}`}>
-                                            {v.toFixed(1)}
-                                          </span>
                                         </div>
                                       );
                                     })}
@@ -623,15 +874,15 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
 
                   <div className="space-y-1">
                     {([
-                      { icon: Clock,    label: "Turno",      value: scheduleLabel(studentClass.schedule)           },
-                      { icon: Calendar, label: "Dias",       value: studentClass.schedule_days ?? "—"              },
-                      { icon: Clock,    label: "Horário",    value: studentClass.start_time && studentClass.end_time
+                      { icon: Clock,      label: "Turno",    value: scheduleLabel(studentClass.schedule)           },
+                      { icon: Calendar,   label: "Dias",     value: studentClass.schedule_days ?? "—"              },
+                      { icon: Clock,      label: "Horário",  value: studentClass.start_time && studentClass.end_time
                           ? `${studentClass.start_time} – ${studentClass.end_time}`
                           : studentClass.start_time ?? "—"                                                          },
-                      { icon: Users,    label: "Alunos",     value: studentClass.students
-                          ? `${studentClass.students} alunos`
+                      { icon: Layers,     label: "Nível",    value: levelProgress?.current_level
+                          ? `Nível ${levelProgress.current_level.level_number} — ${levelProgress.current_level.level_name}`
                           : "—"                                                                                      },
-                      { icon: TrendingUp, label: "Professor", value: studentClass.teacher_name ?? "A atribuir"     },
+                      { icon: TrendingUp, label: "Professor",value: studentClass.teacher_name ?? "A atribuir"     },
                     ] as { icon: typeof Clock; label: string; value: string }[]).map((row) => {
                       const Icon = row.icon;
                       return (
@@ -883,13 +1134,26 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                     </div>
                   ))}
                   {studentClass && (
-                    <div className="flex items-center gap-3 py-2.5">
+                    <div className="flex items-center gap-3 py-2.5 border-b border-slate-50">
                       <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Users className="h-4 w-4 text-slate-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-slate-400">Turma</p>
                         <p className="text-sm font-semibold text-slate-700">{studentClass.name}</p>
+                      </div>
+                    </div>
+                  )}
+                  {levelProgress?.current_level && (
+                    <div className="flex items-center gap-3 py-2.5">
+                      <div className="h-8 w-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Layers className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-400">Nível Actual</p>
+                        <p className="text-sm font-semibold text-slate-700">
+                          Nível {levelProgress.current_level.level_number} — {levelProgress.current_level.level_name}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -938,7 +1202,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-700">ISAC Portal</p>
-                  <p className="text-xs text-slate-400">Versão 2.0 · 2026</p>
+                  <p className="text-xs text-slate-400">Versão 1.0 · 2026</p>
                 </div>
               </div>
               <Zap className="h-4 w-4 text-slate-300" />
@@ -970,7 +1234,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => persistTab(tab.id)}
                   className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-1 relative transition-colors ${
                     isActive ? "text-[#004B87]" : "text-slate-400 hover:text-slate-600"
                   }`}

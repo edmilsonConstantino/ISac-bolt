@@ -11,6 +11,7 @@ import {
   Calendar,
   Clock,
   GraduationCap,
+  Lock,
   Sun,
   Sunset,
   Moon,
@@ -23,6 +24,7 @@ import {
 import type {
   ClassDTO,
   CourseDTO,
+  NivelItem,
   RegistrationDTO,
   RegistrationFormData,
   RegistrationFormErrors,
@@ -57,9 +59,15 @@ interface CourseTabProps {
   // loading
   isLoadingCourses: boolean;
   isLoadingClasses?: boolean;
+  isLoadingNiveis?: boolean;
+
+  // níveis (apenas para cursos com tem_niveis=true)
+  niveis?: NivelItem[];
+  selectedNivel?: NivelItem | null;
 
   // actions
   onSelectCourse: (course: CourseDTO) => void;
+  onSelectNivel?: (nivel: NivelItem) => void;
   onSelectClass: (classItem: ClassDTO) => void;
 
   // setters básicos (inputs)
@@ -130,7 +138,11 @@ export function CourseTab({
   existingRegistrations,
   isLoadingCourses,
   isLoadingClasses,
+  isLoadingNiveis = false,
+  niveis = [],
+  selectedNivel = null,
   onSelectCourse,
+  onSelectNivel,
   onSelectClass,
   onChangeField,
   formatCurrency,
@@ -181,6 +193,20 @@ export function CourseTab({
     const history = getStudentCourseHistory(formData.studentId, formData.courseId);
     return history?.failedModules || [];
   }, [formData.studentId, formData.courseId, getStudentCourseHistory]);
+
+  // Detetar se é primeira matrícula neste curso (sem histórico)
+  const isFirstEnrollment = useMemo(() => {
+    if (!formData.studentId || !formData.courseId) return true;
+    return !existingRegistrations.some(
+      (reg) => (reg as any).studentId === formData.studentId && (reg as any).courseId === formData.courseId
+    );
+  }, [formData.studentId, formData.courseId, existingRegistrations]);
+
+  // Número ordinal mínimo entre os níveis disponíveis (normalmente = 1)
+  const minNivelOrdinal = useMemo(
+    () => (niveis.length > 0 ? Math.min(...niveis.map(n => n.nivel)) : 1),
+    [niveis]
+  );
 
   // Auto-selecionar tipo de matrícula quando só tem uma opção
   useEffect(() => {
@@ -289,6 +315,91 @@ export function CourseTab({
           </div>
         )}
       </section>
+
+      {/* ─── Seletor de Nível (aparece quando curso tem tem_niveis=true e há níveis carregados) ─── */}
+      {formData.courseId && Number(courses.find(c => c.codigo === formData.courseId)?.tem_niveis) > 0 && (isLoadingNiveis || niveis.length > 0) && (
+        <section>
+          <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 block">
+            Nível <span className="text-red-500">*</span>
+          </Label>
+
+          {isLoadingNiveis ? (
+            <p className="text-sm text-slate-400 animate-pulse">A carregar níveis…</p>
+          ) : niveis.length === 0 ? (
+            <p className="text-sm text-amber-600">Nenhum nível disponível para este curso.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {niveis.map(nivel => {
+                const isLocked = isFirstEnrollment && nivel.nivel > minNivelOrdinal;
+                const isSelected = selectedNivel?.id === nivel.id;
+                return (
+                  <button
+                    key={nivel.id}
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => !isLocked && onSelectNivel?.(nivel)}
+                    title={isLocked ? "O estudante deve completar o Nível 1 primeiro" : undefined}
+                    className={cn(
+                      "relative p-3 rounded-xl border-2 text-left transition-all",
+                      isLocked
+                        ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed opacity-60"
+                        : isSelected
+                          ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
+                          : "border-slate-200 bg-white hover:border-blue-300 text-slate-600"
+                    )}
+                  >
+                    {isLocked && (
+                      <Lock className="absolute top-2 right-2 h-3 w-3 text-slate-300" />
+                    )}
+                    <div className="text-xs font-bold">N{nivel.nivel}</div>
+                    <div className="text-xs mt-0.5 truncate font-medium">{nivel.nome}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{nivel.duracao_meses} meses</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Resumo de custos do nível (read-only, com fallback para o curso) */}
+          {selectedNivel && (() => {
+            const courseData  = courses.find(c => c.codigo === formData.courseId);
+            const effectiveFee  = Number(selectedNivel.enrollment_fee  ?? courseData?.taxa_matricula ?? 0);
+            const effectiveMens = Number(selectedNivel.mensalidade     ?? courseData?.mensalidade    ?? 0);
+            return (
+              <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-1">
+                <p className="text-xs font-semibold text-blue-700 mb-2">Resumo — {selectedNivel.nome}</p>
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Taxa de Matrícula</span>
+                  <span className="font-medium">{formatCurrency(effectiveFee)} MZN</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Mensalidade × {selectedNivel.duracao_meses} meses</span>
+                  <span className="font-medium">{formatCurrency(effectiveMens * selectedNivel.duracao_meses)} MZN</span>
+                </div>
+                <div className="border-t border-blue-100 mt-2 pt-2 flex justify-between text-sm font-semibold text-blue-800">
+                  <span>Total do Nível</span>
+                  <span>{formatCurrency(effectiveFee + effectiveMens * selectedNivel.duracao_meses)} MZN</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* CTA quando nível selecionado mas sem turmas disponíveis */}
+          {selectedNivel && filteredClasses.length === 0 && !isLoadingNiveis && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 flex items-center gap-2">
+              <span className="flex-1">
+                Não existem turmas abertas para o Nível {selectedNivel.nivel} — {selectedNivel.nome}.
+              </span>
+              <a
+                href="/turmas/criar"
+                className="text-xs font-semibold text-amber-800 underline whitespace-nowrap"
+              >
+                Criar turma
+              </a>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Tipo de Matrícula (aparece após selecionar curso) */}
       {formData.courseId && availableRegistrationTypes.length > 0 && (
@@ -459,12 +570,12 @@ export function CourseTab({
                     return (
                       <button
                         key={classItem.id}
-                        onClick={() => !isFull && onSelectClass(classItem)}
+                        onClick={() => (isSelected || !isFull) && onSelectClass(classItem)}
                         type="button"
-                        disabled={isFull}
+                        disabled={isFull && !isSelected}
                         className={cn(
                           "flex flex-col p-3 rounded-xl border-2 transition-all text-left w-full",
-                          isFull
+                          isFull && !isSelected
                             ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
                             : isSelected
                             ? "border-blue-500 bg-blue-50 shadow-md"
@@ -480,12 +591,19 @@ export function CourseTab({
                             )}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-sm font-semibold truncate",
-                              isFull ? "text-slate-400" : "text-slate-700"
-                            )}>
-                              {classItem.nome}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className={cn(
+                                "text-sm font-semibold truncate",
+                                isFull ? "text-slate-400" : "text-slate-700"
+                              )}>
+                                {classItem.nome}
+                              </p>
+                              {(classItem as Record<string, unknown>).nivel_numero && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-700 flex-shrink-0">
+                                  N{String((classItem as Record<string, unknown>).nivel_numero)}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-slate-500">
                               {[classItem.codigo, classItem.dias_semana].filter(Boolean).join(' • ')}
                             </p>

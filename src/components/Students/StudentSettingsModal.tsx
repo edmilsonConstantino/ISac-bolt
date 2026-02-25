@@ -99,7 +99,6 @@ export function StudentSettingsModal({ isOpen, onClose, initialTab = "perfil" }:
 
   const [profile, setProfile]           = useState<StudentProfile | null>(null);
   const [levels, setLevels]             = useState<LevelProgress[]>([]);
-  const [isLoading, setIsLoading]       = useState(false);
 
   // Segurança — alterar senha
   const [currentPwd, setCurrentPwd]     = useState('');
@@ -114,8 +113,6 @@ export function StudentSettingsModal({ isOpen, onClose, initialTab = "perfil" }:
   useEffect(() => {
     if (!isOpen || !studentId) return;
 
-    setIsLoading(true);
-
     Promise.allSettled([
       apiClient.get(`/api/students.php?id=${studentId}`),
       apiClient.get(`/api/level-transitions.php?student_id=${studentId}`),
@@ -127,7 +124,7 @@ export function StudentSettingsModal({ isOpen, onClose, initialTab = "perfil" }:
         const data = levelsRes.value.data;
         setLevels(Array.isArray(data) ? data : (data?.data ?? []));
       }
-    }).finally(() => setIsLoading(false));
+    });
 
   }, [isOpen, studentId]);
 
@@ -202,12 +199,7 @@ export function StudentSettingsModal({ isOpen, onClose, initialTab = "perfil" }:
 
         {/* ── Corpo ── */}
         <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-[#004B87]" />
-            </div>
-          ) : (
-            <Tabs key={`${isOpen}-${initialTab}`} defaultValue={initialTab} className="h-full">
+          <Tabs key={`${isOpen}-${initialTab}`} defaultValue={initialTab} className="h-full">
 
               {/* Tab list */}
               <div className="px-6 pt-4 border-b border-slate-100">
@@ -511,7 +503,6 @@ export function StudentSettingsModal({ isOpen, onClose, initialTab = "perfil" }:
               </TabsContent>
 
             </Tabs>
-          )}
         </div>
 
       </div>

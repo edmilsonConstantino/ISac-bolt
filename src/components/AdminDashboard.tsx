@@ -40,12 +40,13 @@ import { GeneralSettingsModal } from "./shared/GeneralSettingsModal";
 import { TeacherProfileModal } from "./Teachers/TeacherProfileModal";
 import { StudentProfileModal } from "./Students/StudentProfileModal";
 import CreateCourseModal from '@/components/Courses/CreateCourseModal';
+import nivelService from '@/services/nivelService';
 import { CourseList } from "./shared/superadmin/CourseList";
 import { RegistrationList, Registration } from "./shared/reusable/RegistrationList";
 import { UsersList, SystemUser } from "@/components/Users/UsersList";
 import userService from "@/services/userService";
-import { GradesList, Grade } from "./shared/GradesList";
-import { LaunchGradesModal } from "./shared/LaunchGradesModal";
+import { GradesList } from "./shared/GradesList";
+import { GradeManagementModal } from "./shared/GradeManagementModal";
 import { LevelTransitionPanel } from "./shared/LevelTransitionPanel";
 import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
 import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
@@ -72,7 +73,13 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const displayName = user ? user.nome : 'Admin';
 
   // ✅ Estados de navegação
-  const [activeView, setActiveView] = useState<AdminView>('dashboard');
+  const [activeView, setActiveView] = useState<AdminView>(
+    () => (sessionStorage.getItem("admin_active_view") as AdminView) || 'dashboard'
+  );
+  const persistView = (view: AdminView) => {
+    sessionStorage.setItem("admin_active_view", view);
+    setActiveView(view);
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // ✅ Estados de dados REAIS
@@ -152,7 +159,8 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
   const [launchGradesModal, setLaunchGradesModal] = useState({
     isOpen: false,
-    classInfo: null as { id: number; name: string; course: string } | null
+    classData: null as Class | null,
+    students: [] as Student[],
   });
 
   const [paymentDetailsModal, setPaymentDetailsModal] = useState({
@@ -169,7 +177,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
   // Estados para usuários e notas
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
-  const [gradesData, setGradesData] = useState<Grade[]>([]);
+  const [selectedGradesClassId, setSelectedGradesClassId] = useState<number | undefined>(undefined);
   const [createdCredentials, setCreatedCredentials] = useState<{
     isOpen: boolean;
     username: string;
@@ -272,6 +280,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     email: student.email || '',
     phone: student.phone || '',                  // ✅ API retorna 'phone'
     className: student.curso || 'Sem curso',
+    courseId: student.curso_id || '',
     classId: studentClass?.id || 0,
     enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0], // ✅ API retorna 'birth_date'
     status: student.status === 'ativo' ? 'active' : 'inactive',
@@ -704,16 +713,13 @@ const handleDeleteRegistration = async (registrationId: number) => {
   const handleLaunchGrades = (classItem: Class) => {
     setLaunchGradesModal({
       isOpen: true,
-      classInfo: {
-        id: classItem.id,
-        name: classItem.nome || classItem.name || 'Turma',
-        course: classItem.disciplina || classItem.subject || 'Curso'
-      }
+      classData: classItem,
+      students: (classItem as Class & { students?: Student[] }).students || [],
     });
   };
 
   const handleCloseLaunchGrades = () => {
-    setLaunchGradesModal({ isOpen: false, classInfo: null });
+    setLaunchGradesModal({ isOpen: false, classData: null, students: [] });
   };
 
   const handleViewPaymentDetails = (student: Student) => {
@@ -862,6 +868,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     email: student.email || '',
     phone: student.phone || '',                  // ✅ API: phone
     className: student.curso || 'Sem curso',
+    courseId: student.curso_id || '',
     classId: studentClass?.id || 0,
     enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0], // ✅ API: birth_date
     status: student.status === 'ativo' ? 'active' : 'inactive',
@@ -927,7 +934,11 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         await courseService.update(createCourseModal.courseData.id, courseData);
         toast.success("Curso atualizado com sucesso!");
       } else {
-        await courseService.create(courseData);
+        const createdCourse = await courseService.create(courseData);
+        // Save course levels with prices if the course has levels defined
+        if (courseData.tem_niveis && courseData.niveis?.length) {
+          await nivelService.saveNiveisForCourse(createdCourse.id!, courseData.niveis);
+        }
         toast.success("Curso cadastrado com sucesso!");
       }
 
@@ -1047,7 +1058,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     {/* ========== SIDEBAR LATERAL ========== */}
     <AdminSidebar
       activeView={activeView}
-      setActiveView={setActiveView}
+      setActiveView={persistView}
       isSidebarOpen={isSidebarOpen}
       setIsSidebarOpen={setIsSidebarOpen}
       onOpenSettings={() => setGeneralSettingsModal(true)}
@@ -1074,7 +1085,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
       {/* Dashboard Content */}
       <div className="p-8">
-        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)} className="space-y-6">
+        <Tabs value={activeView} onValueChange={(v) => persistView(v as AdminView)} className="space-y-6">
           <TabsContent value="dashboard" className="space-y-6 mt-0">
             {/* Stats Grid - MELHORADO COM MAIS CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1180,6 +1191,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           <TabsContent value="students" className="mt-0">
             <StudentList
               students={students}
+              courses={courses}
               permissions={adminPermissions}
               currentUserRole="admin"
               showClassInfo={true}
@@ -1205,6 +1217,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           <TabsContent value="classes" className="mt-0">
             <ClassList
               classes={classes}
+              courses={courses}
               permissions={adminPermissions}
               currentUserRole="admin"
               onViewStudents={handleViewStudents}
@@ -1349,7 +1362,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           </TabsContent>
 
           <TabsContent value="grades" className="mt-0">
-            <GradesList grades={gradesData} />
+            <GradesList classId={selectedGradesClassId} />
           </TabsContent>
 
           <TabsContent value="transitions" className="mt-0">
@@ -1495,11 +1508,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
   preSelectedStudentId={registrationModal.preSelectedStudentId}
 />
 
-    {launchGradesModal.classInfo && (
-      <LaunchGradesModal
+    {launchGradesModal.classData && (
+      <GradeManagementModal
         isOpen={launchGradesModal.isOpen}
         onClose={handleCloseLaunchGrades}
-        classInfo={launchGradesModal.classInfo}
+        onSave={() => {}}
+        classData={launchGradesModal.classData}
+        students={launchGradesModal.students}
       />
     )}
 

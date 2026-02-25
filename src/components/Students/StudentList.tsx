@@ -21,10 +21,11 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { Student, Permission } from "../../types";
+import { cn } from "@/lib/utils";
 
 // Componentes reutilizáveis
 import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
-import { SearchBar, ViewToggle } from "@/components/ui/search-bar";
+import { SearchBar, ViewToggle, FilterSelect } from "@/components/ui/search-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EntityCard, EntityCardHeader, EntityCardTitle, EntityCardActions, EntityCardGrid } from "@/components/ui/entity-card";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
@@ -34,6 +35,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 
 interface StudentListProps {
   students: Student[];
+  courses?: { codigo: string; nome: string }[];
   permissions: Permission;
   currentUserRole: 'teacher' | 'admin' | 'academic_admin';
   showClassInfo?: boolean;
@@ -47,6 +49,7 @@ interface StudentListProps {
 
 export function StudentList({
   students,
+  courses: coursesProp = [],
   permissions,
   currentUserRole,
   showClassInfo = true,
@@ -60,7 +63,25 @@ export function StudentList({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [courseFilter, setCourseFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Cursos presentes nos estudantes (para botões de filtro)
+  // Usa courseId como chave; para o nome tenta: coursesProp → className → courseId
+  const courseNameMap = new Map(coursesProp.map(c => [c.codigo, c.nome]));
+  // Chave de agrupamento: courseId se existir, caso contrário className
+  const getCourseKey = (s: Student) => s.courseId || s.className || '';
+  const getCourseName = (s: Student) => {
+    const key = s.courseId || '';
+    return courseNameMap.get(key) || s.className || key;
+  };
+  const uniqueCourses = Array.from(
+    new Map(
+      students
+        .filter(s => getCourseKey(s) && getCourseKey(s) !== 'Sem curso')
+        .map(s => [getCourseKey(s), { codigo: getCourseKey(s), nome: getCourseName(s) }])
+    ).values()
+  ).sort((a, b) => a.nome.localeCompare(b.nome));
 
   const filteredStudents = students.filter(student => {
     const matchesSearch =
@@ -69,11 +90,12 @@ export function StudentList({
       (student.className?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || student.status === statusFilter;
+    const matchesCourse = courseFilter === "all" || getCourseKey(student) === courseFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesCourse;
   });
 
-  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || courseFilter !== "all";
 
   const stats = {
     total: students.length,
@@ -109,6 +131,7 @@ export function StudentList({
   const clearAllFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
+    setCourseFilter("all");
   };
 
   return (
@@ -146,7 +169,7 @@ export function StudentList({
         </PageHeaderActions>
       </PageHeader>
 
-      {/* Barra de Pesquisa */}
+      {/* Barra de Pesquisa + Filtros */}
       <div className="space-y-3">
         <div className="flex flex-col md:flex-row gap-3">
           <SearchBar
@@ -155,55 +178,74 @@ export function StudentList({
             onChange={setSearchTerm}
           />
 
-          <ViewToggle
-            view={viewMode}
-            onChange={setViewMode}
-            gridIcon={<Grid3x3 className="h-4 w-4" />}
-            listIcon={<LayoutList className="h-4 w-4" />}
+          <FilterSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: "all",      label: `Todos (${stats.total})` },
+              { value: "active",   label: `Ativos (${stats.active})` },
+              { value: "inactive", label: `Inativos (${stats.inactive})` },
+            ]}
+            minWidth="160px"
           />
+
+          {/* Toggle Grelha/Lista — só desktop */}
+          <div className="hidden lg:flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="flex items-center gap-1 text-xs text-[#F5821F] hover:text-[#004B87] transition-colors whitespace-nowrap"
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpar
+              </button>
+            )}
+            <ViewToggle
+              view={viewMode}
+              onChange={setViewMode}
+              gridIcon={<Grid3x3 className="h-4 w-4" />}
+              listIcon={<LayoutList className="h-4 w-4" />}
+            />
+          </div>
         </div>
 
-        {/* Filtros por botões */}
-        <div className="flex flex-wrap gap-2">
-          {[
-            { value: "all", label: "Todos", count: stats.total },
-            { value: "active", label: "Ativos", count: stats.active },
-            { value: "inactive", label: "Inativos", count: stats.inactive },
-          ].map(btn => (
+        {/* Filtro rápido por curso */}
+        {uniqueCourses.length > 0 && (
+          <div className="flex flex-wrap gap-2">
             <button
-              key={btn.value}
-              onClick={() => setStatusFilter(btn.value)}
-              className={`h-10 px-5 rounded-lg text-sm font-medium border-2 transition-all ${
-                statusFilter === btn.value
-                  ? btn.value === "all"
-                    ? "bg-[#004B87] text-white border-[#004B87] shadow-md"
-                    : btn.value === "active"
-                    ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
-                    : "bg-slate-500 text-white border-slate-500 shadow-md"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-              }`}
+              onClick={() => setCourseFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                courseFilter === "all"
+                  ? "bg-[#004B87] text-white border-[#004B87] shadow-sm"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-[#004B87] hover:text-[#004B87]"
+              )}
             >
-              {btn.label}
-              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                statusFilter === btn.value ? "bg-white/20" : "bg-slate-100"
-              }`}>
-                {btn.count}
-              </span>
+              Todos
             </button>
-          ))}
-
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-              className="text-[#F5821F] hover:text-[#004B87] ml-auto h-10"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Limpar
-            </Button>
-          )}
-        </div>
+            {uniqueCourses.map(course => {
+              const words = course.nome.trim().split(/\s+/);
+              const label = course.nome.trim().length > 16
+                ? words.map((w, i) => i === 0 ? w : (w[0]?.toUpperCase() ?? "") + ".").join(" ")
+                : course.nome.trim();
+              return (
+                <button
+                  key={course.codigo}
+                  onClick={() => setCourseFilter(courseFilter === course.codigo ? "all" : course.codigo)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap",
+                    courseFilter === course.codigo
+                      ? "bg-[#004B87] text-white border-[#004B87] shadow-sm"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-[#004B87] hover:text-[#004B87]"
+                  )}
+                  title={course.nome}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Estado Vazio */}

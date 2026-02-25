@@ -32,6 +32,7 @@ interface Course {
   categoria?: Categoria;
   tipo_curso?: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
   tem_niveis?: boolean;
+  preco_por_nivel?: boolean;
   qtd_niveis?: number;
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
@@ -86,7 +87,7 @@ export default function CreateCourseModal({
     nome: '',
     codigo: '',
     categoria_id: undefined,
-    tipo_curso: '' as any,
+    tipo_curso: undefined,
     duracao_valor: 0,
     regime: 'laboral',
     modalidade: 'presencial',
@@ -99,7 +100,8 @@ export default function CreateCourseModal({
     status: 'ativo',
     observacoes: '',
     modulos: [],
-    niveis: []
+    niveis: [],
+    preco_por_nivel: false,
   });
 
   // Inicializar dados quando modal abrir
@@ -125,6 +127,7 @@ export default function CreateCourseModal({
         modulos: courseData.modulos || [],
         niveis: courseData.niveis || [],
         tem_niveis: courseData.tem_niveis || false,
+        preco_por_nivel: courseData.preco_por_nivel ?? false,
         qtd_niveis: courseData.qtd_niveis || 0,
       });
       setModules(courseData.modulos || []);
@@ -142,7 +145,7 @@ export default function CreateCourseModal({
         nome: '',
         codigo: '',
         categoria_id: undefined,
-        tipo_curso: '' as any,
+        tipo_curso: undefined,
         duracao_valor: 0,
         regime: 'laboral',
         modalidade: 'presencial',
@@ -155,7 +158,8 @@ export default function CreateCourseModal({
         status: 'ativo',
         observacoes: '',
         modulos: [],
-        niveis: []
+        niveis: [],
+        preco_por_nivel: false,
       });
       setModules([]);
       setNiveis([]);
@@ -173,7 +177,7 @@ export default function CreateCourseModal({
     try {
       const result = await categoriaService.listarCategorias();
       setCategorias(result);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar categorias:', error);
       toast.error('Erro ao carregar categorias');
     }
@@ -283,9 +287,14 @@ export default function CreateCourseModal({
       await onSave(courseWithModules);
       toast.success(isEditing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!');
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao salvar curso:', error);
-      toast.error(error.message || 'Erro ao salvar curso');
+      const message = error instanceof Error ? error.message : 'Erro ao salvar curso';
+      if (message.toLowerCase().includes('código') || message.toLowerCase().includes('codigo')) {
+        setErrors({ codigo: message });
+        setActiveTab('info');
+      }
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +302,7 @@ export default function CreateCourseModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+      <DialogContent className={cn("p-0 overflow-hidden border-none shadow-2xl bg-white transition-all duration-300", activeTab === 'modulos' ? "max-w-7xl" : "max-w-5xl")}>
         <div className="flex h-[650px]">
           
           {/* SIDEBAR DE NAVEGAÇÃO */}
@@ -307,14 +316,16 @@ export default function CreateCourseModal({
             </div>
 
             <nav className="space-y-4 flex-1">
-              {[
-                { id: 'info', label: 'Configurações', icon: Settings, desc: 'Dados e Financeiro' },
-                { id: 'modulos', label: 'Módulos', icon: BookMarked, desc: 'Grade Curricular' },
-                { id: 'controle', label: 'Controle', icon: Info, desc: 'Status e Observações' },
-              ].map((tab) => (
+              {(
+                [
+                  { id: 'info', label: 'Configurações', icon: Settings, desc: 'Dados e Financeiro' },
+                  { id: 'modulos', label: 'Módulos', icon: BookMarked, desc: 'Grade Curricular' },
+                  { id: 'controle', label: 'Controle', icon: Info, desc: 'Status e Observações' },
+                ] as { id: 'info' | 'modulos' | 'controle'; label: string; icon: typeof Settings; desc: string }[]
+              ).map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     "w-full flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 text-left group",
                     activeTab === tab.id 

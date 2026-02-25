@@ -1,5 +1,5 @@
 // src/components/Classes/ClassSettingsModal.tsx
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import {
   X, Sun, Sunset, Moon, Clock, MapPin, Users,
   Calendar, Hash, CheckCircle, XCircle, Pause,
   Trophy, AlertTriangle, Lock, Unlock, Save,
-  ChevronDown, Loader2, RefreshCw
+  ChevronDown, Loader2, RefreshCw, Award, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,51 @@ interface Teacher {
   status: string;
 }
 
+interface StudentResult {
+  id: number;
+  nome: string;
+  email: string;
+  nota_final: number | null;
+  frequencia: number | null;
+  grades: GradeRecord[];
+  periods: Record<number, GradeRecord | undefined>;
+  avg_final: number | null;
+  avg_attendance: number | null;
+  computed_status: string;
+  has_grades: boolean;
+}
+
+interface GradeRecord {
+  id: number;
+  student_id: number;
+  period_number: number;
+  final_grade: number | null;
+  attendance: number | null;
+  status: string | null;
+}
+
+interface PromotionItem {
+  id: number;
+  student_id: number;
+  student_name: string;
+  student_email: string;
+  level_id: number;
+  level_name: string;
+  final_grade: number | null;
+  next_level_id: number | null;
+  next_level_name: string | null;
+}
+
+interface NextLevelClass {
+  id: number;
+  nome: string;
+  class_id: number | null;
+  class_name: string | null;
+  turno: string;
+  vagas_ocupadas: number;
+  capacidade_maxima: number;
+}
+
 interface ClassSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,7 +102,7 @@ export function ClassSettingsModal({
   onClassUpdated
 }: ClassSettingsModalProps) {
 
-  const [activeTab, setActiveTab] = useState<'info' | 'teacher' | 'status' | 'grades'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'teacher' | 'status' | 'grades' | 'resultados'>('info');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
   const [gradePeriods, setGradePeriods] = useState<GradePeriod[]>([]);
@@ -73,6 +118,15 @@ export function ClassSettingsModal({
   } | null>(null);
   const [showTeacherSelect, setShowTeacherSelect] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>('ativo');
+
+  // Resultados
+  const [studentsWithGrades, setStudentsWithGrades] = useState<StudentResult[]>([]);
+  const [promotionQueue, setPromotionQueue] = useState<PromotionItem[]>([]);
+  const [nextLevelClasses, setNextLevelClasses] = useState<NextLevelClass[]>([]);
+  const [selectedDestClass, setSelectedDestClass] = useState<Record<number, number>>({});
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const [isPromoting, setIsPromoting] = useState<number | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState<number | null>(null);
 
   const isAdmin = currentUserRole === 'admin';
   const API_URL = 'http://localhost/API-LOGIN/api';
@@ -288,7 +342,163 @@ export function ClassSettingsModal({
     }
   };
 
-  const updatePeriod = (periodNumber: number, field: string, value: any) => {
+  // ── Resultados: carregar alunos + notas + fila de promoção ─────────────────
+  const loadResults = async () => {
+    if (!classData?.id) return;
+    setIsLoadingResults(true);
+    try {
+      const headers = getAuthHeaders();
+
+      const [studentsRes, gradesRes] = await Promise.all([
+        fetch(`${API_URL}/turmas.php?action=get_students&turma_id=${classData.id}`, { headers }),
+        fetch(`${API_URL}/grades.php?class_id=${classData.id}`, { headers }),
+      ]);
+      const studentsData = await studentsRes.json();
+      const gradesData   = await gradesRes.json();
+
+      const students: StudentResult[] = studentsData.success ? (studentsData.data || []) : [];
+      const grades:   GradeRecord[]   = gradesData.success   ? (gradesData.data   || []) : [];
+
+      // Agrupar notas por aluno
+      const gradesByStudent: Record<number, GradeRecord[]> = {};
+      grades.forEach(g => {
+        if (!gradesByStudent[g.student_id]) gradesByStudent[g.student_id] = [];
+        gradesByStudent[g.student_id].push(g);
+      });
+
+      const merged: StudentResult[] = (students as unknown as Array<Record<string, unknown>>).map(s => {
+        const sid    = s.id as number;
+        const sg     = gradesByStudent[sid] || [];
+        const withGr = sg.filter(g => g.final_grade != null);
+        const avgFinal = withGr.length > 0
+          ? Math.round(withGr.reduce((sum, g) => sum + Number(g.final_grade), 0) / withGr.length * 100) / 100
+          : null;
+        const withAt  = sg.filter(g => g.attendance != null);
+        const avgAtt  = withAt.length > 0
+          ? Math.round(withAt.reduce((sum, g) => sum + Number(g.attendance), 0) / withAt.length * 100) / 100
+          : null;
+
+        const notaFinal = s.nota_final as number | null;
+        let computed_status = 'in_progress';
+        if (notaFinal != null) {
+          computed_status = notaFinal >= 7 ? 'awaiting_renewal' : notaFinal >= 5 ? 'recovery' : 'failed';
+        } else if (avgFinal != null) {
+          computed_status = avgFinal >= 7 ? 'awaiting_renewal' : avgFinal >= 5 ? 'recovery' : 'failed';
+        }
+
+        return {
+          id: sid,
+          nome: s.nome as string,
+          email: s.email as string,
+          nota_final: notaFinal,
+          frequencia: s.frequencia as number | null,
+          grades: sg,
+          periods: {
+            1: sg.find(g => g.period_number === 1),
+            2: sg.find(g => g.period_number === 2),
+            3: sg.find(g => g.period_number === 3),
+            4: sg.find(g => g.period_number === 4),
+          },
+          avg_final: avgFinal,
+          avg_attendance: avgAtt,
+          computed_status,
+          has_grades: sg.length > 0,
+        };
+      });
+
+      setStudentsWithGrades(merged);
+
+      // Fila de promoção (só se a turma tem nivel_id)
+      const nivelId = classData.nivel_id;
+      if (nivelId) {
+        const promoRes  = await fetch(
+          `${API_URL}/level-transitions.php?level_id=${nivelId}&status=awaiting_renewal`,
+          { headers }
+        );
+        const promoData = await promoRes.json();
+        if (promoData.success) {
+          const turmaIds = new Set(merged.map(m => m.id));
+          setPromotionQueue((promoData.data || []).filter((p: PromotionItem) => turmaIds.has(p.student_id)));
+          setNextLevelClasses(promoData.next_level_classes || []);
+        }
+      }
+    } catch (err) {
+      toast.error('Erro ao carregar resultados');
+    } finally {
+      setIsLoadingResults(false);
+    }
+  };
+
+  // Carregar resultados ao activar o tab
+  useEffect(() => {
+    if (activeTab === 'resultados') loadResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleFinalizeLevel = async (studentId: number) => {
+    if (!classData?.id) return;
+    setIsFinalizing(studentId);
+    try {
+      const res = await fetch(`${API_URL}/grades.php?action=finalize_level`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ class_id: classData.id, student_id: studentId }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        const statusLabel: Record<string, string> = {
+          awaiting_renewal: 'Aprovado',
+          recovery: 'Recuperação',
+          failed: 'Reprovado',
+        };
+        toast.success(`Nível finalizado — Média: ${result.final_grade} (${statusLabel[result.level_status] || result.level_status})`);
+        setStudentsWithGrades(prev => prev.map(s =>
+          s.id === studentId
+            ? { ...s, computed_status: result.level_status, nota_final: result.final_grade }
+            : s
+        ));
+        if (result.level_status === 'awaiting_renewal') loadResults();
+      } else {
+        toast.error(result.message || 'Erro ao finalizar nível');
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor');
+    } finally {
+      setIsFinalizing(null);
+    }
+  };
+
+  const handlePromote = async (studentId: number, levelId: number) => {
+    const destClassId = selectedDestClass[studentId];
+    if (!destClassId) {
+      toast.error('Selecione uma turma de destino');
+      return;
+    }
+    setIsPromoting(studentId);
+    try {
+      const res = await fetch(`${API_URL}/level-transitions.php?action=promote`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ student_id: studentId, level_id: levelId, dest_class_id: destClassId }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(result.message);
+        setPromotionQueue(prev => prev.filter(p => p.student_id !== studentId));
+        setStudentsWithGrades(prev => prev.map(s =>
+          s.id === studentId ? { ...s, computed_status: 'passed' } : s
+        ));
+      } else {
+        toast.error(result.message || 'Erro ao promover aluno');
+      }
+    } catch {
+      toast.error('Erro ao conectar com o servidor');
+    } finally {
+      setIsPromoting(null);
+    }
+  };
+
+  const updatePeriod = (periodNumber: number, field: string, value: unknown) => {
     setGradePeriods(prev => {
       const existing = prev.find(p => p.period_number === periodNumber);
       if (existing) {
@@ -426,10 +636,11 @@ export function ClassSettingsModal({
   // ============ TABS CONFIG ============
 
   const tabs = [
-    { id: 'info' as const, label: 'Informações', sub: 'Dados da Turma', icon: BookOpen },
-    { id: 'teacher' as const, label: 'Docente', sub: 'Professor Atribuído', icon: GraduationCap },
-    { id: 'status' as const, label: 'Status', sub: 'Estado da Turma', icon: Shield },
-    { id: 'grades' as const, label: 'Notas', sub: 'Períodos de Avaliação', icon: ClipboardList },
+    { id: 'info' as const,       label: 'Informações', sub: 'Dados da Turma',          icon: BookOpen },
+    { id: 'teacher' as const,    label: 'Docente',     sub: 'Professor Atribuído',      icon: GraduationCap },
+    { id: 'status' as const,     label: 'Status',      sub: 'Estado da Turma',          icon: Shield },
+    { id: 'grades' as const,     label: 'Notas',       sub: 'Períodos de Avaliação',    icon: ClipboardList },
+    { id: 'resultados' as const, label: 'Resultados',  sub: 'Aprovações e Promoção',    icon: Trophy },
   ];
 
   // ============ RENDER ============
@@ -941,6 +1152,270 @@ export function ClassSettingsModal({
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ====== ABA 5: RESULTADOS ====== */}
+              {activeTab === 'resultados' && (
+                <div className="space-y-6">
+
+                  {/* Cabeçalho + botão refresh */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-800">Resultados dos Alunos</h3>
+                      <p className="text-xs text-slate-500">
+                        Notas por período, médias finais e workflow de promoção de nível
+                      </p>
+                    </div>
+                    <button
+                      onClick={loadResults}
+                      disabled={isLoadingResults}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors"
+                    >
+                      {isLoadingResults
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RefreshCw className="h-3.5 w-3.5" />}
+                      Actualizar
+                    </button>
+                  </div>
+
+                  {/* Tabela de resultados */}
+                  {isLoadingResults ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <Loader2 className="h-10 w-10 text-[#004B87] animate-spin mb-3" />
+                      <p className="text-sm text-slate-500">A carregar resultados...</p>
+                    </div>
+                  ) : studentsWithGrades.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                        <Users className="h-8 w-8 text-slate-400" />
+                      </div>
+                      <p className="font-semibold text-slate-600">Nenhum aluno nesta turma</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Adicione alunos na aba de criação de turma ou via "Adicionar Aluno"
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Aluno</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">P1</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">P2</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">P3</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">P4</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-[#004B87] uppercase">Média</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">Freq.</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-500 uppercase">Status</th>
+                            <th className="text-center px-3 py-3 text-xs font-bold text-slate-400 uppercase">Acção</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {studentsWithGrades.map(student => {
+                            const st = student.computed_status;
+                            const isFinalized = student.nota_final != null || st === 'passed';
+                            const canFinalize = !isFinalized && student.has_grades;
+
+                            const statusCfg: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+                              in_progress:      { label: 'Em Curso',    color: 'text-blue-700',  bg: 'bg-blue-50',   icon: Clock },
+                              awaiting_renewal: { label: 'Aprovado',    color: 'text-green-700', bg: 'bg-green-50',  icon: CheckCircle },
+                              recovery:         { label: 'Recuperação', color: 'text-amber-700', bg: 'bg-amber-50',  icon: AlertTriangle },
+                              failed:           { label: 'Reprovado',   color: 'text-red-700',   bg: 'bg-red-50',    icon: XCircle },
+                              passed:           { label: 'Promovido',   color: 'text-purple-700',bg: 'bg-purple-50', icon: Award },
+                            };
+                            const cfg = statusCfg[st] || statusCfg.in_progress;
+                            const CfgIcon = cfg.icon;
+
+                            const gradeCell = (p: GradeRecord | undefined) => {
+                              if (!p || p.final_grade == null) return <span className="text-slate-300">—</span>;
+                              const g = Number(p.final_grade);
+                              const color = g >= 7 ? 'text-green-600 font-bold' : g >= 5 ? 'text-amber-600 font-semibold' : 'text-red-600 font-semibold';
+                              return <span className={color}>{g.toFixed(1)}</span>;
+                            };
+
+                            return (
+                              <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                {/* Aluno */}
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#004B87] to-[#0066B3] flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-xs font-bold">
+                                        {student.nome?.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-slate-800 truncate max-w-[130px]">{student.nome}</p>
+                                      <p className="text-[10px] text-slate-400 truncate max-w-[130px]">{student.email}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                {/* P1-P4 */}
+                                <td className="px-3 py-3 text-center">{gradeCell(student.periods[1])}</td>
+                                <td className="px-3 py-3 text-center">{gradeCell(student.periods[2])}</td>
+                                <td className="px-3 py-3 text-center">{gradeCell(student.periods[3])}</td>
+                                <td className="px-3 py-3 text-center">{gradeCell(student.periods[4])}</td>
+                                {/* Média */}
+                                <td className="px-3 py-3 text-center">
+                                  {student.nota_final != null ? (
+                                    <span className={cn(
+                                      "font-bold text-base",
+                                      student.nota_final >= 7 ? 'text-green-600' : student.nota_final >= 5 ? 'text-amber-600' : 'text-red-600'
+                                    )}>
+                                      {Number(student.nota_final).toFixed(1)}
+                                    </span>
+                                  ) : student.avg_final != null ? (
+                                    <span className="text-slate-400 text-sm">{student.avg_final.toFixed(1)}*</span>
+                                  ) : (
+                                    <span className="text-slate-300">—</span>
+                                  )}
+                                </td>
+                                {/* Frequência */}
+                                <td className="px-3 py-3 text-center">
+                                  {student.frequencia != null ? (
+                                    <span className={cn("text-sm font-semibold",
+                                      student.frequencia >= 75 ? 'text-green-600' : 'text-red-600'
+                                    )}>
+                                      {Number(student.frequencia).toFixed(0)}%
+                                    </span>
+                                  ) : student.avg_attendance != null ? (
+                                    <span className="text-slate-400 text-sm">{student.avg_attendance.toFixed(0)}%*</span>
+                                  ) : (
+                                    <span className="text-slate-300">—</span>
+                                  )}
+                                </td>
+                                {/* Status */}
+                                <td className="px-3 py-3 text-center">
+                                  <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold", cfg.bg, cfg.color)}>
+                                    <CfgIcon className="h-3 w-3" />
+                                    {cfg.label}
+                                  </span>
+                                </td>
+                                {/* Acção */}
+                                <td className="px-3 py-3 text-center">
+                                  {canFinalize ? (
+                                    <button
+                                      onClick={() => handleFinalizeLevel(student.id)}
+                                      disabled={isFinalizing === student.id}
+                                      className="px-3 py-1.5 rounded-lg bg-[#004B87] hover:bg-[#003A6B] text-white text-xs font-bold transition-colors disabled:opacity-60 flex items-center gap-1 mx-auto"
+                                    >
+                                      {isFinalizing === student.id
+                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                        : <CheckCircle className="h-3 w-3" />}
+                                      Finalizar
+                                    </button>
+                                  ) : isFinalized ? (
+                                    <span className="text-[10px] text-slate-400 italic">Finalizado</span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-300">Sem notas</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {/* Legenda */}
+                      <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-400">
+                        * Valor calculado a partir dos períodos — use "Finalizar" para oficializar
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Fila de Promoção ── */}
+                  {promotionQueue.length > 0 && (
+                    <div className="rounded-2xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center gap-3 px-5 py-4 bg-green-600 text-white">
+                        <Trophy className="h-5 w-5" />
+                        <div>
+                          <h4 className="font-bold text-sm">
+                            {promotionQueue.length} aluno{promotionQueue.length > 1 ? 's' : ''} aprovado{promotionQueue.length > 1 ? 's' : ''} — Aguardam Promoção
+                          </h4>
+                          <p className="text-green-100 text-[10px]">
+                            Selecione a turma de destino e confirme a promoção para o próximo nível
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Lista */}
+                      <div className="divide-y divide-green-100">
+                        {promotionQueue.map(item => {
+                          const destOptions = nextLevelClasses.filter(nc => nc.class_id);
+                          return (
+                            <div key={item.student_id} className="px-5 py-4 flex items-center gap-4 flex-wrap">
+                              {/* Aluno */}
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="h-9 w-9 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-white text-sm font-bold">
+                                    {item.student_name?.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-sm text-slate-800 truncate">{item.student_name}</p>
+                                  <p className="text-[10px] text-slate-500">
+                                    Média: <strong className="text-green-700">{item.final_grade != null ? Number(item.final_grade).toFixed(1) : '—'}</strong>
+                                    {item.next_level_name && (
+                                      <> &rarr; <span className="text-[#004B87] font-semibold">{item.next_level_name}</span></>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Selector de turma destino */}
+                              {destOptions.length > 0 ? (
+                                <select
+                                  value={selectedDestClass[item.student_id] || ''}
+                                  onChange={e => setSelectedDestClass(prev => ({
+                                    ...prev,
+                                    [item.student_id]: Number(e.target.value)
+                                  }))}
+                                  className="h-9 px-3 text-sm border-2 border-green-200 rounded-lg bg-white focus:border-green-500 focus:outline-none min-w-[180px]"
+                                >
+                                  <option value="">Selecionar turma destino...</option>
+                                  {destOptions.map(nc => (
+                                    <option key={nc.class_id} value={nc.class_id!}>
+                                      {nc.class_name} ({nc.turno}) — {nc.vagas_ocupadas}/{nc.capacidade_maxima}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="text-xs text-amber-700 bg-amber-100 px-3 py-2 rounded-lg border border-amber-200">
+                                  Sem turmas abertas para o próximo nível
+                                </span>
+                              )}
+
+                              {/* Botão promover */}
+                              {destOptions.length > 0 && (
+                                <button
+                                  onClick={() => handlePromote(item.student_id, item.level_id)}
+                                  disabled={!selectedDestClass[item.student_id] || isPromoting === item.student_id}
+                                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                                >
+                                  {isPromoting === item.student_id
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <ArrowRight className="h-4 w-4" />}
+                                  Promover
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info: sem nivels */}
+                  {!classData?.nivel_id && (
+                    <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <AlertTriangle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                      <p className="text-xs text-blue-700">
+                        Esta turma não tem nível atribuído — o workflow de promoção não está disponível.
+                        Para activá-lo, edite a turma e seleccione um nível.
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>

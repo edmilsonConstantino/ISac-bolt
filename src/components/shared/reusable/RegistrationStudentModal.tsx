@@ -14,13 +14,15 @@ import {
   MessageCircle,
   CheckCircle2,
   ClipboardCheck,
-  AlertTriangle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "./ConfirmModal";
 
 import { Registration } from "./RegistrationList";
 
+import apiClient from "@/services/api";
 import courseService from "@/services/courseService";
 import studentService from "@/services/studentService";
 import classService from "@/services/classService";
@@ -41,6 +43,7 @@ import type {
   RegistrationModalTab,
   RegistrationFormData,
   RegistrationFormErrors,
+  NivelItem,
   Student,
   Course,
   ClassItem,
@@ -115,6 +118,10 @@ export function RegistrationStudentModal({
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 
+  const [niveis,          setNiveis]          = useState<NivelItem[]>([]);
+  const [selectedNivel,   setSelectedNivel]   = useState<NivelItem | null>(null);
+  const [isLoadingNiveis, setIsLoadingNiveis] = useState(false);
+
   const [studentSearch, setStudentSearch] = useState("");
   const [showChatPrompt, setShowChatPrompt] = useState(false);
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
@@ -148,8 +155,12 @@ export function RegistrationStudentModal({
 
   const filteredClasses = useMemo(() => {
     if (!formData.courseId) return [];
-    return classes.filter((c) => c.curso === formData.courseId);
-  }, [classes, formData.courseId]);
+    return classes.filter((c) => {
+      if (c.curso !== formData.courseId) return false;
+      if (selectedNivel && (c as Record<string, unknown>).nivel_id !== selectedNivel.id) return false;
+      return true;
+    });
+  }, [classes, formData.courseId, selectedNivel]);
 
   const filteredStudents = useMemo(() => {
     const query = studentSearch.toLowerCase().trim();
@@ -200,6 +211,7 @@ export function RegistrationStudentModal({
           turno: (c.schedule ?? c.turno ?? null) as ClassItem['turno'],
           capacity: c.capacity ?? null,
           students: c.students ?? null,
+          nivel_id: (c as Record<string, unknown>).nivel_id ?? null,
         }));
         setClasses(mappedClasses);
       } catch (error) {
@@ -224,6 +236,8 @@ export function RegistrationStudentModal({
     setActiveTab("student");
     setStudentSearch("");
     setFormErrors({});
+    setNiveis([]);
+    setSelectedNivel(null);
 
     if (registrationData && isEditing) {
       // se vier do backend com campos em snake_case, ideal: mapear antes.
@@ -272,7 +286,7 @@ export function RegistrationStudentModal({
     onChangeField("studentCode", "");
   };
 
-  const handleSelectCourse = (course: Course) => {
+  const handleSelectCourse = async (course: Course) => {
     onChangeField("courseId", course.codigo);
     onChangeField("courseName", course.nome);
 
@@ -297,14 +311,67 @@ export function RegistrationStudentModal({
       onChangeField("enrollmentFeeIsento", false);
     }
 
-    // reset turma ao trocar curso
+    // reset turma e nível ao trocar curso
     onChangeField("classId", undefined);
     onChangeField("className", "");
+    setSelectedNivel(null);
+    setNiveis([]);
+
+    // Se o curso tem níveis, buscar e auto-seleccionar o Nível 1
+    // Usar Number() porque PHP retorna "0"/"1" (string), não boolean
+    if (Number((course as Record<string, unknown>).tem_niveis) > 0) {
+      setIsLoadingNiveis(true);
+      try {
+        // niveis.php filtra por curso_id numérico (cursos.id), não pelo codigo
+        const cursoNumericId = (course as Record<string, unknown>).id ?? course.codigo;
+        const res = await apiClient.get(`/api/niveis.php?curso_id=${cursoNumericId}`);
+        const lista: NivelItem[] = ((res.data?.data || res.data || []) as NivelItem[])
+          .slice()
+          .sort((a, b) => a.nivel - b.nivel);
+        setNiveis(lista);
+        if (lista[0]) setSelectedNivel(lista[0]);
+      } catch (e) {
+        console.error('Erro ao buscar níveis:', e);
+      } finally {
+        setIsLoadingNiveis(false);
+      }
+    }
+  };
+
+  const handleSelectNivel = (nivel: NivelItem) => {
+    setSelectedNivel(nivel);
+    // Limpar turma ao mudar de nível (turma precisa corresponder ao nível)
+    onChangeField("classId", undefined);
+    onChangeField("className", "");
+
+    // ── Mensalidade: vem sempre do nível (global settings não afetam mensalidade) ──
+    const courseRaw = selectedCourse as Record<string, unknown>;
+    const nivelMensalidade = Number(
+      nivel.mensalidade ?? courseRaw?.mensalidade ?? 0
+    );
+    onChangeField("monthlyFee", nivelMensalidade);
+
+    // ── Taxa de matrícula: respeita global settings ──
+    if (!settings.registrationFeeGlobalEnabled) {
+      // Sem override global → usar taxa do nível com fallback para o curso
+      const nivelEnrollmentFee = Number(
+        nivel.enrollment_fee ?? courseRaw?.taxa_matricula ?? 0
+      );
+      onChangeField("enrollmentFee", nivelEnrollmentFee);
+      onChangeField("enrollmentFeeIsento", nivelEnrollmentFee === 0);
+    }
+    // Se global ativo → manter o valor já definido em handleSelectCourse (não alterar)
   };
 
   const handleSelectClass = (classItem: ClassItem) => {
-    onChangeField("classId", classItem.id);
-    onChangeField("className", classItem.nome);
+    if (formData.classId === classItem.id) {
+      // Já estava selecionada → desmarcar
+      onChangeField("classId", undefined);
+      onChangeField("className", "");
+    } else {
+      onChangeField("classId", classItem.id);
+      onChangeField("className", classItem.nome);
+    }
   };
 
   // O username (STUDXX.0001.ANO) é gerado automaticamente pelo backend.
@@ -433,6 +500,7 @@ export function RegistrationStudentModal({
       student_id: formData.studentId,
       course_id: formData.courseId,
       class_id: formData.classId || null,
+      nivel_id: selectedNivel?.id ?? null,
       period: formData.period,
       enrollment_date: formData.enrollmentDate,
       // Pagamento já foi validado (isEnrollmentPaid=true) → matrícula activa
@@ -542,6 +610,16 @@ export function RegistrationStudentModal({
         preventOutsideClose={true}
         hideCloseButton={true}
       >
+        {/* Botão X para fechar */}
+        <button
+          type="button"
+          onClick={() => setShowCancelConfirm(true)}
+          className="absolute top-4 right-4 z-50 flex items-center justify-center h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          title="Fechar"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         <div className="flex h-[650px]">
           {/* SIDEBAR (por enquanto no pai) */}
           <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
@@ -638,8 +716,12 @@ export function RegistrationStudentModal({
                   filteredClasses={filteredClasses}
                   isLoadingCourses={isLoadingCourses}
                   isLoadingClasses={isLoadingClasses}
+                  isLoadingNiveis={isLoadingNiveis}
+                  niveis={niveis}
+                  selectedNivel={selectedNivel}
                   existingRegistrations={existingRegistrations}
                   onSelectCourse={handleSelectCourse}
+                  onSelectNivel={handleSelectNivel}
                   onSelectClass={handleSelectClass}
                   onChangeField={onChangeField}
                   formatCurrency={formatCurrency}
@@ -844,56 +926,18 @@ export function RegistrationStudentModal({
             )}
 
             {/* CANCEL CONFIRMATION MODAL */}
-            {showCancelConfirm && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full animate-in zoom-in-95 duration-200">
-                  {/* Header com ícone de alerta */}
-                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 text-white">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="h-7 w-7 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold">Cancelar Matrícula</h3>
-                        <p className="text-amber-100 text-sm">Os dados não salvos serão perdidos</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Conteúdo */}
-                  <div className="p-6">
-                    <p className="text-slate-600 text-center mb-6">
-                      Tem certeza que deseja cancelar o processo de matrícula?
-                      {formData.studentName && (
-                        <span className="block mt-2 text-slate-800 font-medium">
-                          Estudante: <strong>{formData.studentName}</strong>
-                        </span>
-                      )}
-                    </p>
-
-                    {/* Botões */}
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowCancelConfirm(false)}
-                        className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 font-bold"
-                      >
-                        Não, Continuar
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setShowCancelConfirm(false);
-                          onClose();
-                        }}
-                        className="flex-1 h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold"
-                      >
-                        Sim, Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <ConfirmModal
+              isOpen={showCancelConfirm}
+              onCancel={() => setShowCancelConfirm(false)}
+              onConfirm={() => { setShowCancelConfirm(false); onClose(); }}
+              variant="warning"
+              title="Cancelar Matrícula"
+              subtitle="Os dados não salvos serão perdidos"
+              message="Tem certeza que deseja cancelar o processo de matrícula?"
+              detail={formData.studentName ? `Estudante: ${formData.studentName}` : undefined}
+              confirmLabel="Sim, Cancelar"
+              cancelLabel="Não, Continuar"
+            />
           </div>
         </div>
       </DialogContent>

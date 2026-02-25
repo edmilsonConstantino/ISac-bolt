@@ -39,8 +39,8 @@ import CourseProfileModal from '@/components/Courses/CourseProfileModal';
 import { CourseList } from "../superadmin/CourseList";
 import { RegistrationList, Registration } from "../reusable/RegistrationList";
 import { UsersList, SystemUser } from "@/components/Users/UsersList";
-import { GradesList, Grade } from "../GradesList";
-import { LaunchGradesModal } from "../LaunchGradesModal";
+import { GradesList } from "../GradesList";
+import { GradeManagementModal } from "../GradeManagementModal";
 import { LevelTransitionPanel } from "../LevelTransitionPanel";
 import { AdminSidebar, AdminView } from "../AdminSidebar";
 import { InscriptionList } from "../InscriptionList";
@@ -63,7 +63,13 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const displayName = user ? user.nome : 'Academic Admin';
 
   // Estados de navegação
-  const [activeView, setActiveView] = useState<AdminView>('dashboard');
+  const [activeView, setActiveView] = useState<AdminView>(
+    () => (sessionStorage.getItem("normaladmin_active_view") as AdminView) || 'dashboard'
+  );
+  const persistView = (view: AdminView) => {
+    sessionStorage.setItem("normaladmin_active_view", view);
+    setActiveView(view);
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Estados de dados
@@ -142,7 +148,8 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   const [launchGradesModal, setLaunchGradesModal] = useState({
     isOpen: false,
-    classInfo: null as { id: number; name: string; course: string } | null
+    classData: null as Class | null,
+    students: [] as Student[],
   });
 
   const [paymentDetailsModal, setPaymentDetailsModal] = useState({
@@ -155,7 +162,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   // Estados para usuários e notas
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
-  const [gradesData, setGradesData] = useState<Grade[]>([]);
+  const [selectedGradesClassId, setSelectedGradesClassId] = useState<number | undefined>(undefined);
 
   // Verificar autenticação
   useEffect(() => {
@@ -771,16 +778,13 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const handleLaunchGrades = (classItem: Class) => {
     setLaunchGradesModal({
       isOpen: true,
-      classInfo: {
-        id: classItem.id,
-        name: (classItem as any).nome || classItem.name || 'Turma',
-        course: (classItem as any).disciplina || (classItem as any).subject || 'Curso'
-      }
+      classData: classItem,
+      students: (classItem as Class & { students?: Student[] }).students || [],
     });
   };
 
   const handleCloseLaunchGrades = () => {
-    setLaunchGradesModal({ isOpen: false, classInfo: null });
+    setLaunchGradesModal({ isOpen: false, classData: null, students: [] });
   };
 
   // Outros
@@ -830,7 +834,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
       {/* ========== SIDEBAR LATERAL (mesma do SuperAdmin) ========== */}
       <AdminSidebar
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={persistView}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         onOpenSettings={() => setGeneralSettingsModal(true)}
@@ -856,7 +860,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
         {/* Dashboard Content */}
         <div className="p-8">
-          <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)} className="space-y-6">
+          <Tabs value={activeView} onValueChange={(v) => persistView(v as AdminView)} className="space-y-6">
             <TabsContent value="dashboard" className="space-y-6 mt-0">
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1079,7 +1083,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
             </TabsContent>
 
             <TabsContent value="grades" className="mt-0">
-              <GradesList grades={gradesData} />
+              <GradesList classId={selectedGradesClassId} />
             </TabsContent>
 
             <TabsContent value="transitions" className="mt-0">
@@ -1218,12 +1222,13 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         preSelectedStudentId={registrationModal.preSelectedStudentId}
       />
 
-      {launchGradesModal.classInfo && (
-        <LaunchGradesModal
+      {launchGradesModal.classData && (
+        <GradeManagementModal
           isOpen={launchGradesModal.isOpen}
           onClose={handleCloseLaunchGrades}
-          classInfo={launchGradesModal.classInfo}
-          readOnly
+          onSave={() => {}}
+          classData={launchGradesModal.classData}
+          students={launchGradesModal.students}
         />
       )}
 

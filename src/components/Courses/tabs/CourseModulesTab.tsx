@@ -132,6 +132,9 @@ export default function CourseModulesTab({
     setNiveis(prev => prev.map(n => n.nivel === nivelNum ? { ...n, [field]: value } : n));
   };
 
+  const formatCurrencyShort = (n: number) =>
+    new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN', maximumFractionDigits: 0 }).format(n);
+
   const toggleNivelModulos = (nivelNum: number) => {
     const isOpening = expandedNivelId !== nivelNum;
     setExpandedNivelId(prev => prev === nivelNum ? null : nivelNum);
@@ -437,13 +440,32 @@ export default function CourseModulesTab({
           {/* Tabela de níveis */}
           {niveis.length > 0 ? (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
+
+              {/* Banner de preço geral (quando preco_por_nivel=false) */}
+              {!formData.preco_por_nivel && formData.mensalidade > 0 && (
+                <div className="px-3 py-2 bg-green-50 border-b border-green-200 flex items-center gap-2 text-xs text-green-700">
+                  <span className="font-semibold">Mensalidade aplicada a todos os níveis:</span>
+                  <span>{formatCurrencyShort(formData.mensalidade)}/mês</span>
+                  <span className="text-green-500 italic ml-1">— taxa de matrícula definida por nível</span>
+                </div>
+              )}
+
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-100 text-slate-600">
                     <th className="px-3 py-2 text-left font-semibold w-16">#</th>
                     <th className="px-3 py-2 text-left font-semibold">Nome</th>
-                    <th className="px-3 py-2 text-left font-semibold w-36">Duração (meses)</th>
-                    <th className="px-3 py-2 text-center font-semibold w-32">Módulos</th>
+                    <th className="px-3 py-2 text-left font-semibold w-28">Duração (meses)</th>
+                    {formData.preco_por_nivel && (
+                      <th className="px-3 py-2 text-left font-semibold w-32 text-amber-700">Mensalidade *</th>
+                    )}
+                    {formData.tem_niveis && (
+                      <th className="px-3 py-2 text-left font-semibold w-28">Taxa Matr.</th>
+                    )}
+                    {formData.preco_por_nivel && (
+                      <th className="px-3 py-2 text-left font-semibold w-36 text-slate-500">Total do Nível</th>
+                    )}
+                    <th className="px-3 py-2 text-center font-semibold w-28">Módulos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -477,6 +499,70 @@ export default function CourseModulesTab({
                             disabled={isLoading}
                           />
                         </td>
+                        {formData.preco_por_nivel && (
+                          <td className="px-3 py-2">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              pattern="[0-9]*[.,]?[0-9]*"
+                              value={nivel.mensalidade ?? ''}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(',', '.');
+                                handleInlineNivelChange(
+                                  nivel.nivel, 'mensalidade',
+                                  raw === '' ? null : isNaN(Number(raw)) ? nivel.mensalidade : Number(raw)
+                                );
+                              }}
+                              placeholder="Obrigatório"
+                              className={cn(
+                                "h-8 text-sm focus:ring-purple-500",
+                                nivel.mensalidade == null
+                                  ? "border-amber-300 focus:ring-amber-400"
+                                  : "border-slate-200"
+                              )}
+                              disabled={isLoading}
+                            />
+                          </td>
+                        )}
+                        {formData.tem_niveis && (
+                          <td className="px-3 py-2">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              pattern="[0-9]*[.,]?[0-9]*"
+                              value={nivel.enrollment_fee ?? ''}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(',', '.');
+                                handleInlineNivelChange(
+                                  nivel.nivel, 'enrollment_fee',
+                                  raw === '' ? null : isNaN(Number(raw)) ? nivel.enrollment_fee : Number(raw)
+                                );
+                              }}
+                              placeholder="0 ou vazio"
+                              className="h-8 text-sm border-slate-200 focus:ring-purple-500"
+                              disabled={isLoading}
+                            />
+                          </td>
+                        )}
+                        {formData.preco_por_nivel && (
+                          <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">
+                            {nivel.mensalidade != null && nivel.duracao_meses > 0 ? (
+                              <span>
+                                {nivel.duracao_meses}×{formatCurrencyShort(nivel.mensalidade)}
+                                {' + '}
+                                {formatCurrencyShort(nivel.enrollment_fee ?? 0)}
+                                {' = '}
+                                <strong className="text-slate-700">
+                                  {formatCurrencyShort(
+                                    nivel.duracao_meses * nivel.mensalidade + (nivel.enrollment_fee ?? 0)
+                                  )}
+                                </strong>
+                              </span>
+                            ) : (
+                              <span className="text-amber-500 italic">Sem preço</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-3 py-2 text-center">
                           <Button
                             size="sm"
@@ -497,7 +583,7 @@ export default function CourseModulesTab({
                       </tr>
                       {expandedNivelId === nivel.nivel && (
                         <tr>
-                          <td colSpan={4} className="p-0">
+                          <td colSpan={4 + (formData.tem_niveis ? 1 : 0) + (formData.preco_por_nivel ? 2 : 0)} className="p-0">
                             <div className="p-4 bg-blue-50 border-y-2 border-blue-200">
                               <div className="flex items-center justify-between mb-3">
                                 <h4 className="text-sm font-bold text-blue-800">

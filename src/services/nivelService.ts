@@ -106,17 +106,40 @@ const nivelService = {
       const response = await api.delete('/api/niveis.php', {
         data: { id }
       });
-      
+
       if (!response.data.success) {
         throw new Error(response.data.message || 'Erro ao deletar nível');
       }
     } catch (error: any) {
       console.error('Erro ao deletar nível:', error);
       throw new Error(
-        error.response?.data?.message || 
-        error.message || 
+        error.response?.data?.message ||
+        error.message ||
         'Erro ao deletar nível'
       );
+    }
+  },
+
+  /**
+   * Save all levels for a newly created course.
+   * Sequential (not parallel) to preserve prerequisito_nivel_id chain.
+   */
+  async saveNiveisForCourse(cursoId: number, niveis: Nivel[]): Promise<void> {
+    let prevLevelId: number | null = null;
+    for (const nivel of niveis) {
+      const created = await nivelService.criarNivel({
+        curso_id:              cursoId,
+        nivel:                 nivel.nivel,
+        nome:                  nivel.nome,
+        descricao:             nivel.descricao,
+        duracao_meses:         nivel.duracao_meses,
+        ordem:                 nivel.ordem,
+        prerequisito_nivel_id: prevLevelId,
+        mensalidade:           nivel.mensalidade ?? null,
+        enrollment_fee:        nivel.enrollment_fee ?? null,
+        status:                'ativo',
+      });
+      prevLevelId = created?.id ?? null;
     }
   }
 };

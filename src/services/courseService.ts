@@ -1,5 +1,6 @@
 // src/services/courseService.ts
 import apiClient from '@/services/api';
+import { Nivel } from '@/types/CategoryTypes';
 
 export interface Course {
   id?: number;
@@ -9,6 +10,7 @@ export interface Course {
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
   tem_niveis?: boolean;
+  preco_por_nivel?: boolean;
   usar_taxa_padrao?: boolean;
   mensalidade: number;
   taxa_matricula: number;
@@ -16,6 +18,7 @@ export interface Course {
   permite_bolsa: boolean;
   status: 'ativo' | 'inativo';
   observacoes?: string;
+  niveis?: Nivel[];
   data_criacao?: string;
   data_atualizacao?: string;
 }

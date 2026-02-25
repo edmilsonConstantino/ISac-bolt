@@ -536,7 +536,14 @@ export function GerenciarTurmas() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{cls.name || cls.nome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{cls.name || cls.nome}</p>
+                          {(cls as Record<string, unknown>).nivel_numero && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700 whitespace-nowrap">
+                              N{String((cls as Record<string, unknown>).nivel_numero)}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{cls.disciplina}</p>
                       </div>
                     </TableCell>

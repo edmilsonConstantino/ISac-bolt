@@ -1,20 +1,10 @@
 // src/components/shared/GeneralSettingsModal.tsx
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -23,28 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings,
-  School,
-  MapPin,
-  Phone,
-  Mail,
-  Calendar,
-  DollarSign,
-  Clock,
-  Users,
-  BookOpen,
-  Shield,
-  Bell,
-  Globe,
-  Palette,
-  Save,
-  X,
-  AlertTriangle,
-  CheckCircle
+  Settings, School, MapPin, Phone, Mail, Calendar, DollarSign,
+  Clock, Users, BookOpen, Shield, Bell, Globe, Save, X,
+  AlertTriangle, CheckCircle, ChevronRight
 } from "lucide-react";
 
 interface GeneralSettings {
-  // Informações da Instituição
   institutionName: string;
   institutionLogo?: string;
   institutionAddress: string;
@@ -52,8 +26,6 @@ interface GeneralSettings {
   institutionEmail: string;
   institutionWebsite?: string;
   institutionDescription?: string;
-  
-  // Configurações Acadêmicas
   academicYear: string;
   semesterStart: string;
   semesterEnd: string;
@@ -61,27 +33,21 @@ interface GeneralSettings {
   classScheduleEnd: string;
   maxStudentsPerClass: number;
   minStudentsPerClass: number;
-  lessonDuration: number; // em minutos
-  
-  // Configurações Financeiras
+  lessonDuration: number;
   defaultMonthlyFee: number;
   registrationFee: number;
   registrationFeeGlobalEnabled: boolean;
   registrationFeeIsento: boolean;
-  firstPenaltyPercentage: number;  // Primeira multa (após dia 10)
-  secondPenaltyPercentage: number; // Segunda multa (após dia 20)
+  firstPenaltyPercentage: number;
+  secondPenaltyPercentage: number;
   paymentDueDays: number;
   advancePaymentDiscount: number;
   penaltyEnabled: boolean;
-  
-  // Configurações de Comunicação
   enableEmailNotifications: boolean;
   enableSMSNotifications: boolean;
   autoPaymentReminders: boolean;
   reminderDaysBefore: number;
   overdueNotificationDays: number;
-  
-  // Configurações do Sistema
   systemLanguage: string;
   timezone: string;
   dateFormat: string;
@@ -89,18 +55,14 @@ interface GeneralSettings {
   enableAttendanceTracking: boolean;
   enableGradeSystem: boolean;
   enableReports: boolean;
-  
-  // Configurações de Segurança
-  sessionTimeout: number; // em minutos
+  sessionTimeout: number;
   passwordMinLength: number;
   requirePasswordChange: boolean;
-  passwordChangeInterval: number; // em dias
+  passwordChangeInterval: number;
   enableTwoFactor: boolean;
-  
-  // Configurações de Backup
   autoBackupEnabled: boolean;
-  backupFrequency: string; // daily, weekly, monthly
-  backupRetention: number; // em dias
+  backupFrequency: string;
+  backupRetention: number;
 }
 
 interface GeneralSettingsModalProps {
@@ -110,21 +72,82 @@ interface GeneralSettingsModalProps {
   currentSettings?: GeneralSettings;
 }
 
-export function GeneralSettingsModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  currentSettings 
+const TABS = [
+  { key: "institution",   label: "Instituição",  icon: School     },
+  { key: "academic",      label: "Académico",    icon: BookOpen   },
+  { key: "financial",     label: "Financeiro",   icon: DollarSign },
+  { key: "communication", label: "Comunicação",  icon: Bell       },
+  { key: "system",        label: "Sistema",      icon: Globe      },
+  { key: "security",      label: "Segurança",    icon: Shield     },
+];
+
+// Reusable styled primitives
+const SectionCard = ({ children }: { children: React.ReactNode }) => (
+  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    {children}
+  </div>
+);
+
+const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) => (
+  <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#004B87] to-[#0066BB] flex items-center justify-center flex-shrink-0">
+      <Icon className="h-4 w-4 text-white" />
+    </div>
+    <div>
+      <p className="text-sm font-bold text-slate-800">{title}</p>
+      <p className="text-xs text-slate-500">{subtitle}</p>
+    </div>
+  </div>
+);
+
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <label className="text-xs font-semibold text-slate-600 block mb-1.5">{children}</label>
+);
+
+const StyledInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <Input
+    {...props}
+    className={`h-9 text-sm border-slate-200 focus:border-[#004B87] bg-slate-50 rounded-xl ${props.className || ""}`}
+  />
+);
+
+const SwitchRow = ({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+}) => (
+  <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50">
+    <div>
+      <p className="text-sm font-semibold text-slate-800">{label}</p>
+      <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+    </div>
+    <Switch
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      className="data-[state=checked]:bg-[#004B87]"
+    />
+  </div>
+);
+
+export function GeneralSettingsModal({
+  isOpen,
+  onClose,
+  onSave,
+  currentSettings,
 }: GeneralSettingsModalProps) {
   const [settings, setSettings] = useState<GeneralSettings>({
-    // Valores padrão
     institutionName: "M007 Oxford",
     institutionAddress: "Maputo, Moçambique",
     institutionPhone: "+258 84 000 0000",
     institutionEmail: "info@m007oxford.com",
     institutionWebsite: "www.m007oxford.com",
     institutionDescription: "Instituto de Ensino de Inglês de excelência",
-    
     academicYear: "2025",
     semesterStart: "2025-02-01",
     semesterEnd: "2025-06-30",
@@ -133,7 +156,6 @@ export function GeneralSettingsModal({
     maxStudentsPerClass: 15,
     minStudentsPerClass: 5,
     lessonDuration: 90,
-    
     defaultMonthlyFee: 3500,
     registrationFee: 1000,
     registrationFeeGlobalEnabled: false,
@@ -143,13 +165,11 @@ export function GeneralSettingsModal({
     paymentDueDays: 10,
     advancePaymentDiscount: 5,
     penaltyEnabled: true,
-    
     enableEmailNotifications: true,
     enableSMSNotifications: false,
     autoPaymentReminders: true,
     reminderDaysBefore: 5,
     overdueNotificationDays: 3,
-    
     systemLanguage: "pt-MZ",
     timezone: "Africa/Maputo",
     dateFormat: "DD/MM/YYYY",
@@ -157,18 +177,15 @@ export function GeneralSettingsModal({
     enableAttendanceTracking: true,
     enableGradeSystem: true,
     enableReports: true,
-    
     sessionTimeout: 60,
     passwordMinLength: 8,
     requirePasswordChange: false,
     passwordChangeInterval: 90,
     enableTwoFactor: false,
-    
     autoBackupEnabled: true,
     backupFrequency: "daily",
     backupRetention: 30,
-    
-    ...currentSettings
+    ...currentSettings,
   });
 
   const [activeTab, setActiveTab] = useState("institution");
@@ -178,15 +195,12 @@ export function GeneralSettingsModal({
 
   useEffect(() => {
     if (currentSettings) {
-      setSettings({ ...settings, ...currentSettings });
+      setSettings((prev) => ({ ...prev, ...currentSettings }));
     }
   }, [currentSettings]);
 
-  const handleInputChange = (field: keyof GeneralSettings, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleInputChange = (field: keyof GeneralSettings, value: GeneralSettings[keyof GeneralSettings]) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
@@ -196,637 +210,498 @@ export function GeneralSettingsModal({
     onClose();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(amount);
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onClose}>
-  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4 border-b">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <Settings className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl">Configurações Gerais do Sistema</DialogTitle>
-              <DialogDescription>
-                Configure os parâmetros globais da instituição
-              </DialogDescription>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-[95vw] max-w-4xl h-[92vh] p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+
+          {/* ── HEADER ── */}
+          <div className="bg-gradient-to-r from-[#004B87] to-[#003868] px-5 pt-4 pb-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#F5821F] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Settings className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-white font-bold text-base leading-tight">
+                    Configurações do Sistema
+                  </h2>
+                  <p className="text-blue-200 text-xs mt-0.5">
+                    Parâmetros globais da instituição
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {hasChanges && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-400/20">
+                    <AlertTriangle className="h-3 w-3 text-yellow-300" />
+                    <span className="text-xs font-medium text-yellow-200">Não salvo</span>
+                  </div>
+                )}
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                >
+                  <X className="h-4 w-4 text-white" />
+                </button>
+              </div>
             </div>
           </div>
-          {hasChanges && (
-            <Badge variant="secondary" className="w-fit">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Alterações não salvas
-            </Badge>
-          )}
-        </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 mb-4">
-              <TabsTrigger value="institution" className="flex items-center gap-1">
-                <School className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Instituição</span>
-              </TabsTrigger>
-              <TabsTrigger value="academic" className="flex items-center gap-1">
-                <BookOpen className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Acadêmico</span>
-              </TabsTrigger>
-              <TabsTrigger value="financial" className="flex items-center gap-1">
-                <DollarSign className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Financeiro</span>
-              </TabsTrigger>
-              <TabsTrigger value="communication" className="flex items-center gap-1">
-                <Bell className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Comunicação</span>
-              </TabsTrigger>
-              <TabsTrigger value="system" className="flex items-center gap-1">
-                <Globe className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Sistema</span>
-              </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center gap-1">
-                <Shield className="h-3 w-3" />
-                <span className="hidden sm:inline text-xs">Segurança</span>
-              </TabsTrigger>
-            </TabsList>
+          {/* Orange accent line */}
+          <div className="h-0.5 bg-gradient-to-r from-[#F5821F] via-[#FF9933] to-[#F5821F] flex-shrink-0" />
 
-            <div className="flex-1 overflow-y-auto pr-2">
-              {/* Aba Instituição */}
-              <TabsContent value="institution" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <School className="h-5 w-5" />
-                      Informações da Instituição
-                    </CardTitle>
-                    <CardDescription>
-                      Configure as informações básicas da sua instituição
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="institutionName">Nome da Instituição</Label>
-                        <Input
-                          id="institutionName"
+          {/* ── BODY: sidebar + content ── */}
+          <div className="flex flex-1 overflow-hidden">
+
+            {/* Left sidebar tabs */}
+            <div className="w-40 bg-slate-50 border-r border-slate-100 flex flex-col py-3 gap-1 flex-shrink-0">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 mx-2 rounded-xl text-left transition-all ${
+                      isActive
+                        ? "bg-white border border-slate-200 shadow-sm text-[#004B87]"
+                        : "text-slate-500 hover:bg-white/60 hover:text-slate-700"
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      isActive ? "bg-[#004B87]" : "bg-slate-200"
+                    }`}>
+                      <Icon className={`h-3 w-3 ${isActive ? "text-white" : "text-slate-500"}`} />
+                    </div>
+                    <span className="text-xs font-semibold leading-tight">{tab.label}</span>
+                    {isActive && <ChevronRight className="h-3 w-3 ml-auto text-[#004B87]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-4">
+
+              {/* ── Instituição ── */}
+              {activeTab === "institution" && (
+                <SectionCard>
+                  <SectionHeader icon={School} title="Informações da Instituição" subtitle="Configure os dados básicos da sua instituição" />
+                  <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Nome da Instituição</FieldLabel>
+                        <StyledInput
                           value={settings.institutionName}
-                          onChange={(e) => handleInputChange('institutionName', e.target.value)}
+                          onChange={(e) => handleInputChange("institutionName", e.target.value)}
                           placeholder="M007 Oxford"
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="institutionWebsite">Website</Label>
-                        <Input
-                          id="institutionWebsite"
-                          value={settings.institutionWebsite || ''}
-                          onChange={(e) => handleInputChange('institutionWebsite', e.target.value)}
+                      <div>
+                        <FieldLabel>Website</FieldLabel>
+                        <StyledInput
+                          value={settings.institutionWebsite || ""}
+                          onChange={(e) => handleInputChange("institutionWebsite", e.target.value)}
                           placeholder="www.m007oxford.com"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="institutionAddress">Endereço</Label>
-                      <Input
-                        id="institutionAddress"
-                        value={settings.institutionAddress}
-                        onChange={(e) => handleInputChange('institutionAddress', e.target.value)}
-                        placeholder="Rua, Cidade, País"
-                        className="flex items-center gap-2"
-                      />
+                    <div>
+                      <FieldLabel>Endereço</FieldLabel>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <StyledInput
+                          value={settings.institutionAddress}
+                          onChange={(e) => handleInputChange("institutionAddress", e.target.value)}
+                          placeholder="Rua, Cidade, País"
+                          className="pl-9"
+                        />
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="institutionPhone">Telefone</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Telefone</FieldLabel>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="institutionPhone"
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <StyledInput
                             value={settings.institutionPhone}
-                            onChange={(e) => handleInputChange('institutionPhone', e.target.value)}
+                            onChange={(e) => handleInputChange("institutionPhone", e.target.value)}
                             placeholder="+258 84 000 0000"
-                            className="pl-10"
+                            className="pl-9"
                           />
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="institutionEmail">Email</Label>
+                      <div>
+                        <FieldLabel>Email</FieldLabel>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="institutionEmail"
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <StyledInput
                             type="email"
                             value={settings.institutionEmail}
-                            onChange={(e) => handleInputChange('institutionEmail', e.target.value)}
+                            onChange={(e) => handleInputChange("institutionEmail", e.target.value)}
                             placeholder="info@m007oxford.com"
-                            className="pl-10"
+                            className="pl-9"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="institutionDescription">Descrição</Label>
+                    <div>
+                      <FieldLabel>Descrição</FieldLabel>
                       <Textarea
-                        id="institutionDescription"
-                        value={settings.institutionDescription || ''}
-                        onChange={(e) => handleInputChange('institutionDescription', e.target.value)}
+                        value={settings.institutionDescription || ""}
+                        onChange={(e) => handleInputChange("institutionDescription", e.target.value)}
                         placeholder="Breve descrição sobre a instituição..."
                         rows={3}
+                        className="text-sm border-slate-200 focus:border-[#004B87] bg-slate-50 rounded-xl resize-none"
                       />
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </SectionCard>
+              )}
 
-              {/* Aba Acadêmico */}
-              <TabsContent value="academic" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      Configurações Acadêmicas
-                    </CardTitle>
-                    <CardDescription>
-                      Configure períodos letivos e parâmetros de aulas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="academicYear">Ano Letivo</Label>
-                        <Input
-                          id="academicYear"
+              {/* ── Académico ── */}
+              {activeTab === "academic" && (
+                <SectionCard>
+                  <SectionHeader icon={Calendar} title="Configurações Académicas" subtitle="Períodos lectivos e parâmetros de aulas" />
+                  <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <FieldLabel>Ano Lectivo</FieldLabel>
+                        <StyledInput
                           value={settings.academicYear}
-                          onChange={(e) => handleInputChange('academicYear', e.target.value)}
+                          onChange={(e) => handleInputChange("academicYear", e.target.value)}
                           placeholder="2025"
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="semesterStart">Início do Semestre</Label>
-                        <Input
-                          id="semesterStart"
+                      <div>
+                        <FieldLabel>Início do Semestre</FieldLabel>
+                        <StyledInput
                           type="date"
                           value={settings.semesterStart}
-                          onChange={(e) => handleInputChange('semesterStart', e.target.value)}
+                          onChange={(e) => handleInputChange("semesterStart", e.target.value)}
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="semesterEnd">Fim do Semestre</Label>
-                        <Input
-                          id="semesterEnd"
+                      <div>
+                        <FieldLabel>Fim do Semestre</FieldLabel>
+                        <StyledInput
                           type="date"
                           value={settings.semesterEnd}
-                          onChange={(e) => handleInputChange('semesterEnd', e.target.value)}
+                          onChange={(e) => handleInputChange("semesterEnd", e.target.value)}
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="classScheduleStart">Início das Aulas</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Início das Aulas</FieldLabel>
                         <div className="relative">
-                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="classScheduleStart"
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <StyledInput
                             type="time"
                             value={settings.classScheduleStart}
-                            onChange={(e) => handleInputChange('classScheduleStart', e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => handleInputChange("classScheduleStart", e.target.value)}
+                            className="pl-9"
                           />
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="classScheduleEnd">Fim das Aulas</Label>
+                      <div>
+                        <FieldLabel>Fim das Aulas</FieldLabel>
                         <div className="relative">
-                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="classScheduleEnd"
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <StyledInput
                             type="time"
                             value={settings.classScheduleEnd}
-                            onChange={(e) => handleInputChange('classScheduleEnd', e.target.value)}
-                            className="pl-10"
+                            onChange={(e) => handleInputChange("classScheduleEnd", e.target.value)}
+                            className="pl-9"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="maxStudentsPerClass">Máx. Estudantes/Turma</Label>
-                        <Input
-                          id="maxStudentsPerClass"
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <FieldLabel>Máx. Estudantes/Turma</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.maxStudentsPerClass}
-                          onChange={(e) => handleInputChange('maxStudentsPerClass', parseInt(e.target.value))}
-                          min="1"
-                          max="50"
+                          onChange={(e) => handleInputChange("maxStudentsPerClass", parseInt(e.target.value))}
+                          min="1" max="50"
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="minStudentsPerClass">Mín. Estudantes/Turma</Label>
-                        <Input
-                          id="minStudentsPerClass"
+                      <div>
+                        <FieldLabel>Mín. Estudantes/Turma</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.minStudentsPerClass}
-                          onChange={(e) => handleInputChange('minStudentsPerClass', parseInt(e.target.value))}
-                          min="1"
-                          max="20"
+                          onChange={(e) => handleInputChange("minStudentsPerClass", parseInt(e.target.value))}
+                          min="1" max="20"
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="lessonDuration">Duração da Aula (min)</Label>
-                        <Input
-                          id="lessonDuration"
+                      <div>
+                        <FieldLabel>Duração da Aula (min)</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.lessonDuration}
-                          onChange={(e) => handleInputChange('lessonDuration', parseInt(e.target.value))}
-                          min="30"
-                          max="180"
-                          step="15"
+                          onChange={(e) => handleInputChange("lessonDuration", parseInt(e.target.value))}
+                          min="30" max="180" step="15"
                         />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </SectionCard>
+              )}
 
-              {/* Aba Financeiro */}
-              <TabsContent value="financial" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Configurações Financeiras
-                    </CardTitle>
-                    <CardDescription>
-                      Configure valores e políticas de pagamento
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="defaultMonthlyFee">Mensalidade Padrão</Label>
-                        <Input
-                          id="defaultMonthlyFee"
+              {/* ── Financeiro ── */}
+              {activeTab === "financial" && (
+                <SectionCard>
+                  <SectionHeader icon={DollarSign} title="Configurações Financeiras" subtitle="Valores e políticas de pagamento" />
+                  <div className="p-5 space-y-5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Mensalidade Padrão (MZN)</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.defaultMonthlyFee}
-                          onChange={(e) => handleInputChange('defaultMonthlyFee', parseFloat(e.target.value))}
-                          step="0.01"
-                          min="0"
+                          onChange={(e) => handleInputChange("defaultMonthlyFee", parseFloat(e.target.value))}
+                          step="0.01" min="0"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Valor: {formatCurrency(settings.defaultMonthlyFee)}
-                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1">{formatCurrency(settings.defaultMonthlyFee)}</p>
                       </div>
 
                       <div className="space-y-3">
-                        <Label className="font-medium">Taxa de Matrícula Global</Label>
-
-                        {/* Toggle para activar taxa global */}
-                        <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="registrationFeeGlobalEnabled" className="text-sm font-medium cursor-pointer">
-                              Definir taxa única para todos os cursos
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              {settings.registrationFeeGlobalEnabled
-                                ? 'Activo - todos os cursos usam esta definição'
-                                : 'Desactivado - cada curso usa o seu próprio valor'
-                              }
+                        <FieldLabel>Taxa de Matrícula Global</FieldLabel>
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">Taxa única para todos os cursos</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              {settings.registrationFeeGlobalEnabled ? "Activo" : "Cada curso usa o seu próprio valor"}
                             </p>
                           </div>
                           <Switch
-                            id="registrationFeeGlobalEnabled"
                             checked={settings.registrationFeeGlobalEnabled || false}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                handleInputChange('registrationFeeGlobalEnabled', true);
+                                handleInputChange("registrationFeeGlobalEnabled", true);
                               } else {
-                                handleInputChange('registrationFeeGlobalEnabled', false);
-                                handleInputChange('registrationFeeIsento', false);
+                                handleInputChange("registrationFeeGlobalEnabled", false);
+                                handleInputChange("registrationFeeIsento", false);
                               }
                             }}
+                            className="data-[state=checked]:bg-[#004B87]"
                           />
                         </div>
 
-                        {/* Opções quando activo */}
                         {settings.registrationFeeGlobalEnabled && (
-                          <div className="space-y-3">
-                            {/* Duas opções claras */}
-                            <div className="grid grid-cols-2 gap-3">
-                              {/* Opção 1: Definir valor */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleInputChange('registrationFeeIsento', false);
-                                  setTempGlobalFee(settings.registrationFee || 0);
-                                  setShowGlobalFeeModal(true);
-                                }}
-                                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                                  !settings.registrationFeeIsento && settings.registrationFee > 0
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <DollarSign className={`h-4 w-4 ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? 'text-blue-600' : 'text-slate-400'}`} />
-                                  <span className={`text-sm font-bold ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? 'text-blue-700' : 'text-slate-600'}`}>
-                                    Definir Valor
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-500">
-                                  Cobrar um valor fixo a todos os cursos
-                                </p>
-                                {!settings.registrationFeeIsento && settings.registrationFee > 0 && (
-                                  <p className="text-sm font-bold text-blue-600 mt-2">
-                                    {formatCurrency(settings.registrationFee)}
-                                  </p>
-                                )}
-                              </button>
-
-                              {/* Opção 2: Isento / Gratuito */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleInputChange('registrationFeeIsento', true);
-                                  handleInputChange('registrationFee', 0);
-                                }}
-                                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                                  settings.registrationFeeIsento
-                                    ? 'border-green-500 bg-green-50'
-                                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <CheckCircle className={`h-4 w-4 ${settings.registrationFeeIsento ? 'text-green-600' : 'text-slate-400'}`} />
-                                  <span className={`text-sm font-bold ${settings.registrationFeeIsento ? 'text-green-700' : 'text-slate-600'}`}>
-                                    Isento / Gratuito
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-500">
-                                  Sem taxa de matrícula para nenhum curso
-                                </p>
-                                {settings.registrationFeeIsento && (
-                                  <p className="text-sm font-bold text-green-600 mt-2">
-                                    Gratuito
-                                  </p>
-                                )}
-                              </button>
-                            </div>
-
-                            {/* Aviso */}
-                            {settings.registrationFeeIsento && (
-                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                                  <p className="text-xs text-amber-700">
-                                    A taxa de matrícula será <strong>isenta/gratuita</strong> para todos os cursos.
-                                    Os valores definidos na criação de cada curso serão ignorados.
-                                  </p>
-                                </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleInputChange("registrationFeeIsento", false);
+                                setTempGlobalFee(settings.registrationFee || 0);
+                                setShowGlobalFeeModal(true);
+                              }}
+                              className={`p-3 rounded-xl border-2 text-left transition-all ${
+                                !settings.registrationFeeIsento && settings.registrationFee > 0
+                                  ? "border-[#004B87] bg-blue-50"
+                                  : "border-slate-200 hover:border-slate-300 bg-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <DollarSign className={`h-3.5 w-3.5 ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? "text-[#004B87]" : "text-slate-400"}`} />
+                                <span className={`text-xs font-bold ${!settings.registrationFeeIsento && settings.registrationFee > 0 ? "text-[#004B87]" : "text-slate-600"}`}>
+                                  Definir Valor
+                                </span>
                               </div>
-                            )}
+                              <p className="text-[10px] text-slate-500">Cobrar valor fixo</p>
+                              {!settings.registrationFeeIsento && settings.registrationFee > 0 && (
+                                <p className="text-xs font-bold text-[#004B87] mt-1">{formatCurrency(settings.registrationFee)}</p>
+                              )}
+                            </button>
 
-                            {!settings.registrationFeeIsento && settings.registrationFee > 0 && (
-                              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                  <p className="text-xs text-blue-700">
-                                    Todos os cursos terão a taxa de matrícula de <strong>{formatCurrency(settings.registrationFee)}</strong>.
-                                    Os valores individuais definidos na criação de cada curso serão ignorados.
-                                  </p>
-                                </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleInputChange("registrationFeeIsento", true);
+                                handleInputChange("registrationFee", 0);
+                              }}
+                              className={`p-3 rounded-xl border-2 text-left transition-all ${
+                                settings.registrationFeeIsento
+                                  ? "border-green-500 bg-green-50"
+                                  : "border-slate-200 hover:border-slate-300 bg-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <CheckCircle className={`h-3.5 w-3.5 ${settings.registrationFeeIsento ? "text-green-600" : "text-slate-400"}`} />
+                                <span className={`text-xs font-bold ${settings.registrationFeeIsento ? "text-green-700" : "text-slate-600"}`}>
+                                  Gratuito
+                                </span>
                               </div>
-                            )}
+                              <p className="text-[10px] text-slate-500">Sem taxa de matrícula</p>
+                            </button>
                           </div>
                         )}
 
-                        {!settings.registrationFeeGlobalEnabled && (
-                          <p className="text-xs text-slate-500">
-                            Cada curso utiliza o valor definido no processo de criação do curso.
-                          </p>
+                        {settings.registrationFeeGlobalEnabled && settings.registrationFeeIsento && (
+                          <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-[10px] text-amber-700">Taxa isenta/gratuita para todos os cursos.</p>
+                          </div>
+                        )}
+                        {settings.registrationFeeGlobalEnabled && !settings.registrationFeeIsento && settings.registrationFee > 0 && (
+                          <div className="flex items-start gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                            <AlertTriangle className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-[10px] text-blue-700">Todos os cursos pagarão <strong>{formatCurrency(settings.registrationFee)}</strong>.</p>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentDueDays">Dia de Vencimento (do mês)</Label>
-                        <Input
-                          id="paymentDueDays"
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Dia de Vencimento (do mês)</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.paymentDueDays}
-                          onChange={(e) => handleInputChange('paymentDueDays', parseInt(e.target.value))}
-                          min="1"
-                          max="28"
+                          onChange={(e) => handleInputChange("paymentDueDays", parseInt(e.target.value))}
+                          min="1" max="28"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Vencimento todo dia {settings.paymentDueDays} do mês
-                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1">Todo dia {settings.paymentDueDays} do mês</p>
                       </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="advancePaymentDiscount">Desconto Antecipado %</Label>
-                        <Input
-                          id="advancePaymentDiscount"
+                      <div>
+                        <FieldLabel>Desconto Antecipado %</FieldLabel>
+                        <StyledInput
                           type="number"
                           value={settings.advancePaymentDiscount}
-                          onChange={(e) => handleInputChange('advancePaymentDiscount', parseFloat(e.target.value))}
-                          step="0.1"
-                          min="0"
-                          max="50"
+                          onChange={(e) => handleInputChange("advancePaymentDiscount", parseFloat(e.target.value))}
+                          step="0.1" min="0" max="50"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          {settings.advancePaymentDiscount}% de desconto para pagamento antecipado
-                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1">{settings.advancePaymentDiscount}% de desconto antecipado</p>
                       </div>
                     </div>
 
-                    {/* Secção de Multas */}
-                    <div className="border-t pt-4 mt-4">
-                      <div className="flex items-center justify-between mb-4">
+                    {/* Multas */}
+                    <div className="border-t border-slate-100 pt-4">
+                      <div className="flex items-center justify-between mb-3">
                         <div>
-                          <h4 className="font-medium">Política de Multas por Atraso</h4>
-                          <p className="text-xs text-muted-foreground">Configure as penalidades por atraso no pagamento</p>
+                          <p className="text-sm font-semibold text-slate-800">Política de Multas por Atraso</p>
+                          <p className="text-xs text-slate-500">Penalidades por atraso no pagamento</p>
                         </div>
                         <Switch
                           checked={settings.penaltyEnabled}
-                          onCheckedChange={(checked) => handleInputChange('penaltyEnabled', checked)}
+                          onCheckedChange={(checked) => handleInputChange("penaltyEnabled", checked)}
+                          className="data-[state=checked]:bg-[#004B87]"
                         />
                       </div>
 
                       {settings.penaltyEnabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                          <div className="space-y-2">
-                            <Label htmlFor="firstPenaltyPercentage">Primeira Multa % (após dia 10)</Label>
-                            <Input
-                              id="firstPenaltyPercentage"
-                              type="number"
-                              value={settings.firstPenaltyPercentage}
-                              onChange={(e) => handleInputChange('firstPenaltyPercentage', parseFloat(e.target.value))}
-                              step="1"
-                              min="0"
-                              max="100"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              +{settings.firstPenaltyPercentage}% após o dia 10 do mês
-                            </p>
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <FieldLabel>1ª Multa % (após dia 10)</FieldLabel>
+                              <StyledInput
+                                type="number"
+                                value={settings.firstPenaltyPercentage}
+                                onChange={(e) => handleInputChange("firstPenaltyPercentage", parseFloat(e.target.value))}
+                                step="1" min="0" max="100"
+                              />
+                              <p className="text-[10px] text-slate-400 mt-1">+{settings.firstPenaltyPercentage}% após dia 10</p>
+                            </div>
+                            <div>
+                              <FieldLabel>2ª Multa % (após dia 20)</FieldLabel>
+                              <StyledInput
+                                type="number"
+                                value={settings.secondPenaltyPercentage}
+                                onChange={(e) => handleInputChange("secondPenaltyPercentage", parseFloat(e.target.value))}
+                                step="1" min="0" max="100"
+                              />
+                              <p className="text-[10px] text-slate-400 mt-1">+{settings.secondPenaltyPercentage}% após dia 20</p>
+                            </div>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="secondPenaltyPercentage">Segunda Multa % (após dia 20)</Label>
-                            <Input
-                              id="secondPenaltyPercentage"
-                              type="number"
-                              value={settings.secondPenaltyPercentage}
-                              onChange={(e) => handleInputChange('secondPenaltyPercentage', parseFloat(e.target.value))}
-                              step="1"
-                              min="0"
-                              max="100"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              +{settings.secondPenaltyPercentage}% adicional após o dia 20
+                          <div className="p-3 bg-white rounded-xl border border-orange-200">
+                            <p className="text-xs font-semibold text-slate-700 mb-1">
+                              Exemplo — mensalidade de {formatCurrency(settings.defaultMonthlyFee)}:
                             </p>
-                          </div>
-
-                          <div className="col-span-2 p-3 bg-white rounded border border-orange-300">
-                            <p className="text-sm text-slate-700">
-                              <strong>Exemplo:</strong> Para uma mensalidade de {formatCurrency(settings.defaultMonthlyFee)}:
-                            </p>
-                            <ul className="text-xs text-slate-600 mt-1 space-y-1">
-                              <li>• Até dia 10: {formatCurrency(settings.defaultMonthlyFee)} (sem multa)</li>
-                              <li>• Dia 11-20: {formatCurrency(settings.defaultMonthlyFee * (1 + settings.firstPenaltyPercentage / 100))} (+{settings.firstPenaltyPercentage}%)</li>
+                            <ul className="text-[10px] text-slate-600 space-y-0.5">
+                              <li>• Até dia 10: {formatCurrency(settings.defaultMonthlyFee)}</li>
+                              <li>• Dia 11–20: {formatCurrency(settings.defaultMonthlyFee * (1 + settings.firstPenaltyPercentage / 100))} (+{settings.firstPenaltyPercentage}%)</li>
                               <li>• Após dia 20: {formatCurrency(settings.defaultMonthlyFee * (1 + (settings.firstPenaltyPercentage + settings.secondPenaltyPercentage) / 100))} (+{settings.firstPenaltyPercentage + settings.secondPenaltyPercentage}%)</li>
                             </ul>
                           </div>
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </SectionCard>
+              )}
 
-              {/* Aba Comunicação */}
-              <TabsContent value="communication" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bell className="h-5 w-5" />
-                      Configurações de Comunicação
-                    </CardTitle>
-                    <CardDescription>
-                      Configure notificações e lembretes automáticos
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Notificações por Email</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Enviar notificações automáticas por email
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableEmailNotifications}
-                          onCheckedChange={(checked) => handleInputChange('enableEmailNotifications', checked)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Notificações por SMS</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Enviar notificações automáticas por SMS
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableSMSNotifications}
-                          onCheckedChange={(checked) => handleInputChange('enableSMSNotifications', checked)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Lembretes de Pagamento</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Enviar lembretes automáticos antes do vencimento
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.autoPaymentReminders}
-                          onCheckedChange={(checked) => handleInputChange('autoPaymentReminders', checked)}
-                        />
-                      </div>
-                    </div>
+              {/* ── Comunicação ── */}
+              {activeTab === "communication" && (
+                <SectionCard>
+                  <SectionHeader icon={Bell} title="Configurações de Comunicação" subtitle="Notificações e lembretes automáticos" />
+                  <div className="p-5 space-y-3">
+                    <SwitchRow
+                      label="Notificações por Email"
+                      description="Enviar notificações automáticas por email"
+                      checked={settings.enableEmailNotifications}
+                      onCheckedChange={(v) => handleInputChange("enableEmailNotifications", v)}
+                    />
+                    <SwitchRow
+                      label="Notificações por SMS"
+                      description="Enviar notificações automáticas por SMS"
+                      checked={settings.enableSMSNotifications}
+                      onCheckedChange={(v) => handleInputChange("enableSMSNotifications", v)}
+                    />
+                    <SwitchRow
+                      label="Lembretes de Pagamento"
+                      description="Enviar lembretes automáticos antes do vencimento"
+                      checked={settings.autoPaymentReminders}
+                      onCheckedChange={(v) => handleInputChange("autoPaymentReminders", v)}
+                    />
 
                     {settings.autoPaymentReminders && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="space-y-2">
-                          <Label htmlFor="reminderDaysBefore">Dias Antes do Vencimento</Label>
-                          <Input
-                            id="reminderDaysBefore"
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl grid grid-cols-2 gap-4">
+                        <div>
+                          <FieldLabel>Dias Antes do Vencimento</FieldLabel>
+                          <StyledInput
                             type="number"
                             value={settings.reminderDaysBefore}
-                            onChange={(e) => handleInputChange('reminderDaysBefore', parseInt(e.target.value))}
-                            min="1"
-                            max="30"
+                            onChange={(e) => handleInputChange("reminderDaysBefore", parseInt(e.target.value))}
+                            min="1" max="30"
                           />
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="overdueNotificationDays">Dias Após Vencimento</Label>
-                          <Input
-                            id="overdueNotificationDays"
+                        <div>
+                          <FieldLabel>Dias Após Vencimento</FieldLabel>
+                          <StyledInput
                             type="number"
                             value={settings.overdueNotificationDays}
-                            onChange={(e) => handleInputChange('overdueNotificationDays', parseInt(e.target.value))}
-                            min="1"
-                            max="30"
+                            onChange={(e) => handleInputChange("overdueNotificationDays", parseInt(e.target.value))}
+                            min="1" max="30"
                           />
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </SectionCard>
+              )}
 
-              {/* Aba Sistema */}
-              <TabsContent value="system" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="h-5 w-5" />
-                      Configurações do Sistema
-                    </CardTitle>
-                    <CardDescription>
-                      Configure idioma, fuso horário e funcionalidades
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="systemLanguage">Idioma do Sistema</Label>
-                        <Select 
-                          value={settings.systemLanguage} 
-                          onValueChange={(value) => handleInputChange('systemLanguage', value)}
-                        >
-                          <SelectTrigger>
+              {/* ── Sistema ── */}
+              {activeTab === "system" && (
+                <SectionCard>
+                  <SectionHeader icon={Globe} title="Configurações do Sistema" subtitle="Idioma, fuso horário e funcionalidades" />
+                  <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Idioma do Sistema</FieldLabel>
+                        <Select value={settings.systemLanguage} onValueChange={(v) => handleInputChange("systemLanguage", v)}>
+                          <SelectTrigger className="h-9 text-sm border-slate-200 bg-slate-50 rounded-xl">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -836,14 +711,10 @@ export function GeneralSettingsModal({
                           </SelectContent>
                         </Select>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="timezone">Fuso Horário</Label>
-                        <Select 
-                          value={settings.timezone} 
-                          onValueChange={(value) => handleInputChange('timezone', value)}
-                        >
-                          <SelectTrigger>
+                      <div>
+                        <FieldLabel>Fuso Horário</FieldLabel>
+                        <Select value={settings.timezone} onValueChange={(v) => handleInputChange("timezone", v)}>
+                          <SelectTrigger className="h-9 text-sm border-slate-200 bg-slate-50 rounded-xl">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -855,14 +726,11 @@ export function GeneralSettingsModal({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="dateFormat">Formato de Data</Label>
-                        <Select 
-                          value={settings.dateFormat} 
-                          onValueChange={(value) => handleInputChange('dateFormat', value)}
-                        >
-                          <SelectTrigger>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <FieldLabel>Formato de Data</FieldLabel>
+                        <Select value={settings.dateFormat} onValueChange={(v) => handleInputChange("dateFormat", v)}>
+                          <SelectTrigger className="h-9 text-sm border-slate-200 bg-slate-50 rounded-xl">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -872,14 +740,10 @@ export function GeneralSettingsModal({
                           </SelectContent>
                         </Select>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="theme">Tema</Label>
-                        <Select 
-                          value={settings.theme} 
-                          onValueChange={(value) => handleInputChange('theme', value)}
-                        >
-                          <SelectTrigger>
+                      <div>
+                        <FieldLabel>Tema</FieldLabel>
+                        <Select value={settings.theme} onValueChange={(v) => handleInputChange("theme", v)}>
+                          <SelectTrigger className="h-9 text-sm border-slate-200 bg-slate-50 rounded-xl">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -891,299 +755,239 @@ export function GeneralSettingsModal({
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Controle de Presença</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Habilitar sistema de controle de presença
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableAttendanceTracking}
-                          onCheckedChange={(checked) => handleInputChange('enableAttendanceTracking', checked)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Sistema de Notas</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Habilitar sistema de avaliações e notas
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableGradeSystem}
-                          onCheckedChange={(checked) => handleInputChange('enableGradeSystem', checked)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Relatórios Avançados</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Habilitar geração de relatórios detalhados
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableReports}
-                          onCheckedChange={(checked) => handleInputChange('enableReports', checked)}
-                        />
-                      </div>
+                    <div className="space-y-3 border-t border-slate-100 pt-4">
+                      <SwitchRow
+                        label="Controle de Presença"
+                        description="Habilitar sistema de controle de presença"
+                        checked={settings.enableAttendanceTracking}
+                        onCheckedChange={(v) => handleInputChange("enableAttendanceTracking", v)}
+                      />
+                      <SwitchRow
+                        label="Sistema de Notas"
+                        description="Habilitar sistema de avaliações e notas"
+                        checked={settings.enableGradeSystem}
+                        onCheckedChange={(v) => handleInputChange("enableGradeSystem", v)}
+                      />
+                      <SwitchRow
+                        label="Relatórios Avançados"
+                        description="Habilitar geração de relatórios detalhados"
+                        checked={settings.enableReports}
+                        onCheckedChange={(v) => handleInputChange("enableReports", v)}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </SectionCard>
+              )}
 
-              {/* Aba Segurança */}
-              <TabsContent value="security" className="space-y-6 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      Configurações de Segurança
-                    </CardTitle>
-                    <CardDescription>
-                      Configure políticas de segurança e backup
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                        Políticas de Senha
-                      </h4>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="passwordMinLength">Comprimento Mínimo</Label>
-                          <Input
-                            id="passwordMinLength"
+              {/* ── Segurança ── */}
+              {activeTab === "security" && (
+                <SectionCard>
+                  <SectionHeader icon={Shield} title="Configurações de Segurança" subtitle="Políticas de acesso e backup automático" />
+                  <div className="p-5 space-y-5">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Políticas de Senha</p>
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <FieldLabel>Comprimento Mínimo</FieldLabel>
+                          <StyledInput
                             type="number"
                             value={settings.passwordMinLength}
-                            onChange={(e) => handleInputChange('passwordMinLength', parseInt(e.target.value))}
-                            min="6"
-                            max="20"
+                            onChange={(e) => handleInputChange("passwordMinLength", parseInt(e.target.value))}
+                            min="6" max="20"
                           />
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="sessionTimeout">Timeout da Sessão (min)</Label>
-                          <Input
-                            id="sessionTimeout"
+                        <div>
+                          <FieldLabel>Timeout da Sessão (min)</FieldLabel>
+                          <StyledInput
                             type="number"
                             value={settings.sessionTimeout}
-                            onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value))}
-                            min="15"
-                            max="480"
-                            step="15"
+                            onChange={(e) => handleInputChange("sessionTimeout", parseInt(e.target.value))}
+                            min="15" max="480" step="15"
                           />
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Mudança Obrigatória de Senha</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Exigir mudança periódica de senhas
-                          </p>
-                        </div>
-                        <Switch
+                      <div className="space-y-3">
+                        <SwitchRow
+                          label="Mudança Obrigatória de Senha"
+                          description="Exigir mudança periódica de senhas"
                           checked={settings.requirePasswordChange}
-                          onCheckedChange={(checked) => handleInputChange('requirePasswordChange', checked)}
+                          onCheckedChange={(v) => handleInputChange("requirePasswordChange", v)}
                         />
-                      </div>
-                      
-                      {settings.requirePasswordChange && (
-                        <div className="space-y-2 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                          <Label htmlFor="passwordChangeInterval">Intervalo (dias)</Label>
-                          <Input
-                            id="passwordChangeInterval"
-                            type="number"
-                            value={settings.passwordChangeInterval}
-                            onChange={(e) => handleInputChange('passwordChangeInterval', parseInt(e.target.value))}
-                            min="30"
-                            max="365"
-                            step="30"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Usuários deverão alterar senha a cada {settings.passwordChangeInterval} dias
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Autenticação de Dois Fatores</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Habilitar 2FA para administradores
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.enableTwoFactor}
-                          onCheckedChange={(checked) => handleInputChange('enableTwoFactor', checked)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 border-t pt-6">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                        Backup Automático
-                      </h4>
-                      
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="space-y-1">
-                          <Label className="text-base font-medium">Backup Automático</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Realizar backup automático dos dados
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.autoBackupEnabled}
-                          onCheckedChange={(checked) => handleInputChange('autoBackupEnabled', checked)}
-                        />
-                      </div>
-                      
-                      {settings.autoBackupEnabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="space-y-2">
-                            <Label htmlFor="backupFrequency">Frequência</Label>
-                            <Select 
-                              value={settings.backupFrequency} 
-                              onValueChange={(value) => handleInputChange('backupFrequency', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="daily">Diário</SelectItem>
-                                <SelectItem value="weekly">Semanal</SelectItem>
-                                <SelectItem value="monthly">Mensal</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="backupRetention">Retenção (dias)</Label>
-                            <Input
-                              id="backupRetention"
+                        {settings.requirePasswordChange && (
+                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                            <FieldLabel>Intervalo (dias)</FieldLabel>
+                            <StyledInput
                               type="number"
-                              value={settings.backupRetention}
-                              onChange={(e) => handleInputChange('backupRetention', parseInt(e.target.value))}
-                              min="7"
-                              max="365"
-                              step="7"
+                              value={settings.passwordChangeInterval}
+                              onChange={(e) => handleInputChange("passwordChangeInterval", parseInt(e.target.value))}
+                              min="30" max="365" step="30"
                             />
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Utilizadores alteram senha a cada {settings.passwordChangeInterval} dias
+                            </p>
                           </div>
-                        </div>
-                      )}
+                        )}
+                        <SwitchRow
+                          label="Autenticação de Dois Factores"
+                          description="Habilitar 2FA para administradores"
+                          checked={settings.enableTwoFactor}
+                          onCheckedChange={(v) => handleInputChange("enableTwoFactor", v)}
+                        />
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
 
-        <div className="flex items-center justify-between pt-6 border-t">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {hasChanges ? (
-              <>
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                <span>Existem alterações não salvas</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>Todas as configurações estão salvas</span>
-              </>
-            )}
+                    <div className="border-t border-slate-100 pt-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Backup Automático</p>
+                      <div className="space-y-3">
+                        <SwitchRow
+                          label="Backup Automático"
+                          description="Realizar backup automático dos dados"
+                          checked={settings.autoBackupEnabled}
+                          onCheckedChange={(v) => handleInputChange("autoBackupEnabled", v)}
+                        />
+                        {settings.autoBackupEnabled && (
+                          <div className="p-4 bg-green-50 border border-green-200 rounded-xl grid grid-cols-2 gap-4">
+                            <div>
+                              <FieldLabel>Frequência</FieldLabel>
+                              <Select value={settings.backupFrequency} onValueChange={(v) => handleInputChange("backupFrequency", v)}>
+                                <SelectTrigger className="h-9 text-sm border-slate-200 bg-white rounded-xl">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">Diário</SelectItem>
+                                  <SelectItem value="weekly">Semanal</SelectItem>
+                                  <SelectItem value="monthly">Mensal</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <FieldLabel>Retenção (dias)</FieldLabel>
+                              <StyledInput
+                                type="number"
+                                value={settings.backupRetention}
+                                onChange={(e) => handleInputChange("backupRetention", parseInt(e.target.value))}
+                                min="7" max="365" step="7"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </SectionCard>
+              )}
+
+            </div>
           </div>
-          
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <Button 
-              variant="oxford" 
-              onClick={handleSave}
-              disabled={!hasChanges}
+
+          {/* ── FOOTER ── */}
+          <div className="bg-white border-t border-slate-100 px-5 py-3.5 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              {hasChanges ? (
+                <>
+                  <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />
+                  <span className="text-xs text-slate-500">Existem alterações não salvas</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                  <span className="text-xs text-slate-500">Todas as configurações estão salvas</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!hasChanges}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#F5821F] to-[#e06a10] hover:from-[#e06a10] hover:to-[#cc5f0e] shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Salvar Configurações
+              </button>
+            </div>
+          </div>
+
+        </DialogContent>
+      </Dialog>
+
+      {/* Mini-modal — taxa global de matrícula */}
+      <Dialog open={showGlobalFeeModal} onOpenChange={setShowGlobalFeeModal}>
+        <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+          <div className="bg-gradient-to-r from-[#004B87] to-[#003868] px-5 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#F5821F] flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">Taxa Global de Matrícula</p>
+                <p className="text-blue-200 text-xs">Aplicada a todos os cursos</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowGlobalFeeModal(false)}
+              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Salvar Configurações
-            </Button>
+              <X className="h-4 w-4 text-white" />
+            </button>
           </div>
-        </div>
-       
-      </DialogContent>
+          <div className="h-0.5 bg-gradient-to-r from-[#F5821F] via-[#FF9933] to-[#F5821F]" />
 
-    </Dialog>
+          <div className="bg-slate-50 p-5 space-y-4">
+            <div>
+              <FieldLabel>Valor da Taxa (MZN)</FieldLabel>
+              <Input
+                type="number"
+                value={tempGlobalFee || ""}
+                onChange={(e) => setTempGlobalFee(parseFloat(e.target.value) || 0)}
+                step="0.01" min="0"
+                placeholder="Ex: 5000"
+                className="h-11 text-base font-bold border-slate-200 focus:border-[#004B87] bg-white rounded-xl"
+                autoFocus
+              />
+              {tempGlobalFee > 0 && (
+                <p className="text-xs text-green-600 font-semibold mt-1">{formatCurrency(tempGlobalFee)}</p>
+              )}
+            </div>
 
-    {/* Mini Modal - Definir valor global da taxa de matrícula */}
-    <Dialog open={showGlobalFeeModal} onOpenChange={setShowGlobalFeeModal}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-[#F5821F]" />
-            Definir Taxa Global de Matrícula
-          </DialogTitle>
-          <DialogDescription>
-            Este valor será aplicado a <strong>todos os cursos</strong> no processo de matrícula.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="globalFeeValue">Valor da Taxa (MZN)</Label>
-            <Input
-              id="globalFeeValue"
-              type="number"
-              value={tempGlobalFee || ''}
-              onChange={(e) => setTempGlobalFee(parseFloat(e.target.value) || 0)}
-              step="0.01"
-              min="0"
-              placeholder="Ex: 5000"
-              className="h-12 text-lg font-bold"
-              autoFocus
-            />
-            {tempGlobalFee > 0 && (
-              <p className="text-sm text-green-600 font-medium">
-                {formatCurrency(tempGlobalFee)}
-              </p>
-            )}
-          </div>
-
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-amber-700">
-                Este valor será a taxa única de matrícula para <strong>todos os cursos</strong>.
-                Os valores individuais definidos na criação de cada curso serão ignorados enquanto esta opção estiver activa.
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[10px] text-amber-700">
+                Este valor será a taxa única para <strong>todos os cursos</strong>. Os valores individuais serão ignorados enquanto esta opção estiver activa.
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setShowGlobalFeeModal(false)}>
-            Cancelar
-          </Button>
-          <Button
-            variant="oxford"
-            onClick={() => {
-              handleInputChange('registrationFeeGlobalEnabled', true);
-              handleInputChange('registrationFee', tempGlobalFee);
-              handleInputChange('registrationFeeIsento', false);
-              setShowGlobalFeeModal(false);
-            }}
-            disabled={tempGlobalFee <= 0}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Confirmar
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="bg-white border-t border-slate-100 px-5 py-3.5 flex justify-end gap-2">
+            <button
+              onClick={() => setShowGlobalFeeModal(false)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                handleInputChange("registrationFeeGlobalEnabled", true);
+                handleInputChange("registrationFee", tempGlobalFee);
+                handleInputChange("registrationFeeIsento", false);
+                setShowGlobalFeeModal(false);
+              }}
+              disabled={tempGlobalFee <= 0}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#F5821F] to-[#e06a10] hover:from-[#e06a10] hover:to-[#cc5f0e] shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              Confirmar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
-} 
+}

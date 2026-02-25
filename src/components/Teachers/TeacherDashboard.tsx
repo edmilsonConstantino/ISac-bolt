@@ -19,7 +19,10 @@ import {
   TrendingUp,
   Settings,
   Lock,
-  Loader2
+  Loader2,
+  Clock,
+  MapPin,
+  ChevronRight
 } from "lucide-react";
 import { StudentList } from "@/components/Students/StudentList";
 import { ClassModal } from "@/components/shared/CreateClassModal";
@@ -62,7 +65,13 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [changePasswordModal, setChangePasswordModal] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(
+    () => sessionStorage.getItem("teacher_active_tab") || "dashboard"
+  );
+  const persistTab = (tab: string) => {
+    sessionStorage.setItem("teacher_active_tab", tab);
+    setActiveTab(tab);
+  };
 
   // Carregar turmas do professor da API
   useEffect(() => {
@@ -254,6 +263,9 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
     console.log("Material enviado:", materialData);
   };
 
+  const scheduleLabel = (s?: string) =>
+    s === "manha" ? "Manhã" : s === "tarde" ? "Tarde" : s === "noite" ? "Noite" : s ?? "";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header estilizado - Responsivo */}
@@ -286,7 +298,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setActiveTab('settings')}
+                onClick={() => persistTab('settings')}
                 className="h-9 w-9 rounded-lg bg-[#003868] hover:bg-[#002850] text-slate-200 hover:text-white transition-colors"
                 title="Configurações do Sistema"
               >
@@ -347,32 +359,15 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         {/* Welcome Section — desktop */}
         <div className="hidden lg:block mb-8 bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-8 shadow-lg">
           <h2 className="text-3xl font-bold text-white mb-2">
-            Painel Do {displayName}!
+            Painel do Docente
           </h2>
           <p className="text-white/90 text-sm">
-            Gerencie estudantes, turmas e atividades de forma eficiente.
+            Olá, {displayName}! Gerencie estudantes, turmas e atividades de forma eficiente.
           </p>
         </div>
 
-        {/* Welcome Section — mobile (compact, same style as student portal) */}
-        <div className="lg:hidden mb-4 bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-5 shadow-lg flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-white leading-tight">
-              Olá, {firstName}!
-            </h2>
-            <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5 text-[#FF9933]" />
-              {dashboardStats.totalClasses} turma(s) · {dashboardStats.totalStudents} estudante(s)
-            </p>
-          </div>
-          <div className="flex-shrink-0">
-            <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-inner">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={persistTab} className="space-y-6">
           {/* Desktop Tabs */}
           <TabsList className="hidden lg:grid w-full grid-cols-6 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
@@ -403,13 +398,22 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
 
           <TabsContent value="dashboard" className="space-y-4 lg:space-y-6">
 
-            {/* Mobile: gradient section header */}
-            <div className="lg:hidden bg-gradient-to-r from-[#004B87] to-[#0066B3] rounded-2xl p-5 text-white shadow-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <BarChart3 className="h-5 w-5" />
-                <h2 className="text-lg font-bold">Início</h2>
+            {/* Mobile: merged welcome + section header (only on Início tab) */}
+            <div className="lg:hidden bg-gradient-to-r from-[#3B5998] via-[#5B7BB8] to-[#E07B5F] rounded-2xl p-5 shadow-lg flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-white leading-tight">
+                  Olá, {firstName}!
+                </h2>
+                <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-[#FF9933]" />
+                  {dashboardStats.totalClasses} turma(s) · {dashboardStats.totalStudents} estudante(s)
+                </p>
               </div>
-              <p className="text-blue-200 text-sm">Visão geral das suas actividades</p>
+              <div className="flex-shrink-0">
+                <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-inner">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              </div>
             </div>
 
             {/* Stats — 2 cols on mobile, 4 on desktop */}
@@ -437,6 +441,76 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
                 );
               })}
             </div>
+
+            {/* ── Minhas Turmas Preview ── */}
+            {!isLoadingClasses && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 bg-[#004B87] rounded-lg flex items-center justify-center">
+                      <BookOpen className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm">Minhas Turmas</p>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-blue-50 text-[#004B87] rounded-full">
+                      {teacherClasses.length}
+                    </span>
+                  </div>
+                  {teacherClasses.length > 0 && (
+                    <button
+                      onClick={() => persistTab('classes')}
+                      className="text-xs text-[#004B87] font-semibold flex items-center gap-1 hover:underline"
+                    >
+                      Ver todas <ChevronRight className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {teacherClasses.length === 0 ? (
+                  <div className="px-4 pb-4 flex items-center gap-3 border-t border-slate-50 pt-3">
+                    <div className="h-8 w-8 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <BookOpen className="h-4 w-4 text-slate-300" />
+                    </div>
+                    <p className="text-sm text-slate-400">Nenhuma turma atribuída ainda</p>
+                  </div>
+                ) : (
+                  <div className="border-t border-slate-100 divide-y divide-slate-50">
+                    {teacherClasses.slice(0, 3).map((cls) => (
+                      <div key={cls.id} className="flex items-center gap-3 px-4 py-3">
+                        <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <BookOpen className="h-4 w-4 text-[#004B87]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{cls.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {typeof cls.students === 'number'
+                              ? `${cls.students} estudante${cls.students !== 1 ? 's' : ''}`
+                              : ''}
+                            {cls.schedule ? ` · ${scheduleLabel(cls.schedule)}` : ''}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          cls.status === 'active'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : cls.status === 'completed'
+                            ? 'bg-slate-200 text-slate-600'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {cls.status === 'active' ? 'Ativa' : cls.status === 'completed' ? 'Concluída' : 'Inativa'}
+                        </span>
+                      </div>
+                    ))}
+                    {teacherClasses.length > 3 && (
+                      <button
+                        onClick={() => persistTab('classes')}
+                        className="w-full px-4 py-3 text-xs text-[#004B87] font-semibold text-center hover:bg-blue-50 transition-colors"
+                      >
+                        +{teacherClasses.length - 3} turma(s) adicional(is)
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               {/* Resumo da semana */}
@@ -760,6 +834,75 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
                 </div>
               </div>
 
+              {/* Informações Académicas */}
+              {teacherClasses.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-7 w-7 bg-[#F5821F]/10 rounded-lg flex items-center justify-center">
+                      <GraduationCap className="h-3.5 w-3.5 text-[#F5821F]" />
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm">Informações Académicas</p>
+                    <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 bg-[#004B87]/10 text-[#004B87] rounded-full">
+                      {teacherClasses.length} turma{teacherClasses.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {teacherClasses.map((cls) => (
+                      <div key={cls.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{cls.name}</p>
+                            {cls.curso && (
+                              <p className="text-xs text-slate-500 mt-0.5">Curso: <span className="font-medium text-slate-700">{cls.curso}</span></p>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                            cls.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                            cls.status === 'completed' ? 'bg-slate-200 text-slate-600' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {cls.status === 'active' ? 'Ativa' : cls.status === 'completed' ? 'Concluída' : 'Inativa'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {cls.schedule && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Calendar className="h-3 w-3 text-[#004B87]" />
+                              <span>{cls.schedule}</span>
+                            </div>
+                          )}
+                          {(cls.start_time || cls.end_time) && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Clock className="h-3 w-3 text-[#F5821F]" />
+                              <span>{cls.start_time ?? "—"} – {cls.end_time ?? "—"}</span>
+                            </div>
+                          )}
+                          {cls.semester && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <BookOpen className="h-3 w-3 text-purple-500" />
+                              <span>{cls.semester}</span>
+                            </div>
+                          )}
+                          {cls.room && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <MapPin className="h-3 w-3 text-slate-400" />
+                              <span>Sala {cls.room}</span>
+                            </div>
+                          )}
+                        </div>
+                        {typeof cls.students === 'number' && (
+                          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                            <Users className="h-3 w-3 text-[#004B87]" />
+                            <span><span className="font-semibold text-[#004B87]">{cls.students}</span> estudante{cls.students !== 1 ? "s" : ""} matriculado{cls.students !== 1 ? "s" : ""}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Segurança */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -874,7 +1017,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => persistTab(tab.id)}
                 className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-1 relative transition-colors ${
                   isActive ? "text-[#004B87]" : "text-slate-400 hover:text-slate-600"
                 }`}

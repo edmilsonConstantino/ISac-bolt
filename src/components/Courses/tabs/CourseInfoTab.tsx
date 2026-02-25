@@ -30,6 +30,7 @@ interface Course {
   categoria?: Categoria;
   tipo_curso?: 'tecnico' | 'tecnico_superior' | 'tecnico_profissional' | 'curta_duracao';
   tem_niveis?: boolean;
+  preco_por_nivel?: boolean;
   qtd_niveis?: number;
   duracao_valor: number;
   regime: 'laboral' | 'pos_laboral' | 'ambos';
@@ -109,7 +110,7 @@ export default function CourseInfoTab({
     }
 
     const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 900 + 100); // 100-999
+    const random = Math.floor(Math.random() * 9000 + 1000); // 1000-9999
     return code ? `${code}-${year}-${random}` : '';
   };
 
@@ -255,7 +256,7 @@ export default function CourseInfoTab({
           </div>
 
           {/* CHECKBOX INDEPENDENTE - CURSO POR NÍVEIS */}
-          <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100">
+          <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center space-x-3">
                 <Checkbox
@@ -266,6 +267,7 @@ export default function CourseInfoTab({
                     if (!checked) {
                       setNiveis([]);
                       setQtdNiveis(0);
+                      handleChange('preco_por_nivel', false);
                     }
                   }}
                   disabled={isLoading}
@@ -276,12 +278,69 @@ export default function CourseInfoTab({
                 </Label>
               </div>
             </div>
-            <p className="text-xs text-purple-600/70 mt-2 ml-8">
+            <p className="text-xs text-purple-600/70 ml-8">
               {formData.tem_niveis
                 ? 'O curso terá níveis (ex: Nível 1, Nível 2...). Configure-os na aba "Módulos".'
                 : 'O curso terá duração única, sem divisão por níveis.'
               }
             </p>
+
+            {/* PRICING MODE TOGGLE — só aparece quando tem_niveis=true */}
+            {formData.tem_niveis && (
+              <div className="ml-8 pt-2 border-t border-purple-100 space-y-2">
+                <Label className="text-xs font-bold text-purple-700 flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  Modo de Precificação dos Níveis
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Preço Geral */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('preco_por_nivel', false);
+                    }}
+                    className={cn(
+                      "p-3 rounded-xl border-2 text-left transition-all",
+                      !formData.preco_por_nivel
+                        ? "border-green-500 bg-green-50"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    )}
+                    disabled={isLoading}
+                  >
+                    <p className={cn("font-bold text-sm", !formData.preco_por_nivel ? "text-green-700" : "text-slate-600")}>
+                      💰 Preço Geral
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Um preço único para todos os níveis</p>
+                  </button>
+
+                  {/* Preço por Nível */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('preco_por_nivel', true);
+                      handleChange('tipo_cobranca', 'mensal');
+                    }}
+                    className={cn(
+                      "p-3 rounded-xl border-2 text-left transition-all",
+                      formData.preco_por_nivel
+                        ? "border-purple-500 bg-purple-50"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    )}
+                    disabled={isLoading}
+                  >
+                    <p className={cn("font-bold text-sm", formData.preco_por_nivel ? "text-purple-700" : "text-slate-600")}>
+                      📊 Preço por Nível
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Cada nível tem mensalidade e plano próprios</p>
+                  </button>
+                </div>
+                {formData.preco_por_nivel && (
+                  <p className="text-xs text-purple-600/80">
+                    Define o preço de cada nível na aba "Módulos". Os valores abaixo servem de fallback para níveis sem preço definido.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -429,91 +488,103 @@ export default function CourseInfoTab({
           <Label className="font-bold text-slate-700 leading-none">Informação Financeira</Label>
         </div>
 
-        {/* TIPO DE COBRANÇA */}
-        <div className="space-y-3">
-          <Label className="text-slate-600 font-semibold ml-1">Tipo de Cobrança</Label>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => handleChange('tipo_cobranca', 'mensal')}
-              className={cn(
-                "p-4 rounded-xl border-2 text-left transition-all",
-                formData.tipo_cobranca === 'mensal'
-                  ? "border-green-500 bg-green-50"
-                  : "border-slate-200 hover:border-slate-300"
-              )}
-              disabled={isLoading}
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-10 w-10 rounded-lg flex items-center justify-center",
-                  formData.tipo_cobranca === 'mensal' ? "bg-green-500 text-white" : "bg-slate-100"
-                )}>
-                  <Calendar className="h-5 w-5" />
+        {/* TIPO DE COBRANÇA — oculto quando preco_por_nivel=true (forçado mensal) */}
+        {!(formData.tem_niveis && formData.preco_por_nivel) && (
+          <div className="space-y-3">
+            <Label className="text-slate-600 font-semibold ml-1">Tipo de Cobrança</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => handleChange('tipo_cobranca', 'mensal')}
+                className={cn(
+                  "p-4 rounded-xl border-2 text-left transition-all",
+                  formData.tipo_cobranca === 'mensal'
+                    ? "border-green-500 bg-green-50"
+                    : "border-slate-200 hover:border-slate-300"
+                )}
+                disabled={isLoading}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-lg flex items-center justify-center",
+                    formData.tipo_cobranca === 'mensal' ? "bg-green-500 text-white" : "bg-slate-100"
+                  )}>
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className={cn(
+                      "font-bold text-sm",
+                      formData.tipo_cobranca === 'mensal' ? "text-green-700" : "text-slate-700"
+                    )}>Mensal</p>
+                    <p className="text-xs text-slate-500">Pagamento por mês</p>
+                  </div>
                 </div>
-                <div>
-                  <p className={cn(
-                    "font-bold text-sm",
-                    formData.tipo_cobranca === 'mensal' ? "text-green-700" : "text-slate-700"
-                  )}>Mensal</p>
-                  <p className="text-xs text-slate-500">Pagamento por mês</p>
-                </div>
-              </div>
-            </button>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleChange('tipo_cobranca', 'preco_unico')}
-              className={cn(
-                "p-4 rounded-xl border-2 text-left transition-all",
-                formData.tipo_cobranca === 'preco_unico'
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-slate-200 hover:border-slate-300"
-              )}
-              disabled={isLoading}
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-10 w-10 rounded-lg flex items-center justify-center",
-                  formData.tipo_cobranca === 'preco_unico' ? "bg-blue-500 text-white" : "bg-slate-100"
-                )}>
-                  <DollarSign className="h-5 w-5" />
+              <button
+                type="button"
+                onClick={() => handleChange('tipo_cobranca', 'preco_unico')}
+                className={cn(
+                  "p-4 rounded-xl border-2 text-left transition-all",
+                  formData.tipo_cobranca === 'preco_unico'
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-200 hover:border-slate-300"
+                )}
+                disabled={isLoading}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-lg flex items-center justify-center",
+                    formData.tipo_cobranca === 'preco_unico' ? "bg-blue-500 text-white" : "bg-slate-100"
+                  )}>
+                    <DollarSign className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className={cn(
+                      "font-bold text-sm",
+                      formData.tipo_cobranca === 'preco_unico' ? "text-blue-700" : "text-slate-700"
+                    )}>Preço Único</p>
+                    <p className="text-xs text-slate-500">Pagamento único total</p>
+                  </div>
                 </div>
-                <div>
-                  <p className={cn(
-                    "font-bold text-sm",
-                    formData.tipo_cobranca === 'preco_unico' ? "text-blue-700" : "text-slate-700"
-                  )}>Preço Único</p>
-                  <p className="text-xs text-slate-500">Pagamento único total</p>
-                </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-6">
-          {/* MENSALIDADE - só aparece se tipo_cobranca = 'mensal' */}
-          {formData.tipo_cobranca === 'mensal' && (
+          {/* MENSALIDADE — sempre visível quando mensal; muted quando preco_por_nivel=true (fallback) */}
+          {(formData.tipo_cobranca === 'mensal' || (formData.tem_niveis && formData.preco_por_nivel)) && (
             <div className="space-y-2">
-              <Label className="text-slate-600 font-semibold ml-1">Mensalidade (MZN)</Label>
+              <Label className={cn("font-semibold ml-1", formData.preco_por_nivel ? "text-slate-400" : "text-slate-600")}>
+                {formData.preco_por_nivel
+                  ? 'Mensalidade Padrão (fallback, MZN)'
+                  : 'Mensalidade (MZN)'}
+              </Label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="0.00"
+                placeholder={formData.preco_por_nivel ? 'Opcional — só se não definir por nível' : '0.00'}
                 value={formData.mensalidade || ''}
                 onChange={(e) => handleChange('mensalidade', parseFloat(e.target.value) || 0)}
-                className={cn("h-12 rounded-xl", errors.mensalidade && "border-red-500")}
+                className={cn(
+                  "h-12 rounded-xl",
+                  errors.mensalidade && "border-red-500",
+                  formData.preco_por_nivel && "border-dashed opacity-70"
+                )}
                 disabled={isLoading}
               />
               {formData.mensalidade > 0 && (
-                <p className="text-xs text-green-600">{formatCurrency(formData.mensalidade)}/mês</p>
+                <p className={cn("text-xs", formData.preco_por_nivel ? "text-slate-400" : "text-green-600")}>
+                  {formatCurrency(formData.mensalidade)}/mês{formData.preco_por_nivel ? ' (fallback)' : ''}
+                </p>
               )}
             </div>
           )}
 
-          {/* PREÇO TOTAL - só aparece se tipo_cobranca = 'preco_unico' */}
-          {formData.tipo_cobranca === 'preco_unico' && (
+          {/* PREÇO TOTAL — oculto quando preco_por_nivel=true */}
+          {formData.tipo_cobranca === 'preco_unico' && !formData.preco_por_nivel && (
             <div className="space-y-2">
               <Label className="text-slate-600 font-semibold ml-1">Preço Total do Curso (MZN)</Label>
               <Input
@@ -533,20 +604,28 @@ export default function CourseInfoTab({
           )}
 
           <div className="space-y-2">
-            <Label className="text-slate-600 font-semibold ml-1">Taxa de Matrícula (MZN)</Label>
+            <Label className={cn("font-semibold ml-1", formData.tem_niveis ? "text-slate-400" : "text-slate-600")}>
+              {formData.tem_niveis ? 'Taxa de Matrícula Padrão (Fallback, MZN)' : 'Taxa de Matrícula (MZN)'}
+            </Label>
             <Input
               type="number"
               min="0"
               step="0.01"
-              placeholder="Insira o valor da taxa de matrícula"
+              placeholder={formData.tem_niveis ? 'Opcional — definida por nível em Módulos' : 'Insira o valor da taxa de matrícula'}
               value={formData.isento_matricula ? '' : (formData.taxa_matricula || '')}
               onChange={(e) => handleChange('taxa_matricula', parseFloat(e.target.value) || 0)}
               className={cn(
                 "h-12 rounded-xl",
-                errors.taxa_matricula && "border-red-500"
+                errors.taxa_matricula && "border-red-500",
+                formData.tem_niveis && "border-dashed opacity-70"
               )}
               disabled={isLoading || formData.isento_matricula}
             />
+            {formData.tem_niveis && (
+              <p className="text-xs text-slate-400">
+                Cada nível define a sua taxa em "Módulos". Este valor é usado para níveis sem taxa definida.
+              </p>
+            )}
             <div className="flex items-center space-x-2 mt-1">
               <Checkbox
                 id="isento_matricula"

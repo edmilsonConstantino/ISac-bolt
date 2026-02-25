@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { ProfileModalBase, ProfileTab, PROFILE_MODAL_STYLES } from "@/components/shared/ProfileModalBase";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   Hash,
@@ -18,8 +20,14 @@ import {
   CheckCircle,
   XCircle,
   Info,
+  Edit2,
+  Save,
+  X,
+  Plus,
 } from "lucide-react";
-import { Categoria } from '@/types/CategoryTypes';
+import { Categoria, Nivel } from '@/types/CategoryTypes';
+import nivelService from '@/services/nivelService';
+import { toast } from "sonner";
 
 interface Course {
   id?: number;
@@ -42,7 +50,7 @@ interface Course {
   isento_matricula?: boolean;
   status: 'ativo' | 'inativo';
   observacoes?: string;
-  niveis?: { id: number; nome: string; duracao_meses?: number }[];
+  niveis?: Nivel[];
   modulos?: { id: string; nome_modulo: string; codigo_modulo: string; carga_horaria: number }[];
   data_criacao?: string;
 }
@@ -60,11 +68,91 @@ export default function CourseProfileModal({
 }: CourseProfileModalProps) {
   const [activeTab, setActiveTab] = useState('info');
 
+  // Level management state
+  const [niveis, setNiveis] = useState<Nivel[]>([]);
+  const [editingNivelId, setEditingNivelId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Nivel>>({});
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newNivel, setNewNivel] = useState<Partial<Nivel>>({ nome: '', duracao_meses: 4, mensalidade: null, enrollment_fee: null });
+  const [savingNivel, setSavingNivel] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setActiveTab('info');
+      setEditingNivelId(null);
+      setShowAddForm(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && course?.id && course.tem_niveis) {
+      nivelService.listarNiveisPorCurso(course.id)
+        .then(setNiveis)
+        .catch(() => {});
+    }
+  }, [isOpen, course?.id, course?.tem_niveis]);
+
+  const handleStartEdit = (nivel: Nivel) => {
+    setEditingNivelId(nivel.id!);
+    setEditForm({ nome: nivel.nome, duracao_meses: nivel.duracao_meses, mensalidade: nivel.mensalidade, enrollment_fee: nivel.enrollment_fee });
+  };
+
+  const handleSaveEdit = async (nivelId: number) => {
+    setSavingNivel(true);
+    try {
+      await nivelService.atualizarNivel(nivelId, editForm);
+      setNiveis(prev => prev.map(n => n.id === nivelId ? { ...n, ...editForm } : n));
+      setEditingNivelId(null);
+      toast.success('Nível atualizado!');
+    } catch {
+      toast.error('Erro ao atualizar nível');
+    } finally {
+      setSavingNivel(false);
+    }
+  };
+
+  const handleAddNivel = async () => {
+    if (!newNivel.nome?.trim() || !course?.id) return;
+    setSavingNivel(true);
+    try {
+      const lastNivel = niveis[niveis.length - 1];
+      const created = await nivelService.criarNivel({
+        curso_id:              course.id,
+        nivel:                 (lastNivel?.nivel ?? 0) + 1,
+        nome:                  newNivel.nome,
+        duracao_meses:         newNivel.duracao_meses ?? 4,
+        ordem:                 (lastNivel?.ordem ?? 0) + 1,
+        prerequisito_nivel_id: lastNivel?.id ?? null,
+        mensalidade:           newNivel.mensalidade ?? null,
+        enrollment_fee:        newNivel.enrollment_fee ?? null,
+        status:                'ativo',
+      });
+      setNiveis(prev => [...prev, created]);
+      setNewNivel({ nome: '', duracao_meses: 4, mensalidade: null, enrollment_fee: null });
+      setShowAddForm(false);
+      toast.success('Nível adicionado!');
+    } catch {
+      toast.error('Erro ao adicionar nível');
+    } finally {
+      setSavingNivel(false);
+    }
+  };
+
+  const handleDeactivateNivel = async (nivelId: number) => {
+    setSavingNivel(true);
+    try {
+      await nivelService.deletarNivel(nivelId);
+      setNiveis(prev => prev.filter(n => n.id !== nivelId));
+      toast.success('Nível desactivado!');
+    } catch {
+      toast.error('Erro ao desactivar nível');
+    } finally {
+      setSavingNivel(false);
+    }
+  };
+
+  const formatCurrencyShort = (val: number | null | undefined) =>
+    val != null ? new Intl.NumberFormat('pt-MZ', { minimumFractionDigits: 0 }).format(val) + ' Kz' : '—';
 
   if (!course) return null;
 
@@ -336,7 +424,128 @@ export default function CourseProfileModal({
           )}
         </div>
       )
-    }
+    },
+    // Níveis tab — only for courses with levels
+    ...(course.tem_niveis ? [{
+      id: 'niveis',
+      label: 'Níveis',
+      icon: Layers,
+      color: PROFILE_MODAL_STYLES.tabs.blue,
+      content: (
+        <div className="space-y-4">
+          <Card className={PROFILE_MODAL_STYLES.card.blue}>
+            <CardHeader className="pb-3">
+              <CardTitle className={`flex items-center justify-between ${PROFILE_MODAL_STYLES.cardTitle.blue}`}>
+                <span className="flex items-center gap-2 text-sm">
+                  <Layers className="h-4 w-4" />
+                  Níveis do Curso
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAddForm(v => !v)}
+                  className="h-7 text-xs border-[#004B87] text-[#004B87] hover:bg-blue-50"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Novo Nível
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Add form */}
+              {showAddForm && (
+                <div className="p-3 bg-blue-50 border-b border-blue-200 grid grid-cols-5 gap-2 items-end">
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-slate-500 font-semibold mb-1">Nome</p>
+                    <Input
+                      value={newNivel.nome ?? ''}
+                      onChange={e => setNewNivel(p => ({ ...p, nome: e.target.value }))}
+                      placeholder="Ex: Avançado"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-semibold mb-1">Meses</p>
+                    <Input type="number" min="1" value={newNivel.duracao_meses ?? ''} onChange={e => setNewNivel(p => ({ ...p, duracao_meses: Number(e.target.value) }))} className="h-8 text-sm" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-semibold mb-1">Mensalidade</p>
+                    <Input type="number" min="0" value={newNivel.mensalidade ?? ''} onChange={e => setNewNivel(p => ({ ...p, mensalidade: e.target.value === '' ? null : Number(e.target.value) }))} placeholder="Padrão" className="h-8 text-sm" />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" onClick={handleAddNivel} disabled={savingNivel || !newNivel.nome?.trim()} className="h-8 bg-[#004B87] hover:bg-[#003868] text-xs">
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)} className="h-8 text-xs">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {/* Levels table */}
+              {niveis.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">#</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Nome</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Meses</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Mensalidade</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Taxa Matr.</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Acções</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {niveis.map(nivel => (
+                      <tr key={nivel.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-2">
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">{nivel.nivel}</span>
+                        </td>
+                        {editingNivelId === nivel.id ? (
+                          <>
+                            <td className="px-3 py-2"><Input value={editForm.nome ?? ''} onChange={e => setEditForm(p => ({ ...p, nome: e.target.value }))} className="h-7 text-xs" /></td>
+                            <td className="px-3 py-2"><Input type="number" min="1" value={editForm.duracao_meses ?? ''} onChange={e => setEditForm(p => ({ ...p, duracao_meses: Number(e.target.value) }))} className="h-7 text-xs w-16" /></td>
+                            <td className="px-3 py-2"><Input type="number" min="0" value={editForm.mensalidade ?? ''} onChange={e => setEditForm(p => ({ ...p, mensalidade: e.target.value === '' ? null : Number(e.target.value) }))} placeholder="Padrão" className="h-7 text-xs w-24" /></td>
+                            <td className="px-3 py-2"><Input type="number" min="0" value={editForm.enrollment_fee ?? ''} onChange={e => setEditForm(p => ({ ...p, enrollment_fee: e.target.value === '' ? null : Number(e.target.value) }))} placeholder="0" className="h-7 text-xs w-24" /></td>
+                            <td className="px-3 py-2 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button size="sm" onClick={() => handleSaveEdit(nivel.id!)} disabled={savingNivel} className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700"><Save className="h-3 w-3" /></Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingNivelId(null)} className="h-7 w-7 p-0"><X className="h-3 w-3" /></Button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-3 py-2 text-sm font-semibold text-slate-700">{nivel.nome}</td>
+                            <td className="px-3 py-2 text-sm text-slate-600">{nivel.duracao_meses}m</td>
+                            <td className="px-3 py-2 text-sm text-slate-600">
+                              {nivel.mensalidade != null ? formatCurrencyShort(nivel.mensalidade) : <span className="text-xs text-slate-400 italic">Padrão do curso</span>}
+                            </td>
+                            <td className="px-3 py-2 text-sm text-slate-600">
+                              {nivel.enrollment_fee != null ? formatCurrencyShort(nivel.enrollment_fee) : <span className="text-xs text-slate-400 italic">Padrão do curso</span>}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button size="sm" variant="outline" onClick={() => handleStartEdit(nivel)} className="h-7 w-7 p-0 border-blue-200 text-blue-600 hover:bg-blue-50"><Edit2 className="h-3 w-3" /></Button>
+                                <Button size="sm" variant="outline" onClick={() => handleDeactivateNivel(nivel.id!)} disabled={savingNivel} className="h-7 w-7 p-0 border-red-200 text-red-500 hover:bg-red-50"><X className="h-3 w-3" /></Button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-6 text-center text-slate-400 text-sm">
+                  Nenhum nível configurado. Clique em "Novo Nível" para adicionar.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    } as ProfileTab] : [])
   ];
 
   return (

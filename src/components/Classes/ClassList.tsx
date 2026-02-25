@@ -1,5 +1,6 @@
 // src/components/shared/ClassList.tsx
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -59,6 +60,11 @@ interface Class {
   room?: string;
   subject?: string;
   semester?: string;
+  // campos de curso (vindos do JOIN em turmas.php / classService)
+  curso?: string;       // código do curso (mapeado pelo classService)
+  curso_nome?: string;  // nome completo do curso
+  curso_codigo?: string;
+  curso_id?: number;
 }
 
 interface Permission {
@@ -70,6 +76,7 @@ interface Permission {
 
 interface ClassListProps {
   classes: Class[];
+  courses?: { codigo: string; nome: string }[];
   permissions: Permission;
   currentUserRole: string;
   onViewStudents: (classItem: Class) => void;
@@ -83,6 +90,7 @@ interface ClassListProps {
 
 export function ClassList({
   classes,
+  courses: coursesProp = [],
   permissions,
   currentUserRole,
   onViewStudents,
@@ -97,6 +105,7 @@ export function ClassList({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [semesterFilter, setSemesterFilter] = useState<string>("all");
+  const [courseFilter, setCourseFilter] = useState<string>("all");
 
   // Funções auxiliares para normalizar dados do banco
   const getClassDisplayName = (c: Class) => c.nome || c.name || 'Sem nome';
@@ -120,6 +129,21 @@ export function ClassList({
     return 'completed' as const;
   };
 
+  // Mapa de codigo → nome usando a lista de cursos do pai (fallback para curso_nome do JOIN, depois para o código)
+  const courseNameMap = new Map(coursesProp.map(c => [c.codigo, c.nome]));
+
+  // Cursos únicos presentes nas turmas (para os botões de filtro)
+  const uniqueCourses = Array.from(
+    new Map(
+      classes
+        .filter(c => c.curso)
+        .map(c => [
+          c.curso,
+          { codigo: c.curso!, nome: courseNameMap.get(c.curso!) || c.curso_nome || c.curso! }
+        ])
+    ).values()
+  ).sort((a, b) => a.nome.localeCompare(b.nome));
+
   const filteredClasses = classes.filter(classItem => {
     const name = getClassDisplayName(classItem).toLowerCase();
     const teacher = getClassTeacher(classItem).toLowerCase();
@@ -141,7 +165,9 @@ export function ClassList({
       classItem.semestre === semesterFilter ||
       classItem.semester === semesterFilter;
 
-    return matchesSearch && matchesStatus && matchesSemester;
+    const matchesCourse = courseFilter === "all" || classItem.curso === courseFilter;
+
+    return matchesSearch && matchesStatus && matchesSemester && matchesCourse;
   });
 
   const stats = {
@@ -228,6 +254,44 @@ export function ClassList({
         <StatCard icon={Award} label="Concluídas" value={stats.completed} color="blue" />
         <StatCard icon={Users} label="Estudantes" value={stats.totalStudents} color="brand" gradientText />
       </div>
+
+      {/* Filtro rápido por curso */}
+      {uniqueCourses.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setCourseFilter("all")}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+              courseFilter === "all"
+                ? "bg-[#004B87] text-white border-[#004B87] shadow-sm"
+                : "bg-white text-slate-500 border-slate-200 hover:border-[#004B87] hover:text-[#004B87]"
+            )}
+          >
+            Todos
+          </button>
+          {uniqueCourses.map(course => {
+            const words = course.nome.trim().split(/\s+/);
+            const label = course.nome.trim().length > 16
+              ? words.map((w, i) => i === 0 ? w : (w[0]?.toUpperCase() ?? "") + ".").join(" ")
+              : course.nome.trim();
+            return (
+              <button
+                key={course.codigo}
+                onClick={() => setCourseFilter(courseFilter === course.codigo ? "all" : course.codigo)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap",
+                  courseFilter === course.codigo
+                    ? "bg-[#004B87] text-white border-[#004B87] shadow-sm"
+                    : "bg-white text-slate-500 border-slate-200 hover:border-[#004B87] hover:text-[#004B87]"
+                )}
+                title={course.nome}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex flex-col md:flex-row gap-3">

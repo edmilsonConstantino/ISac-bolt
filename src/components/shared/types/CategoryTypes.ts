@@ -37,6 +37,8 @@ export interface Nivel {
   ordem: number;
   prerequisito_nivel_id?: number | null;
   modulos?: NivelModulo[];
+  mensalidade?: number | null;
+  enrollment_fee?: number | null;
   status?: 'ativo' | 'inativo';
   created_at?: string;
   updated_at?: string;
@@ -59,4 +61,6 @@ export interface NivelFormData {
   duracao_meses: number;
   ordem: number;
   prerequisito_nivel_id?: number | null;
+  mensalidade?: number | null;
+  enrollment_fee?: number | null;
 }

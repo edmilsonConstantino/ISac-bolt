@@ -8,28 +8,18 @@ export interface StudentGrade {
   student_id: number;
   period_number: number;
 
-  // Assessment components (0-10)
-  grade_participation?: number | null;
-  grade_homework?: number | null;
-  grade_tests?: number | null;
-  grade_projects?: number | null;
+  // Grade inputs (0-10 each)
+  grade_teste1?: number | null;         // Teste 1 — 20%
+  grade_teste2?: number | null;         // Teste 2 — 20%
+  grade_exame_pratico?: number | null;  // Exame Prático — 30%
+  grade_exame_teorico?: number | null;  // Exame Teórico — 30%
 
-  // Language skills (0-10)
-  grade_listening?: number | null;
-  grade_speaking?: number | null;
-  grade_reading?: number | null;
-  grade_writing?: number | null;
-  grade_grammar?: number | null;
-  grade_vocabulary?: number | null;
-  grade_pronunciation?: number | null;
-
-  // Calculated by backend
-  components_grade?: number | null;
-  skills_grade?: number | null;
+  // Calculated by backend (integer after half-up rounding)
   final_grade?: number | null;
   attendance?: number | null;
 
-  status?: 'passed' | 'recovery' | 'failed' | null;
+  // passed: raw >= 9.5 | failed: raw < 9.5
+  status?: 'passed' | 'failed' | null;
   notes?: string | null;
   strengths?: string | null;
   improvements?: string | null;
@@ -49,8 +39,9 @@ export interface StudentGrade {
 export interface FinalizeResult {
   success: boolean;
   final_grade: number;
+  avg_raw: number;
   attendance: number | null;
-  level_status: 'awaiting_transition' | 'recovery' | 'failed';
+  level_status: 'awaiting_renewal' | 'failed';
   periods_used: number;
   message: string;
 }
@@ -120,6 +111,7 @@ class GradeService {
   /**
    * Finalize the level for a student in a class.
    * Calculates final_grade from all periods, updates student_level_progress.
+   * Level transition requires average raw >= 9.8.
    */
   async finalizeLevel(classId: number, studentId: number): Promise<FinalizeResult> {
     try {
@@ -138,13 +130,12 @@ class GradeService {
   }
 
   /**
-   * Helper: Get status label
+   * Helper: Get status label (PT)
    */
   getStatusLabel(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
-      passed: 'Passed',
-      recovery: 'Recovery',
-      failed: 'Failed',
+      passed: 'Aprovado',
+      failed: 'Reprovado',
     };
     return status ? (map[status] ?? status) : '—';
   }
@@ -155,7 +146,6 @@ class GradeService {
   getStatusColor(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
       passed: 'text-emerald-600',
-      recovery: 'text-amber-600',
       failed: 'text-red-600',
     };
     return status ? (map[status] ?? 'text-slate-500') : 'text-slate-400';
@@ -166,9 +156,8 @@ class GradeService {
    */
   getStatusBadge(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
-      passed:   'bg-emerald-100 text-emerald-700 border border-emerald-200',
-      recovery: 'bg-amber-100 text-amber-700 border border-amber-200',
-      failed:   'bg-red-100 text-red-700 border border-red-200',
+      passed: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      failed: 'bg-red-100 text-red-700 border border-red-200',
     };
     return status ? (map[status] ?? 'bg-slate-100 text-slate-600 border border-slate-200') : '';
   }

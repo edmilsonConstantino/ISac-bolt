@@ -25,6 +25,7 @@ import {
   Download,
   MoreHorizontal
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Permission } from "@/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { UserCredentialsModal } from "@/components/shared/UserCredentialsModal";
@@ -286,6 +287,7 @@ export function UsersList({
         </div>
       </div>
 
+      {/* Search + Status dropdown */}
       <div className="flex flex-col md:flex-row gap-3">
         <SearchBar
           placeholder="Buscar por nome, username ou email..."
@@ -294,28 +296,49 @@ export function UsersList({
         />
 
         <FilterSelect
-          value={roleFilter}
-          onChange={(value) => setRoleFilter(value as any)}
-          options={[
-            { value: "all", label: "Todos os Perfis" },
-            ...(currentUserRole === 'admin' ? [{ value: "admin", label: "\u{1F6E1}\uFE0F Super Admin" }] : []),
-            { value: "academic_admin", label: "\u{1F4BC} Academic Admin" },
-            { value: "teacher", label: "\u{1F468}\u200D\u{1F3EB} Docentes" },
-            { value: "student", label: "\u{1F393} Estudantes" },
-          ]}
-          minWidth="160px"
-        />
-
-        <FilterSelect
           value={statusFilter}
           onChange={(value) => setStatusFilter(value as any)}
           options={[
-            { value: "all", label: "Todos os Status" },
-            { value: "active", label: "\u2705 Ativos" },
-            { value: "inactive", label: "\u274C Inativos" },
+            { value: "all",      label: "Todos os Status" },
+            { value: "active",   label: "✅ Ativos"       },
+            { value: "inactive", label: "❌ Inativos"     },
           ]}
           minWidth="160px"
         />
+      </div>
+
+      {/* Role filter pills */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "all",            label: "Todos",        count: stats.total,         show: true                              },
+          { value: "admin",          label: "Super Admin",  count: stats.admins,        show: currentUserRole === 'admin'       },
+          { value: "academic_admin", label: "Acad. Admin",  count: stats.academicAdmins,show: true                              },
+          { value: "teacher",        label: "Docentes",     count: stats.teachers,      show: true                              },
+          { value: "student",        label: "Estudantes",   count: stats.students,      show: true                              },
+        ]
+          .filter(p => p.show)
+          .map(pill => (
+            <button
+              key={pill.value}
+              onClick={() => setRoleFilter(pill.value)}
+              className={cn(
+                "flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold border transition-all",
+                roleFilter === pill.value
+                  ? "bg-[#004B87] text-white border-[#004B87] shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-[#004B87]/40 hover:text-[#004B87]"
+              )}
+            >
+              {pill.label}
+              <span className={cn(
+                "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                roleFilter === pill.value
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 text-slate-500"
+              )}>
+                {pill.count}
+              </span>
+            </button>
+          ))}
       </div>
 
       {filteredUsers.length === 0 ? (
