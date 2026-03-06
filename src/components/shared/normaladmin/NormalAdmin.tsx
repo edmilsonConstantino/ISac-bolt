@@ -398,9 +398,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         p.id === paymentId ? { ...p, ...data } : p
       ));
       toast.success('Pagamento atualizado!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao atualizar pagamento:', error);
-      toast.error('Erro ao atualizar pagamento');
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar pagamento');
     }
   };
 
@@ -498,9 +498,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         await registrationService.cancel(registrationId);
         toast.success("Matrícula cancelada com sucesso!");
         await loadRegistrations();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Erro ao cancelar matrícula:', error);
-        toast.error('Erro ao cancelar matrícula');
+        toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
       }
     }
   };
@@ -513,6 +513,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   const handleSaveTeacherProfile = async (updatedTeacher: any) => {
     try {
+      const statusMap: Record<string, string> = { active: 'ativo', inactive: 'inativo', suspended: 'inativo' };
       const updateData: Partial<CreateTeacherData> = {
         nome: updatedTeacher.name,
         email: updatedTeacher.email,
@@ -524,6 +525,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         cursos: updatedTeacher.cursos,
         turnos: updatedTeacher.turnos,
         genero: updatedTeacher.genero,
+        status: statusMap[updatedTeacher.status] ?? 'ativo',
         observacoes: `${updatedTeacher.qualifications}\n\n${updatedTeacher.experience}`.trim()
       };
 
@@ -551,16 +553,15 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
   const handleSaveStudentProfile = async (updatedStudent: Student) => {
     try {
-      const updateData = {
-        nome: updatedStudent.name,
+      await studentService.update({
+        id: updatedStudent.id,
+        name: updatedStudent.name,
         email: updatedStudent.email,
-        telefone: updatedStudent.phone,
-        data_nascimento: updatedStudent.birthDate,
-        endereco: updatedStudent.address,
+        phone: updatedStudent.phone,
+        birth_date: updatedStudent.birthDate,
+        address: updatedStudent.address,
         status: updatedStudent.status === 'active' ? 'ativo' : 'inativo'
-      };
-
-      await studentService.update({ id: updatedStudent.id, ...updateData } as any);
+      });
       updateStudent(updatedStudent.id, updatedStudent);
       toast.success("Perfil atualizado com sucesso!");
       setIsStudentProfileModalOpen(false);

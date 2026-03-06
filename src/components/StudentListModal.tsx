@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import studentService from "@/services/studentService";
 import { toast } from "sonner";
-import { RegistrationSettingsModal } from "./shared/RegistrationSettingsModal";
+import { RegistrationProfileModal } from "./shared/RegistrationProfileModal";
 import { cn } from "@/lib/utils";
 
 interface Student {
@@ -43,6 +43,7 @@ interface Student {
   username?: string;
   bi_number?: string;
   course_name?: string;
+  registration_id?: number;
 }
 
 interface StudentListModalProps {
@@ -55,9 +56,9 @@ interface StudentListModalProps {
 export function StudentListModal({ isOpen, onClose, className, classId }: StudentListModalProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [settingsModal, setSettingsModal] = useState<{ isOpen: boolean; student: Student | null }>({
+  const [profileModal, setProfileModal] = useState<{ isOpen: boolean; registrationId: number | null }>({
     isOpen: false,
-    student: null
+    registrationId: null
   });
 
   // ✅ Carregar estudantes reais quando o modal abrir
@@ -94,7 +95,8 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
         className: className,
         username: student.username,
         bi_number: student.bi_number || student.numero_bi,
-        course_name: student.curso_nome || student.course_name
+        course_name: student.curso_nome || student.course_name,
+        registration_id: student.registration_id ? Number(student.registration_id) : undefined
       }));
 
       setStudents(mappedStudents);
@@ -284,9 +286,9 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSettingsModal({ isOpen: true, student })}
+                              onClick={() => setProfileModal({ isOpen: true, registrationId: student.registration_id ?? null })}
                               className="border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
-                              title="Configurações da Matrícula"
+                              title="Perfil da Matrícula"
                             >
                               <Settings className="h-4 w-4" />
                             </Button>
@@ -303,26 +305,14 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
       </DialogContent>
     </Dialog>
 
-    {/* Modal de Configurações da Matrícula */}
-    <RegistrationSettingsModal
-      isOpen={settingsModal.isOpen}
-      onClose={() => setSettingsModal({ isOpen: false, student: null })}
-      student={settingsModal.student ? {
-        id: settingsModal.student.id,
-        name: settingsModal.student.name,
-        email: settingsModal.student.email,
-        phone: settingsModal.student.phone,
-        username: settingsModal.student.username,
-        bi_number: settingsModal.student.bi_number,
-        status: settingsModal.student.status === 'active' ? 'ativo' : 'inativo',
-        registration_status: settingsModal.student.registration_status,
-        enrollment_date: settingsModal.student.enrollmentDate,
-        course_name: settingsModal.student.course_name,
-        class_name: settingsModal.student.className
-      } : null}
+    {/* Perfil da Matrícula */}
+    <RegistrationProfileModal
+      isOpen={profileModal.isOpen}
+      onClose={() => setProfileModal({ isOpen: false, registrationId: null })}
+      registrationId={profileModal.registrationId}
       onStatusChanged={() => {
         loadStudents();
-        setSettingsModal({ isOpen: false, student: null });
+        setProfileModal({ isOpen: false, registrationId: null });
       }}
     />
     </>

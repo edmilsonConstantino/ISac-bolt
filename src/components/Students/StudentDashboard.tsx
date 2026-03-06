@@ -51,8 +51,9 @@ interface StudentProgress {
 }
 
 import { useStudentData } from "@/hooks/useData";
-import { usePaymentData } from "@/hooks/usePaymentData";
-import { StudentFinanceModal } from "@/components/Students/StudentFinanceModal";
+import { StudentFinanceModal } from "@/components/shared/StudentFinanceModal";
+import { financeService } from "@/services/financeService";
+import type { StudentFinanceResponse } from "@/types/finance";
 import { useAuthStore } from "@/store/authStore";
 import classService, { Class as ServiceClass } from "@/services/classService";
 import gradeService, { StudentGrade } from "@/services/gradeService";
@@ -71,7 +72,6 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
 
   const currentStudentId = user?.id ?? undefined;
   const { getStudentById }              = useStudentData();
-  const { getStudentReadOnlyInfo }      = usePaymentData();
 
   const [activeTab, setActiveTab]           = useState<Tab>(
     () => (sessionStorage.getItem("student_active_tab") as Tab) || "home"
@@ -90,6 +90,8 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const [courseNames, setCourseNames]       = useState<string[]>([]);
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
   const [levelProgress, setLevelProgress]   = useState<StudentProgress | null>(null);
+  const [financeData, setFinanceData]       = useState<StudentFinanceResponse | null>(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
 
   // ── Load data ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -134,14 +136,29 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
       .catch(() => {/* silently ignore — portal works without progress data */});
   }, [currentStudentId]);
 
+  // Load finance data whenever the finance tab is activated
+  useEffect(() => {
+    if (activeTab !== "finance" || !currentStudentId) return;
+    if (financeData) return; // already loaded
+    setFinanceLoading(true);
+    financeService.getStudentFinance(currentStudentId)
+      .then(setFinanceData)
+      .catch(() => {/* silently — tab shows empty state */})
+      .finally(() => setFinanceLoading(false));
+  }, [activeTab, currentStudentId]);
+
   // ── Derived values ────────────────────────────────────────────────────────────
   const studentData = currentStudentId ? getStudentById(currentStudentId) : null;
 
   const firstName  = user ? (user.nome || "").trim().split(/\s+/)[0] || user.username || "Estudante" : "Visitante";
   const fullName   = user ? (user.nome || "").trim() || user.username || "Estudante" : "Visitante";
 
-  const paymentInfo = getStudentReadOnlyInfo(currentStudentId ?? 0, fullName, "—");
-  const hasOverdue  = paymentInfo.overduePayments.length > 0;
+  const hasOverdue     = (financeData?.summary.overdue_count ?? 0) > 0;
+  const walletBalance  = financeData?.summary.wallet_balance ?? 0;
+  const totalPaid      = financeData?.summary.total_paid ?? 0;
+  const totalOverdue   = financeData?.summary.total_overdue ?? 0;
+  const overdueCount   = financeData?.summary.overdue_count ?? 0;
+  const recentPayments = financeData?.recent_payments ?? [];
 
   const gradesWithFinal = studentGrades.filter((g) => g.final_grade !== null);
   const averageGrade    = gradesWithFinal.length
@@ -219,7 +236,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               <Bell className="h-4 w-4 text-slate-200" />
               {hasOverdue && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold">
-                  {paymentInfo.overduePayments.length}
+                  {overdueCount}
                 </span>
               )}
             </button>
@@ -307,8 +324,8 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-red-800 text-sm">Pagamentos em atraso</p>
                   <p className="text-xs text-red-600 mt-0.5">
-                    {paymentInfo.overduePayments.length} pagamento(s) —{" "}
-                    {fmt(paymentInfo.overduePayments.reduce((s, p) => s + p.amount, 0))}
+                    {overdueCount} pagamento(s) —{" "}
+                    {fmt(totalOverdue)}
                   </p>
                 </div>
                 <button
@@ -879,9 +896,11 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                       { icon: Clock,      label: "Horário",  value: studentClass.start_time && studentClass.end_time
                           ? `${studentClass.start_time} – ${studentClass.end_time}`
                           : studentClass.start_time ?? "—"                                                          },
-                      { icon: Layers,     label: "Nível",    value: levelProgress?.current_level
-                          ? `Nível ${levelProgress.current_level.level_number} — ${levelProgress.current_level.level_name}`
-                          : "—"                                                                                      },
+                      ...(levelProgress?.current_level ? [{
+                        icon: Layers,
+                        label: "Nível",
+                        value: `Nível ${levelProgress.current_level.level_number} — ${levelProgress.current_level.level_name}`,
+                      }] : []),
                       { icon: TrendingUp, label: "Professor",value: studentClass.teacher_name ?? "A atribuir"     },
                     ] as { icon: typeof Clock; label: string; value: string }[]).map((row) => {
                       const Icon = row.icon;
@@ -969,124 +988,136 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
         {activeTab === "finance" && (
           <div className="space-y-4 p-4">
 
-            {/* Header */}
-            <div className={`rounded-2xl p-5 text-white shadow-lg ${
-              hasOverdue ? "bg-gradient-to-r from-red-500 to-red-600" : "bg-gradient-to-r from-emerald-500 to-teal-500"
-            }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <DollarSign className="h-5 w-5" />
-                <h2 className="text-lg font-bold">Situação Financeira</h2>
+            {financeLoading ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
+                <p className="text-sm text-slate-500">A carregar dados financeiros...</p>
               </div>
-              <p className={`text-sm ${hasOverdue ? "text-red-100" : "text-emerald-100"}`}>
-                {hasOverdue
-                  ? `${paymentInfo.overduePayments.length} pagamento(s) em atraso`
-                  : "Tudo em dia! Conta regularizada."}
-              </p>
-              <div className="mt-3">
-                <span className="text-3xl font-bold">{fmt(Math.abs(paymentInfo.currentBalance))}</span>
-                <span className={`text-xs ml-2 ${hasOverdue ? "text-red-200" : "text-emerald-200"}`}>
-                  {paymentInfo.currentBalance >= 0 ? "crédito disponível" : "em débito"}
-                </span>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <>
+                {/* ── Header: saldo / situação ─────────────────────────── */}
+                <div className={`rounded-2xl p-5 text-white shadow-lg ${
+                  hasOverdue
+                    ? "bg-gradient-to-r from-red-500 to-red-600"
+                    : walletBalance > 0
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                    : "bg-gradient-to-r from-[#004B87] to-[#0066B3]"
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-5 w-5" />
+                    <h2 className="text-lg font-bold">Situação Financeira</h2>
                   </div>
-                  <span className="text-xs text-slate-500">Total Pago</span>
+                  <p className={`text-sm ${hasOverdue ? "text-red-100" : "text-emerald-100"}`}>
+                    {hasOverdue
+                      ? `${overdueCount} pagamento(s) em atraso`
+                      : walletBalance > 0
+                      ? "Tem crédito disponível na sua conta"
+                      : "Tudo em dia! Conta regularizada."}
+                  </p>
+
+                  {/* Saldo / wallet */}
+                  {walletBalance !== 0 && (
+                    <div className="mt-3">
+                      <span className="text-3xl font-bold">{fmt(Math.abs(walletBalance))}</span>
+                      <span className="text-xs ml-2 opacity-80">
+                        {walletBalance >= 0 ? "crédito disponível" : "em dívida"}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-lg font-bold text-slate-800">{fmt(paymentInfo.totalPaid)}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <CreditCard className="h-4 w-4 text-blue-600" />
+
+                {/* ── Stats cards ─────────────────────────────────────── */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-8 w-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <span className="text-xs text-slate-500">Total Pago</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-800">{fmt(totalPaid)}</p>
                   </div>
-                  <span className="text-xs text-slate-500">Mensalidade</span>
-                </div>
-                <p className="text-lg font-bold text-slate-800">{fmt(monthlyFee)}</p>
-              </div>
-            </div>
-
-            {/* Payment history */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-slate-500" />
-                  <h3 className="font-semibold text-slate-800 text-sm">Histórico de Pagamentos</h3>
-                </div>
-              </div>
-              <div className="divide-y divide-slate-50">
-                {paymentInfo.paymentHistory.length === 0 ? (
-                  <p className="text-center text-sm text-slate-400 py-8">Nenhum pagamento registado</p>
-                ) : (
-                  paymentInfo.paymentHistory.slice(0, 5).map((payment) => (
-                    <div key={payment.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        payment.status === "paid" ? "bg-emerald-50" :
-                        payment.status === "overdue" ? "bg-red-50" : "bg-amber-50"
-                      }`}>
-                        {payment.status === "paid"
-                          ? <CheckCircle className="h-4 w-4 text-emerald-600" />
-                          : payment.status === "overdue"
-                          ? <AlertTriangle className="h-4 w-4 text-red-600" />
-                          : <Clock className="h-4 w-4 text-amber-600" />}
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-8 w-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-700 truncate">{payment.monthReference}</p>
-                        <p className="text-xs text-slate-400 truncate">{payment.description}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold text-slate-800">{fmt(payment.amount)}</p>
-                        <p className={`text-[10px] font-medium ${
-                          payment.status === "paid" ? "text-emerald-600" :
-                          payment.status === "overdue" ? "text-red-600" : "text-amber-600"
-                        }`}>
-                          {payment.status === "paid" ? "Pago" : payment.status === "overdue" ? "Atrasado" : "Pendente"}
-                        </p>
-                      </div>
+                      <span className="text-xs text-slate-500">Mensalidade</span>
                     </div>
-                  ))
-                )}
-              </div>
-              <div className="p-4">
-                <button
-                  onClick={() => setPaymentModal(true)}
-                  className="w-full py-3 rounded-xl border-2 border-[#004B87]/20 text-[#004B87] text-sm font-semibold hover:bg-[#004B87] hover:text-white transition-all"
-                >
-                  Ver Histórico Completo
-                </button>
-              </div>
-            </div>
+                    <p className="text-lg font-bold text-slate-800">{fmt(financeData?.course?.monthly_fee ?? monthlyFee)}</p>
+                  </div>
+                </div>
 
-            {/* Payment methods */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Como Pagar</p>
-              <div className="space-y-2">
-                {[
-                  { icon: Phone,      label: "M-Pesa / E-Mola",       desc: "Carteira móvel",            color: "text-green-600", bg: "bg-green-50"  },
-                  { icon: CreditCard, label: "Transferência Bancária", desc: "Para conta ISAC",           color: "text-blue-600",  bg: "bg-blue-50"   },
-                  { icon: MapPin,     label: "Pagamento Presencial",   desc: "Na secretaria da escola",   color: "text-purple-600",bg: "bg-purple-50" },
-                ].map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <div key={m.label} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-                      <div className={`h-8 w-8 ${m.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                        <Icon className={`h-4 w-4 ${m.color}`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">{m.label}</p>
-                        <p className="text-xs text-slate-400">{m.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                {/* ── Histórico de pagamentos ──────────────────────────── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-slate-500" />
+                    <h3 className="font-semibold text-slate-800 text-sm">Histórico de Pagamentos</h3>
+                  </div>
+
+                  <div className="divide-y divide-slate-50">
+                    {recentPayments.length === 0 ? (
+                      <p className="text-center text-sm text-slate-400 py-8">Nenhum pagamento registado</p>
+                    ) : (
+                      recentPayments.slice(0, 5).map((payment) => (
+                        <div key={payment.id} className="flex items-center gap-3 px-4 py-3">
+                          <div className="h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-700 truncate">
+                              {payment.month_reference || "—"}
+                            </p>
+                            <p className="text-xs text-slate-400 truncate">
+                              {payment.payment_type_name || payment.payment_method || "—"}
+                              {payment.paid_date ? ` · ${payment.paid_date}` : ""}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-bold text-slate-800">{fmt(payment.amount_paid)}</p>
+                            <p className="text-[10px] font-medium text-emerald-600">Confirmado</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <button
+                      onClick={() => setPaymentModal(true)}
+                      className="w-full py-3 rounded-xl border-2 border-[#004B87]/20 text-[#004B87] text-sm font-semibold hover:bg-[#004B87] hover:text-white transition-all"
+                    >
+                      Ver Histórico Completo
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Como pagar ──────────────────────────────────────── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Como Pagar</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon: Phone,      label: "M-Pesa / E-Mola",       desc: "Carteira móvel",          color: "text-green-600",  bg: "bg-green-50"  },
+                      { icon: CreditCard, label: "Transferência Bancária", desc: "Para conta ISAC",         color: "text-blue-600",   bg: "bg-blue-50"   },
+                      { icon: MapPin,     label: "Pagamento Presencial",   desc: "Na secretaria da escola", color: "text-purple-600", bg: "bg-purple-50" },
+                    ].map((m) => {
+                      const Icon = m.icon;
+                      return (
+                        <div key={m.label} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                          <div className={`h-8 w-8 ${m.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                            <Icon className={`h-4 w-4 ${m.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">{m.label}</p>
+                            <p className="text-xs text-slate-400">{m.desc}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1260,7 +1291,11 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
       <StudentFinanceModal
         isOpen={paymentModal}
         onClose={() => setPaymentModal(false)}
-        studentPaymentInfo={paymentInfo}
+        studentId={currentStudentId ?? null}
+        onPaymentRecorded={() => {
+          // Invalidate cache so next open fetches fresh data
+          setFinanceData(null);
+        }}
       />
       <StudentSettingsModal
         isOpen={settingsModal}

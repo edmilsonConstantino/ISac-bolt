@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Users, Plus, Edit, Trash2, Search, Calendar, Clock, User, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useClassData } from "@/hooks/useClassData";
+import { ConfirmModal } from "@/components/shared/reusable/ConfirmModal";
 
 export function GerenciarTurmas() {
   const { toast } = useToast();
@@ -20,6 +21,7 @@ export function GerenciarTurmas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; nome: string } | null>(null);
   
   const [formData, setFormData] = useState({
     codigo: "",
@@ -173,8 +175,6 @@ export function GerenciarTurmas() {
   };
 
   const handleDelete = async (classId: number) => {
-    if (!confirm("Tem certeza que deseja remover esta turma?")) return;
-
     try {
       await deleteClass(classId);
       toast({
@@ -583,7 +583,7 @@ export function GerenciarTurmas() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(cls.id)}
+                          onClick={() => setDeleteConfirm({ id: cls.id, nome: cls.name || cls.nome || String(cls.id) })}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -597,6 +597,24 @@ export function GerenciarTurmas() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        title="Remover Turma"
+        subtitle="Esta acção é irreversível"
+        message="Tem certeza que deseja remover esta turma? Todos os dados associados serão eliminados permanentemente."
+        detail={deleteConfirm?.nome}
+        variant="danger"
+        confirmLabel="Sim, Remover"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          if (deleteConfirm) {
+            handleDelete(deleteConfirm.id);
+            setDeleteConfirm(null);
+          }
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

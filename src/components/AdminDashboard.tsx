@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccentStatCard } from "@/components/ui/stat-card";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { RegistrationStudentModal } from "./shared/reusable/RegistrationStudentModal";
+import { EditRegistrationModal } from "./shared/reusable/EditRegistrationModal";
 import { Input } from "@/components/ui/input";
 import {
   Users, BookOpen, DollarSign, UserPlus, GraduationCap,
@@ -147,6 +148,11 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
   preSelectedStudentId: null as number | null
 });
 
+  const [editRegModal, setEditRegModal] = useState<{ isOpen: boolean; registration: Registration | null }>({
+    isOpen: false,
+    registration: null,
+  });
+
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     studentId: 0
@@ -238,27 +244,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     await loadClasses();
     
     // 3. Carregar professores
-    setIsLoadingTeachers(true);
-    const teachers = await teacherService.getAll();
-    const mappedTeachers = teachers.map((t: Teacher) => ({
-      id: t.id,
-      name: t.nome,
-      email: t.email,
-      phone: t.telefone || '',
-      genero: t.genero,
-      classes: 0,
-      students: 0,
-      status: t.status === 'ativo' ? 'active' : 'inactive',
-      specialization: t.especialidade || '',
-      contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
-        t.tipo_contrato === 'meio_periodo' ? 'part-time' :
-          t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
-      cursos: t.cursos || '',
-      turnos: t.turnos || '',
-      experience: t.observacoes || '',
-      qualifications: t.observacoes || ''
-    }));
-    setTeacherStats(mappedTeachers);
+    await loadTeachers();
 
 
     // 4. Carregar estudantes (dependem de turmas já carregadas)
@@ -305,7 +291,6 @@ console.log('✅ Estudantes mapeados:', mappedStudents.length);
     console.error("❌ Erro ao carregar dados:", error);
     toast.error("Erro ao carregar dados");
   } finally {
-    setIsLoadingTeachers(false);
     setIsLoadingStudents(false);
   }
 };
@@ -390,11 +375,11 @@ loadAllData();
     ));
     
     toast.success('Pagamento atualizado!');
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao atualizar pagamento:', error);
-    toast.error('Erro ao atualizar pagamento');
+    toast.error(error instanceof Error ? error.message : 'Erro ao atualizar pagamento');
   }
-};  
+};
 
   // ✅ Funções de configurações
   const handleSaveSettings = async (newSettings: GeneralSettings) => {
@@ -430,6 +415,39 @@ loadAllData();
     pendingPayments: paymentSummary.totalPending + paymentSummary.totalOverdue,
     studentsInDebt: paymentSummary.studentsInDebt,
     collectionRate: paymentSummary.collectionRate
+  };
+
+  // 📥 CARREGAR PROFESSORES DO BANCO
+  const loadTeachers = async () => {
+    try {
+      setIsLoadingTeachers(true);
+      const teachers = await teacherService.getAll();
+      const mappedTeachers = teachers.map((t: Teacher) => ({
+        id: t.id,
+        name: t.nome,
+        email: t.email,
+        phone: t.telefone || '',
+        genero: t.genero,
+        classes: (t as Teacher & { turmas_count?: string }).turmas_count
+          ? parseInt((t as Teacher & { turmas_count?: string }).turmas_count!)
+          : 0,
+        students: 0,
+        status: t.status === 'ativo' ? 'active' : 'inactive',
+        specialization: t.especialidade || '',
+        contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
+          t.tipo_contrato === 'meio_periodo' ? 'part-time' :
+            t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+        cursos: t.cursos || '',
+        turnos: t.turnos || '',
+        experience: t.observacoes || '',
+        qualifications: t.observacoes || ''
+      }));
+      setTeacherStats(mappedTeachers);
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar professores:', error);
+    } finally {
+      setIsLoadingTeachers(false);
+    }
   };
 
   // 📥 CARREGAR TURMAS DO BANCO
@@ -548,12 +566,7 @@ const handleViewRegistration = (registration: Registration) => {
 };
 
 const handleEditRegistration = (registration: Registration) => {
-  console.log('Editando matrícula:', registration);
-  setRegistrationModal({
-    isOpen: true,
-    registrationData: registration,
-    isEditing: true
-  });
+  setEditRegModal({ isOpen: true, registration });
 };
 
 const handleSaveRegistration = async (registrationData: any) => {
@@ -621,9 +634,9 @@ const handleDeleteRegistration = async (registrationId: number) => {
       // ✅ RECARREGAR LISTA DO BANCO
       await loadRegistrations();
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Erro ao cancelar matrícula:', error);
-      toast.error('Erro ao cancelar matrícula');
+      toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
     }
   }
 };
@@ -637,6 +650,8 @@ const handleDeleteRegistration = async (registrationId: number) => {
 
   const handleSaveTeacherProfile = async (updatedTeacher: any) => {
     try {
+      // Map English status back to Portuguese for the backend
+      const statusMap: Record<string, string> = { active: 'ativo', inactive: 'inativo', suspended: 'inativo' };
       const updateData: Partial<CreateTeacherData> = {
         nome: updatedTeacher.name,
         email: updatedTeacher.email,
@@ -648,6 +663,7 @@ const handleDeleteRegistration = async (registrationId: number) => {
         cursos: updatedTeacher.cursos,
         turnos: updatedTeacher.turnos,
         genero: updatedTeacher.genero,
+        status: statusMap[updatedTeacher.status] ?? 'ativo',
         observacoes: `${updatedTeacher.qualifications}\n\n${updatedTeacher.experience}`.trim()
       };
 
@@ -674,16 +690,15 @@ const handleDeleteRegistration = async (registrationId: number) => {
 
   const handleSaveStudentProfile = async (updatedStudent: Student) => {
     try {
-      const updateData = {
-        nome: updatedStudent.name,
+      await studentService.update({
+        id: updatedStudent.id,
+        name: updatedStudent.name,
         email: updatedStudent.email,
-        telefone: updatedStudent.phone,
-        data_nascimento: updatedStudent.birthDate,
-        endereco: updatedStudent.address,
+        phone: updatedStudent.phone,
+        birth_date: updatedStudent.birthDate,
+        address: updatedStudent.address,
         status: updatedStudent.status === 'active' ? 'ativo' : 'inativo'
-      };
-
-      await studentService.update(updatedStudent.id, updateData);
+      });
       updateStudent(updatedStudent.id, updatedStudent);
       toast.success("Perfil atualizado com sucesso!");
       setIsStudentProfileModalOpen(false);
@@ -898,26 +913,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
   const handleCreateTeacher = async (teacherData: any) => {
     try {
-      const teachers = await teacherService.getAll();
-      const mappedTeachers = teachers.map((t: Teacher) => ({
-        id: t.id,
-        name: t.nome,
-        email: t.email,
-        phone: t.telefone || '',
-        genero: t.genero,
-        classes: 0,
-        students: 0,
-        status: t.status === 'ativo' ? 'active' : 'inactive',
-        specialization: t.especialidade || '',
-        contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
-          t.tipo_contrato === 'meio_periodo' ? 'part-time' :
-            t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
-        cursos: t.cursos || '',
-        turnos: t.turnos || '',
-        experience: t.observacoes || '',
-        qualifications: t.observacoes || ''
-      }));
-      setTeacherStats(mappedTeachers);
+      await loadTeachers();
       await loadUsers();
       toast.success("Professor cadastrado com sucesso!");
     } catch (error: any) {
@@ -1298,11 +1294,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                   const userWithPassword = userData as Partial<SystemUser> & { password?: string };
                   const plainPassword = userWithPassword.password || '';
                   const result = await userService.create({
-                    nome: userData.name || '',
-                    email: userData.email || undefined,
-                    senha: plainPassword,
-                    role: userData.role || 'admin',
-                    status: userData.status || 'active',
+                    nome:      userData.name      || '',
+                    email:     userData.email     || undefined,
+                    phone:     userData.phone     || undefined,
+                    bi_number: userData.bi_number || undefined,
+                    senha:     plainPassword,
+                    role:      userData.role      || 'admin',
+                    status:    userData.status    || 'active',
                   });
                   if (result.data) {
                     const newUser: SystemUser = {
@@ -1334,12 +1332,14 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                 try {
                   const userWithPassword = userData as Partial<SystemUser> & { newPassword?: string };
                   const result = await userService.update({
-                    id: userId,
-                    nome: userData.name || '',
-                    email: userData.email || undefined,
-                    role: userData.role,
-                    status: userData.status,
-                    senha: userWithPassword.newPassword || undefined,
+                    id:        userId,
+                    nome:      userData.name      || '',
+                    email:     userData.email     || undefined,
+                    phone:     userData.phone     || undefined,
+                    bi_number: userData.bi_number || undefined,
+                    role:      userData.role,
+                    status:    userData.status,
+                    senha:     userWithPassword.newPassword || undefined,
                   });
                   if (result.data) {
                     setSystemUsers(prev => prev.map(u =>
@@ -1413,6 +1413,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       onClassUpdated={() => {
         loadClasses();
         loadCourses();
+        loadTeachers();
       }}
     />
 
@@ -1506,6 +1507,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
   onSave={handleSaveRegistration}
   existingRegistrations={registrations}
   preSelectedStudentId={registrationModal.preSelectedStudentId}
+/>
+
+<EditRegistrationModal
+  isOpen={editRegModal.isOpen}
+  onClose={() => setEditRegModal({ isOpen: false, registration: null })}
+  registration={editRegModal.registration}
+  onSuccess={loadRegistrations}
 />
 
     {launchGradesModal.classData && (

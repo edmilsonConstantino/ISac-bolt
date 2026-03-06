@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ export function CreateTeacherModal({
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successModal, setSuccessModal] = useState<{ name: string; username: string } | null>(null);
 
   // Carregar cursos ao abrir o modal
   useEffect(() => {
@@ -157,9 +159,11 @@ export function CreateTeacherModal({
         console.log('📤 Enviando dados do docente:', teacherData);
         const response = await teacherService.create(teacherData);
 
-        toast.success(response.message || "Docente cadastrado com sucesso!");
         onSave(formData);
-        handleClose();
+        setSuccessModal({
+          name: formData.name,
+          username: response.username || getUsernamePreview(),
+        });
 
       } catch (error: any) {
         console.error("Erro ao criar docente:", error);
@@ -227,15 +231,18 @@ export function CreateTeacherModal({
     setFormData(prev => {
       let newTurnos: string[];
       if (turno === 'todos') {
-        // Se seleccionar "todos", remove os outros
+        // Seleccionar "todos" remove os outros; desseleccionar limpa
         newTurnos = prev.turnos.includes('todos') ? [] : ['todos'];
       } else {
-        // Se seleccionar um turno específico, remove "todos" se estiver lá
         newTurnos = prev.turnos.filter(t => t !== 'todos');
         if (newTurnos.includes(turno)) {
           newTurnos = newTurnos.filter(t => t !== turno);
         } else {
           newTurnos = [...newTurnos, turno];
+        }
+        // Se os 3 turnos específicos estiverem todos seleccionados → colapsa em "todos"
+        if (['manha', 'tarde', 'noite'].every(t => newTurnos.includes(t))) {
+          newTurnos = ['todos'];
         }
       }
       return { ...prev, turnos: newTurnos };
@@ -243,6 +250,7 @@ export function CreateTeacherModal({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
         <div className="flex h-[650px]">
@@ -902,16 +910,10 @@ export function CreateTeacherModal({
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
 
                   {/* Header de confirmação */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-green-800">Cadastro Quase Completo!</h3>
-                        <p className="text-sm text-green-600">Revise as credenciais antes de finalizar</p>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-green-800">Cadastro Quase Completo!</span>
+                    <span className="text-xs text-green-600">— Revise as credenciais antes de finalizar</span>
                   </div>
 
                   {/* Credenciais de acesso */}
@@ -1001,5 +1003,60 @@ export function CreateTeacherModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* ── SUCCESS MODAL ─────────────────────────────────── */}
+    {successModal && createPortal(
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        style={{ zIndex: 99999 }}
+      >
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full animate-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-[#003A6B] via-[#004B87] to-[#0066B3] px-6 py-6 text-white text-center relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-white/5" />
+            <div className="absolute -bottom-4 -left-4 h-14 w-14 rounded-full bg-[#F5821F]/15" />
+            <div className="relative">
+              <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/30">
+                <CheckCircle2 className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-bold">Docente Cadastrado!</h3>
+              <p className="text-white/70 text-sm mt-1">{successModal.name}</p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5">
+                Username gerado
+              </p>
+              <p className="font-mono font-bold text-[#004B87] text-sm tracking-wide">
+                {successModal.username}
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-2">
+                <Key className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-amber-800 mb-0.5">Senha do primeiro acesso</p>
+                  <p className="text-xs text-amber-700">O docente usará o username como senha no primeiro login.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onMouseDown={() => { setSuccessModal(null); handleClose(); }}
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87] text-white font-bold text-sm transition-all shadow-sm"
+            >
+              Concluir
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }

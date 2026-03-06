@@ -32,7 +32,7 @@ class FinanceService {
     return data;
   }
 
-  // Registrar pagamento
+  // Registrar pagamento (FIFO automático)
   async recordPayment(payload: RecordPaymentPayload): Promise<RecordPaymentResponse> {
     const response = await fetch(`${API_URL}/student-payments/create.php`, {
       method: 'POST',
@@ -43,8 +43,9 @@ class FinanceService {
         amount_paid: payload.amount_paid,
         payment_type_id: this.getPaymentTypeId(payload.payment_method),
         paid_date: payload.paid_date,
-        month_reference: payload.month_reference,
-        observacoes: payload.observacoes
+        receipt_number: payload.receipt_number || undefined,
+        observacoes: payload.observacoes || undefined,
+        is_enrollment_fee: payload.is_enrollment_fee || undefined,
       })
     });
 

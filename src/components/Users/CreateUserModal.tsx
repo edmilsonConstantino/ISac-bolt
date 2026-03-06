@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   Sparkles,
   Briefcase,
-  Hash
+  Hash,
+  Phone,
+  CreditCard,
 } from "lucide-react";
 import { SystemUser } from "./UsersList";
 
@@ -37,6 +39,8 @@ export function CreateUserModal({
 }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
     name: "",
+    phone: "",
+    bi_number: "",
     role: "admin" as string,
     password: "",
     confirmPassword: "",
@@ -51,6 +55,8 @@ export function CreateUserModal({
     if (isOpen && userData && isEditing) {
       setFormData({
         name: userData.name,
+        phone: userData.phone || "",
+        bi_number: userData.bi_number || "",
         role: userData.role,
         password: "",
         confirmPassword: "",
@@ -59,6 +65,8 @@ export function CreateUserModal({
     } else if (isOpen && !isEditing) {
       setFormData({
         name: "",
+        phone: "",
+        bi_number: "",
         role: "admin",
         password: "",
         confirmPassword: "",
@@ -124,6 +132,12 @@ export function CreateUserModal({
     if (!formData.name.trim()) {
       newErrors.name = "Nome é obrigatório";
     }
+    if (formData.phone && !/^\d{9}$/.test(formData.phone)) {
+      newErrors.phone = "Telefone deve ter exactamente 9 dígitos";
+    }
+    if (formData.bi_number && !/^\d{12}[A-Z]$/i.test(formData.bi_number.trim())) {
+      newErrors.bi_number = "Formato inválido (12 dígitos + 1 letra, ex: 110100123456P)";
+    }
 
     if (!isEditing) {
       if (!formData.password) {
@@ -157,9 +171,11 @@ export function CreateUserModal({
     }
 
     const dataToSave: Partial<SystemUser> = {
-      name: formData.name,
-      role: formData.role,
-      status: formData.status,
+      name:      formData.name,
+      phone:     formData.phone     || undefined,
+      bi_number: formData.bi_number ? formData.bi_number.toUpperCase() : undefined,
+      role:      formData.role as SystemUser['role'],
+      status:    formData.status,
     };
 
     if (!isEditing && formData.password) {
@@ -307,6 +323,61 @@ export function CreateUserModal({
                 <option value="active">Ativo</option>
                 <option value="inactive">Inativo</option>
               </select>
+            </div>
+          </div>
+
+          {/* Telefone + BI */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <Phone className="h-4 w-4 text-slate-500" />
+                Número de Telefone
+              </Label>
+              <Input
+                placeholder="9 dígitos (ex: 841234567)"
+                value={formData.phone}
+                maxLength={9}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                  setFormData({ ...formData, phone: val });
+                  if (errors.phone) setErrors({ ...errors, phone: "" });
+                }}
+                className={`h-11 ${errors.phone ? "border-red-500" : ""}`}
+              />
+              {errors.phone ? (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.phone}
+                </p>
+              ) : (
+                <p className="text-xs text-slate-400 mt-1">
+                  {formData.phone.length}/9 dígitos
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-slate-500" />
+                Número de BI
+              </Label>
+              <Input
+                placeholder="110100123456P"
+                value={formData.bi_number}
+                maxLength={13}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 13);
+                  setFormData({ ...formData, bi_number: val });
+                  if (errors.bi_number) setErrors({ ...errors, bi_number: "" });
+                }}
+                className={`h-11 font-mono ${errors.bi_number ? "border-red-500" : ""}`}
+              />
+              {errors.bi_number && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.bi_number}
+                </p>
+              )}
             </div>
           </div>
 

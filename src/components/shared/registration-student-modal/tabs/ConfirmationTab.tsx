@@ -36,6 +36,7 @@ export function ConfirmationTab({
   selectedStudent,
   selectedCourse,
 }: ConfirmationTabProps) {
+  const isBolsista = Boolean(formData.isBolsista);
   const enrollmentFee = Number(formData.enrollmentFee || 0);
   const monthlyFee = Number(formData.monthlyFee || 0);
 
@@ -55,6 +56,14 @@ export function ConfirmationTab({
 
   // Calcular total a pagar
   const totalToPay = enrollmentFee + (includeFirstMonth ? monthlyFee : 0);
+
+  // ✅ Bolsista → garantir que 1ª mensalidade nunca está incluída
+  useEffect(() => {
+    if (isBolsista && includeFirstMonth) {
+      setIncludeFirstMonth(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBolsista]);
 
   // ✅ Clamp paidAmount quando totalToPay diminui (ex: desmarcou mensalidade)
   useEffect(() => {
@@ -227,36 +236,51 @@ export function ConfirmationTab({
             </div>
           </div>
 
-          {/* 1ª Mensalidade (opcional) */}
-          <button
-            type="button"
-            onClick={() => setIncludeFirstMonth(!includeFirstMonth)}
-            className={cn(
-              "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
-              includeFirstMonth
-                ? "border-green-400 bg-green-50"
-                : "border-slate-200 bg-slate-50 hover:border-slate-300"
-            )}
-          >
-            <div className={cn(
-              "h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
-              includeFirstMonth
-                ? "bg-green-500 border-green-500"
-                : "bg-white border-slate-300"
-            )}>
-              {includeFirstMonth && <CheckCircle2 className="h-4 w-4 text-white" />}
+          {/* 1ª Mensalidade — oculto para bolsistas */}
+          {isBolsista ? (
+            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-purple-200 bg-purple-50">
+              <div className="h-6 w-6 rounded-full bg-purple-400 flex items-center justify-center flex-shrink-0">
+                <GraduationCap className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-purple-800">Mensalidade</span>
+                <p className="text-xs text-purple-600 mt-0.5">Isento — Estudante Bolsista</p>
+              </div>
+              <div className="text-sm font-bold text-purple-400 line-through">
+                {formatCurrency(monthlyFee)}
+              </div>
             </div>
-            <div className="flex-1">
-              <span className="font-bold text-slate-800">1ª Mensalidade</span>
-              <p className="text-xs text-slate-500 mt-0.5">Opcional - pode pagar depois</p>
-            </div>
-            <div className={cn(
-              "text-lg font-bold",
-              includeFirstMonth ? "text-green-600" : "text-slate-400"
-            )}>
-              {formatCurrency(monthlyFee)}
-            </div>
-          </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIncludeFirstMonth(!includeFirstMonth)}
+              className={cn(
+                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                includeFirstMonth
+                  ? "border-green-400 bg-green-50"
+                  : "border-slate-200 bg-slate-50 hover:border-slate-300"
+              )}
+            >
+              <div className={cn(
+                "h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                includeFirstMonth
+                  ? "bg-green-500 border-green-500"
+                  : "bg-white border-slate-300"
+              )}>
+                {includeFirstMonth && <CheckCircle2 className="h-4 w-4 text-white" />}
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-slate-800">1ª Mensalidade</span>
+                <p className="text-xs text-slate-500 mt-0.5">Opcional - pode pagar depois</p>
+              </div>
+              <div className={cn(
+                "text-lg font-bold",
+                includeFirstMonth ? "text-green-600" : "text-slate-400"
+              )}>
+                {formatCurrency(monthlyFee)}
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Total */}

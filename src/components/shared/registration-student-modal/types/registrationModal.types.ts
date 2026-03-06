@@ -59,6 +59,8 @@ export interface CourseItem {
   taxa_matricula?: number | null;
   tem_niveis?: boolean;
   preco_por_nivel?: boolean;
+  /** Duração em meses para cursos SEM níveis (tem_niveis=false) */
+  duracao_valor?: number | null;
 
   [key: string]: unknown;
 }
@@ -158,6 +160,14 @@ export interface CourseTabProps extends BaseTabProps {
 /** PaymentTab */
 export interface PaymentTabProps extends BaseTabProps {
   formatCurrency: (value: number) => string;
+  /** Nível seleccionado (para cursos com tem_niveis=true) */
+  selectedNivel?: NivelItem | null;
+  /** Curso seleccionado (para obter duracao_valor quando sem níveis) */
+  selectedCourse?: CourseItem | null;
+  /** Data de início da turma YYYY-MM-DD (turma.data_inicio) */
+  classStartDate?: string;
+  /** Data da matrícula YYYY-MM-DD (formData.enrollmentDate) */
+  enrollmentDate?: string;
 }
 
 /** CredentialsTab */
@@ -204,7 +214,7 @@ export interface RegistrationDTO {
   studentId: number;
   courseId: string;
   period: string;
-  status: "active" | "suspended" | "cancelled" | "completed";
+  status: "active" | "pending" | "suspended" | "cancelled" | "completed";
 }
 
 export type RegistrationFormErrors = Record<string, string>;

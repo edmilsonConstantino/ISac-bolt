@@ -104,8 +104,8 @@ export default function CourseProfileModal({
       setNiveis(prev => prev.map(n => n.id === nivelId ? { ...n, ...editForm } : n));
       setEditingNivelId(null);
       toast.success('Nível atualizado!');
-    } catch {
-      toast.error('Erro ao atualizar nível');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar nível');
     } finally {
       setSavingNivel(false);
     }
@@ -131,8 +131,8 @@ export default function CourseProfileModal({
       setNewNivel({ nome: '', duracao_meses: 4, mensalidade: null, enrollment_fee: null });
       setShowAddForm(false);
       toast.success('Nível adicionado!');
-    } catch {
-      toast.error('Erro ao adicionar nível');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao adicionar nível');
     } finally {
       setSavingNivel(false);
     }
@@ -144,8 +144,8 @@ export default function CourseProfileModal({
       await nivelService.deletarNivel(nivelId);
       setNiveis(prev => prev.filter(n => n.id !== nivelId));
       toast.success('Nível desactivado!');
-    } catch {
-      toast.error('Erro ao desactivar nível');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao desactivar nível');
     } finally {
       setSavingNivel(false);
     }

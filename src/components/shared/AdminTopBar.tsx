@@ -19,6 +19,16 @@ const roleLabelMap: Record<string, string> = {
   aluno: 'Aluno',
 };
 
+// Abbreviate names with 3+ words: "edmilson contantino munguambe" → "edmilson c. munguambe"
+function abbreviateName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 2) return name;
+  const first = parts[0];
+  const last  = parts[parts.length - 1];
+  const mids  = parts.slice(1, -1).map(p => p.charAt(0).toLowerCase() + '.').join(' ');
+  return `${first} ${mids} ${last}`;
+}
+
 export function AdminTopBar({
   activeView,
   displayName,
@@ -26,6 +36,7 @@ export function AdminTopBar({
   userRole
 }: AdminTopBarProps) {
   const currentMenuItem = menuItems.find(m => m.id === activeView);
+  const shortName = abbreviateName(displayName);
   const Icon = currentMenuItem?.icon;
 
   return (
@@ -81,14 +92,14 @@ export function AdminTopBar({
 
           {/* User Card com cores ISAC */}
           <div className="flex items-center gap-3 px-3 py-1.5 bg-gradient-to-r from-[#004B87]/5 to-[#F5821F]/5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            {/* Avatar com gradiente ISAC */}
-            <div className="h-8 w-8 bg-gradient-to-br from-[#004B87] to-[#F5821F] rounded-full flex items-center justify-center font-bold text-white shadow-md flex-shrink-0 ring-2 ring-white text-sm">
+            {/* Avatar amarelo */}
+            <div className="h-8 w-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center font-bold text-white shadow-md flex-shrink-0 ring-2 ring-white text-sm">
               {displayName.charAt(0).toUpperCase()}
             </div>
-            
+
             {/* Info do usuário */}
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-[#004B87] leading-tight">{displayName}</span>
+              <span className="text-sm font-bold text-[#004B87] leading-tight">{shortName}</span>
               <span className="text-xs text-slate-500 font-medium leading-tight">{roleLabelMap[userRole || 'admin'] || 'Admin'}</span>
             </div>
 

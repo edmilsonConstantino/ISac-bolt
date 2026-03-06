@@ -22,8 +22,10 @@ import {
   Trophy,
   User,
   Printer,
-  UserCircle
+  UserCircle,
+  Settings
 } from "lucide-react";
+import { RegistrationProfileModal } from "../RegistrationProfileModal";
 import { Permission } from "../../types";
 
 // Componentes reutilizaveis
@@ -53,6 +55,7 @@ export interface Registration {
   modules?: string[];
   observations?: string;
   registrationType?: 'new' | 'renewal' | 'transfer';
+  isBolsista?: boolean;
   // Campos de pagamento (ConfirmationTab)
   paidAmount?: number;
   paymentMethod?: 'cash' | 'transfer' | 'mobile' | 'check';
@@ -90,6 +93,10 @@ export function RegistrationList({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "cancelled" | "completed">("all");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [profileModal, setProfileModal] = useState<{ isOpen: boolean; registrationId: number | null }>({
+    isOpen: false,
+    registrationId: null
+  });
 
   // Filtros
   const filteredRegistrations = registrations.filter(reg => {
@@ -352,18 +359,29 @@ export function RegistrationList({
                           </div>
                         </div>
 
-                        {/* Botão Cancelar - Ícone no canto superior direito */}
-                        {permissions.canDelete && onDeleteRegistration && (
+                        {/* Botões de acção - canto superior direito */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 flex-shrink-0 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-2 border-red-200 hover:border-red-300 transition-all duration-200"
-                            onClick={() => onDeleteRegistration(registration.id)}
-                            title="Cancelar matrícula"
+                            className="h-8 w-8 rounded-full bg-[#004B87]/10 text-[#004B87] hover:bg-[#004B87]/20 border-2 border-[#004B87]/20 hover:border-[#004B87]/40 transition-all duration-200"
+                            onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
+                            title="Perfil da Matrícula"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Settings className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                          {permissions.canDelete && onDeleteRegistration && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border-2 border-red-200 hover:border-red-300 transition-all duration-200"
+                              onClick={() => onDeleteRegistration(registration.id)}
+                              title="Cancelar matrícula"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Informações da Matrícula */}
@@ -589,6 +607,16 @@ export function RegistrationList({
                           </Button>
                         )}
 
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 border-[#004B87]/30 text-[#004B87] hover:bg-[#004B87] hover:text-white rounded-lg"
+                          onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
+                          title="Perfil da Matrícula"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+
                         {permissions.canDelete && onDeleteRegistration && (
                           <Button
                             variant="ghost"
@@ -623,6 +651,12 @@ export function RegistrationList({
           }}
         />
       )}
+
+      <RegistrationProfileModal
+        isOpen={profileModal.isOpen}
+        onClose={() => setProfileModal({ isOpen: false, registrationId: null })}
+        registrationId={profileModal.registrationId}
+      />
     </div>
   );
 }

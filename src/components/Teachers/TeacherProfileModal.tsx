@@ -1,7 +1,7 @@
 // src/components/Teachers/TeacherProfileModal.tsx - USANDO ProfileModalBase
 
 import React, { useState, useEffect } from "react";
-import { ProfileModalBase, ProfileTab, PROFILE_MODAL_STYLES } from "@/components/shared/ProfileModalBase";
+import { ProfileModalBase, ProfileTab, PROFILE_MODAL_STYLES, InfoDisplay } from "@/components/shared/ProfileModalBase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -359,79 +359,51 @@ export function TeacherProfileModal({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="name" className="text-xs text-slate-700 font-medium">
-                    Nome Completo <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : PROFILE_MODAL_STYLES.input.orange
-                    )}
-                  />
-                  {errors.name && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</p>}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label htmlFor="name" className="text-xs text-slate-700 font-medium">
+                      Nome Completo <span className="text-red-500">*</span>
+                    </Label>
+                    <Input id="name" name="name" value={formData.name} onChange={handleInputChange}
+                      className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.orange)} />
+                    {errors.name && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</p>}
+                  </div>
+                ) : <InfoDisplay label="Nome Completo" value={formData.name} />}
 
-                <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs text-slate-700 font-medium">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : PROFILE_MODAL_STYLES.input.orange
-                    )}
-                  />
-                  {errors.email && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label htmlFor="email" className="text-xs text-slate-700 font-medium">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange}
+                      className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.orange)} />
+                    {errors.email && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
+                  </div>
+                ) : <InfoDisplay label="Email" value={formData.email} />}
 
-                <div className="space-y-1">
-                  <Label htmlFor="phone" className="text-xs text-slate-700 font-medium">Telefone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone || ""}
-                    onChange={handleInputChange}
-                    placeholder="+258 84 000 0000"
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : PROFILE_MODAL_STYLES.input.orange
-                    )}
-                  />
-                  {errors.phone && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.phone}</p>}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label htmlFor="phone" className="text-xs text-slate-700 font-medium">Telefone</Label>
+                    <Input id="phone" name="phone" value={formData.phone || ""} onChange={handleInputChange}
+                      placeholder="+258 84 000 0000" className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.orange)} />
+                    {errors.phone && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.phone}</p>}
+                  </div>
+                ) : <InfoDisplay label="Telefone" value={formData.phone} />}
 
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700 font-medium">Tipo de Contrato</Label>
-                  {isEditing ? (
-                    <select
-                      name="contractType"
-                      value={formData.contractType || ""}
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700 font-medium">Tipo de Contrato</Label>
+                    <select name="contractType" value={formData.contractType || ""}
                       onChange={(e) => handleSelectChange('contractType', e.target.value)}
-                      className="w-full h-9 px-3 text-sm border-2 border-[#F5821F] rounded-lg bg-white focus:outline-none"
-                    >
+                      className="w-full h-9 px-3 text-sm border border-[#F5821F]/40 rounded-lg bg-white focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/15">
                       <option value="">Selecione...</option>
                       <option value="full-time">Integral</option>
                       <option value="part-time">Parcial</option>
                       <option value="freelance">Freelancer</option>
                       <option value="substitute">Substituto</option>
                     </select>
-                  ) : (
-                    <Input value={getContractTypeLabel(formData.contractType)} disabled className="h-9 text-sm bg-slate-50" />
-                  )}
-                </div>
+                  </div>
+                ) : <InfoDisplay label="Tipo de Contrato" value={getContractTypeLabel(formData.contractType)} />}
 
                 <div className="space-y-2 pt-1">
                   <Label className="text-xs text-slate-700 font-medium">Status</Label>
@@ -497,51 +469,32 @@ export function TeacherProfileModal({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700 font-medium">Especializações</Label>
-                  <Input
-                    id="specialization"
-                    name="specialization"
-                    value={formData.specialization || ""}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Business English, IELTS"
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : PROFILE_MODAL_STYLES.input.blue
-                    )}
-                  />
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700 font-medium">Especializações</Label>
+                    <Input id="specialization" name="specialization" value={formData.specialization || ""}
+                      onChange={handleInputChange} placeholder="Ex: Business English, IELTS"
+                      className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.blue)} />
+                  </div>
+                ) : <InfoDisplay label="Especializações" value={formData.specialization} />}
 
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700 font-medium">Qualificações</Label>
-                  <textarea
-                    id="qualifications"
-                    name="qualifications"
-                    value={formData.qualifications || ""}
-                    onChange={handleTextareaChange}
-                    className={cn(
-                      "w-full p-2 text-sm border rounded-lg h-20 resize-none",
-                      !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87] focus:border-[#004B87] focus:outline-none"
-                    )}
-                    disabled={!isEditing}
-                  />
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700 font-medium">Qualificações</Label>
+                    <textarea id="qualifications" name="qualifications" value={formData.qualifications || ""}
+                      onChange={handleTextareaChange}
+                      className="w-full p-2 text-sm border border-[#004B87]/40 rounded-lg h-20 resize-none focus:border-[#004B87] focus:outline-none focus:ring-2 focus:ring-[#004B87]/15" />
+                  </div>
+                ) : <InfoDisplay label="Qualificações" value={formData.qualifications} />}
 
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700 font-medium">Experiência</Label>
-                  <textarea
-                    id="experience"
-                    name="experience"
-                    value={formData.experience || ""}
-                    onChange={handleTextareaChange}
-                    className={cn(
-                      "w-full p-2 text-sm border rounded-lg h-20 resize-none",
-                      !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87] focus:border-[#004B87] focus:outline-none"
-                    )}
-                    disabled={!isEditing}
-                  />
-                </div>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700 font-medium">Experiência</Label>
+                    <textarea id="experience" name="experience" value={formData.experience || ""}
+                      onChange={handleTextareaChange}
+                      className="w-full p-2 text-sm border border-[#004B87]/40 rounded-lg h-20 resize-none focus:border-[#004B87] focus:outline-none focus:ring-2 focus:ring-[#004B87]/15" />
+                  </div>
+                ) : <InfoDisplay label="Experiência" value={formData.experience} />}
               </CardContent>
             </Card>
 
@@ -659,17 +612,24 @@ export function TeacherProfileModal({
                 <Users className="h-4 w-4" />
                 Turmas Atribuídas ({teacherClasses.length})
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAssignClasses(!showAssignClasses)}
-                className="border border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white text-xs h-8"
-              >
-                {showAssignClasses ? 'Fechar' : '+ Atribuir'}
-              </Button>
+              {isEditing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAssignClasses(!showAssignClasses)}
+                  className="border border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white text-xs h-8"
+                >
+                  {showAssignClasses ? 'Fechar' : '+ Atribuir'}
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {!isEditing && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-2">
+                <span className="text-[11px] text-slate-500">Clique em <strong>Editar</strong> para atribuir ou remover turmas</span>
+              </div>
+            )}
             {teacherClasses.length === 0 ? (
               <div className="text-center py-6">
                 <Users className="h-10 w-10 mx-auto text-slate-300 mb-2" />
@@ -686,20 +646,22 @@ export function TeacherProfileModal({
                         {cls.schedule && ` • ${getTurnoLabel(cls.schedule)}`}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-red-500 hover:bg-red-100"
-                      onClick={() => handleUnassignClass(cls.id)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                    {isEditing && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-red-500 hover:bg-red-100"
+                        onClick={() => handleUnassignClass(cls.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
-            {showAssignClasses && (
+            {isEditing && showAssignClasses && (
               <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-dashed border-slate-300">
                 <p className="text-xs text-slate-600 font-medium mb-2">Turmas disponíveis:</p>
                 {getAvailableToAssign().length === 0 ? (
@@ -737,82 +699,112 @@ export function TeacherProfileModal({
       label: 'Histórico',
       icon: Activity,
       color: 'purple-500',
-      content: (
-        <Card className={PROFILE_MODAL_STYLES.card.purple}>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-purple-600 text-sm">
-                <Activity className="h-4 w-4" />
-                Histórico de Atividades
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-500">Última Atividade</p>
-                <p className="text-xs font-semibold text-purple-600">
-                  {getLastActivityLabel(formData.lastActivity)}
-                </p>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {/* Resumo de Acesso */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-slate-600 font-medium">Último Acesso</span>
-                </div>
-                <p className="text-sm font-bold text-green-700">
-                  {formData.lastActivity ? formatDate(formData.lastActivity) : 'Nunca'}
-                </p>
-              </div>
+      content: (() => {
+        // Build synthetic activity items from available data
+        const items: { key: string; icon: string; title: string; detail: string; date?: string; color: string; dotColor: string }[] = [];
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <span className="text-xs text-slate-600 font-medium">Total de Atividades</span>
-                </div>
-                <p className="text-sm font-bold text-blue-700">
-                  {formData.activityLog?.length || 0} registros
+        // Last system access
+        if (formData.lastActivity) {
+          items.push({
+            key: 'last_access',
+            icon: '🔑',
+            title: 'Acedeu ao sistema',
+            detail: 'Sessão iniciada com sucesso',
+            date: formData.lastActivity,
+            color: 'bg-green-50 border-green-200',
+            dotColor: 'bg-green-500',
+          });
+        }
+
+        // Assigned classes
+        teacherClasses.forEach(cls => {
+          items.push({
+            key: `class_${cls.id}`,
+            icon: '📚',
+            title: `Atribuído à turma: ${cls.name}`,
+            detail: [cls.code, cls.curso, cls.schedule ? getTurnoLabel(cls.schedule) : ''].filter(Boolean).join(' · '),
+            color: 'bg-blue-50 border-blue-200',
+            dotColor: 'bg-blue-500',
+          });
+        });
+
+        // activityLog entries if any
+        (formData.activityLog || []).forEach(log => {
+          items.push({
+            key: log.id,
+            icon: getActivityIcon(log.type),
+            title: log.action,
+            detail: log.details,
+            date: log.date,
+            color: log.type === 'login' ? 'bg-green-50 border-green-200' :
+                   log.type === 'update' ? 'bg-purple-50 border-purple-200' :
+                   log.type === 'assignment' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200',
+            dotColor: log.type === 'login' ? 'bg-green-500' :
+                      log.type === 'update' ? 'bg-purple-500' :
+                      log.type === 'assignment' ? 'bg-blue-500' : 'bg-slate-400',
+          });
+        });
+
+        return (
+          <div className="space-y-4">
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Último Acesso</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {formData.lastActivity ? getLastActivityLabel(formData.lastActivity) : '—'}
                 </p>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Turmas Activas</p>
+                <p className="text-2xl font-black text-[#004B87]">{teacherClasses.length}</p>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Registros</p>
+                <p className="text-2xl font-black text-purple-600">{items.length}</p>
               </div>
             </div>
 
-            {/* Log de Atividades */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {(!formData.activityLog || formData.activityLog.length === 0) ? (
-                <div className="text-center py-8">
-                  <Activity className="h-12 w-12 mx-auto text-slate-300 mb-2" />
-                  <p className="text-xs text-slate-500">Nenhuma atividade registrada</p>
+            {/* Timeline */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-semibold text-slate-700">Linha de Tempo</span>
+              </div>
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                    <Activity className="h-6 w-6 text-slate-300" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-500">Sem actividade registada</p>
                   <p className="text-xs text-slate-400 mt-1">
-                    As atividades do docente aparecerão aqui
+                    Acessos ao sistema, lançamentos de notas e outras acções aparecerão aqui
                   </p>
                 </div>
               ) : (
-                formData.activityLog.map(log => (
-                  <div
-                    key={log.id}
-                    className={cn(
-                      "flex items-start gap-3 p-3 border-l-4 rounded-lg transition-all hover:shadow-sm",
-                      getActivityColor(log.type)
-                    )}
-                  >
-                    <span className="text-xl">{getActivityIcon(log.type)}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">{log.action}</p>
-                        <span className="text-xs text-slate-400 whitespace-nowrap">
-                          {formatDate(log.date)}
-                        </span>
+                <div className="divide-y divide-slate-50">
+                  {items.map(item => (
+                    <div key={item.key} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                      <div className={cn("mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center text-base border flex-shrink-0", item.color)}>
+                        {item.icon}
                       </div>
-                      <p className="text-xs text-slate-600 mt-1">{log.details}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 leading-tight">{item.title}</p>
+                        {item.detail && <p className="text-xs text-slate-500 mt-0.5">{item.detail}</p>}
+                      </div>
+                      {item.date && (
+                        <span className="text-[11px] text-slate-400 whitespace-nowrap flex-shrink-0">
+                          {formatDate(item.date)}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )
+          </div>
+        );
+      })()
     }
   ];
 

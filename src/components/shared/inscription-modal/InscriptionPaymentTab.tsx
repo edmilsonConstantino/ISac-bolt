@@ -56,22 +56,21 @@ export function InscriptionPaymentTab({
   return (
     <div className="space-y-6">
       {/* Taxa de Inscrição - Valor a Pagar */}
-      <section className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 rounded-2xl border-2 border-[#004B87]/20 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center">
-            <DollarSign className="h-5 w-5 text-white" />
+      <section className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 rounded-xl border border-[#004B87]/20 p-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 bg-[#004B87] rounded-lg flex items-center justify-center flex-shrink-0">
+            <DollarSign className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-800">Taxa de Inscrição</h3>
-            <p className="text-sm text-slate-500">Valor obrigatório para inscrição</p>
+            <h3 className="text-sm font-bold text-slate-800 leading-tight">Taxa de Inscrição</h3>
+            <p className="text-xs text-slate-500">Valor obrigatório para inscrição</p>
           </div>
         </div>
-
-        <div className="text-center py-4">
-          <p className="text-4xl font-black text-[#004B87]">
+        <div className="text-right flex-shrink-0">
+          <p className="text-xl font-black text-[#004B87]">
             {inscriptionFee > 0 ? formatCurrency(inscriptionFee) : "Gratuita"}
           </p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-[10px] text-slate-500">
             {inscriptionFee > 0 ? "Montante a Pagar" : "Inscrição sem custo"}
           </p>
         </div>

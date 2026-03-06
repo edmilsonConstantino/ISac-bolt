@@ -7,6 +7,8 @@ export interface SystemUserAPI {
   nome: string;
   email?: string;
   username?: string;
+  phone?: string;
+  bi_number?: string;
   role: 'admin' | 'academic_admin' | 'teacher' | 'student';
   avatar?: string;
   status: 'active' | 'inactive';
@@ -19,6 +21,8 @@ export interface SystemUserAPI {
 export interface CreateUserData {
   nome: string;
   email?: string;
+  phone?: string;
+  bi_number?: string;
   senha: string;
   role: string;
   avatar?: string;
@@ -29,6 +33,8 @@ export interface UpdateUserData {
   id: number;
   nome: string;
   email?: string;
+  phone?: string;
+  bi_number?: string;
   role?: string;
   avatar?: string;
   status?: string;

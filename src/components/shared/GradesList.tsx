@@ -8,7 +8,6 @@ import {
   Trophy,
   AlertCircle,
   Loader2,
-  ChevronDown,
   Pen,
 } from "lucide-react";
 import { PageHeader, PageHeaderTitle, PageHeaderSubtitle } from "@/components/ui/page-header";
@@ -37,15 +36,10 @@ interface GradesListProps {
   grades?: Grade[];
 }
 
-const PERIOD_LABEL: Record<number, string> = {
-  1: "1º Bimestre", 2: "2º Bimestre", 3: "3º Bimestre", 4: "4º Bimestre",
-};
-
 export function GradesList({ classId }: GradesListProps) {
   const [grades, setGrades]           = useState<StudentGrade[]>([]);
   const [isLoading, setIsLoading]     = useState(false);
   const [searchTerm, setSearchTerm]   = useState("");
-  const [periodFilter, setPeriodFilter] = useState<number | "all">("all");
 
   useEffect(() => {
     if (!classId) return;
@@ -60,9 +54,7 @@ export function GradesList({ classId }: GradesListProps) {
   // Filter
   const filtered = grades.filter((g) => {
     const name = (g.student_name ?? "").toLowerCase();
-    const matchSearch = !searchTerm || name.includes(searchTerm.toLowerCase());
-    const matchPeriod = periodFilter === "all" || g.period_number === periodFilter;
-    return matchSearch && matchPeriod;
+    return !searchTerm || name.includes(searchTerm.toLowerCase());
   });
 
   // Stats
@@ -132,21 +124,6 @@ export function GradesList({ classId }: GradesListProps) {
           value={searchTerm}
           onChange={setSearchTerm}
         />
-        <div className="relative">
-          <select
-            value={periodFilter}
-            onChange={(e) => setPeriodFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-            className="appearance-none w-full sm:w-auto bg-white border border-slate-200 rounded-xl
-              text-sm text-slate-700 pl-3 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#004B87]/20
-              focus:border-[#004B87] cursor-pointer"
-          >
-            <option value="all">Todos os Bimestres</option>
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>{PERIOD_LABEL[n]}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-        </div>
       </div>
 
       {/* Loading */}
@@ -161,9 +138,7 @@ export function GradesList({ classId }: GradesListProps) {
         <EmptyState
           icon={Award}
           title="Sem notas registadas"
-          description={searchTerm || periodFilter !== "all"
-            ? "Tente ajustar os filtros"
-            : "As notas aparecem após o professor as lançar"}
+          description={searchTerm ? "Tente ajustar os filtros" : "As notas aparecem após o professor as lançar"}
         />
       )}
 
@@ -175,7 +150,6 @@ export function GradesList({ classId }: GradesListProps) {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3">Estudante</th>
-                  <th className="text-center text-xs font-semibold text-slate-500 px-3 py-3">Bimestre</th>
                   <th className="text-center text-xs font-semibold text-slate-500 px-3 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <FileText className="h-3 w-3 text-[#004B87]" />T1 <span className="text-slate-400">(20%)</span>
@@ -218,11 +192,6 @@ export function GradesList({ classId }: GradesListProps) {
                             <p className="text-xs text-slate-400">{g.class_name}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <span className="text-xs font-medium text-slate-500">
-                          {PERIOD_LABEL[g.period_number] ?? `Bimestre ${g.period_number}`}
-                        </span>
                       </td>
                       <td className="px-3 py-3 text-center">
                         {g.grade_teste1 != null ? (
@@ -309,11 +278,8 @@ export function GradesList({ classId }: GradesListProps) {
         <ListFooter
           showing={filtered.length}
           total={grades.length}
-          hasFilters={!!(searchTerm || periodFilter !== "all")}
-          onClearFilters={() => {
-            setSearchTerm("");
-            setPeriodFilter("all");
-          }}
+          hasFilters={!!searchTerm}
+          onClearFilters={() => setSearchTerm("")}
         />
       )}
     </div>

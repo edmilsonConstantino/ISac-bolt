@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InscriptionStudentModal } from "./InscriptionStudentModal";
+import { EditInscriptionModal } from "./EditInscriptionModal";
 import { InscriptionSettingsModal } from "./InscriptionSettingsModal";
 import { RegistrationStudentModal } from "./reusable/RegistrationStudentModal";
 import registrationService from "@/services/registrationService";
@@ -34,6 +35,10 @@ interface InscribedStudent {
   phone?: string;
   birth_date?: string;
   address?: string;
+  emergency_contact_1?: string;
+  emergency_contact_2?: string;
+  notes?: string;
+  is_bolsista?: number;
   status: 'ativo' | 'inativo';
   created_at: string;
   has_registration: 0 | 1;
@@ -55,17 +60,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 
   // Estados para modais
   const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; student: InscribedStudent | null }>({ isOpen: false, student: null });
-  const [editModal, setEditModal] = useState<{ isOpen: boolean; student: InscribedStudent | null }>({ isOpen: false, student: null });
-  const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    bi_number: '',
-    phone: '',
-    gender: 'M' as 'M' | 'F',
-    birth_date: '',
-    address: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
+  const [editInscriptionModal, setEditInscriptionModal] = useState<{ isOpen: boolean; student: InscribedStudent | null }>({ isOpen: false, student: null });
   const [regModal, setRegModal] = useState<{ isOpen: boolean; studentId: number | null }>({ isOpen: false, studentId: null });
 
   const API_URL = 'http://localhost/API-LOGIN/api';
@@ -177,31 +172,25 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
   };
 
   const handleSaveRegistration = async (registrationData: Partial<Registration>) => {
-    try {
-      await registrationService.create(registrationData as unknown as CreateRegistrationData);
+    // Sem try-catch aqui: erros propagam para RegistrationStudentModal.handleSave()
+    // que já tem o error handling correcto (mostra error.message da API)
+    await registrationService.create(registrationData as unknown as CreateRegistrationData);
 
-      // Capturar o ID antes de limpar o modal
-      const enrolledId = regModal.studentId;
+    // Capturar o ID antes de qualquer limpeza
+    const enrolledId = regModal.studentId;
 
-      toast.success('Matrícula criada com sucesso!');
-      setRegModal({ isOpen: false, studentId: null });
-
-      // Actualização local imediata — botão desaparece sem esperar pela API
-      if (enrolledId !== null) {
-        setStudents(prev =>
-          prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
-        );
-        setFilteredStudents(prev =>
-          prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
-        );
-      }
-
-      // Sincronizar com a API em segundo plano
-      fetchInscribedStudents();
-    } catch (error) {
-      console.error('Erro ao criar matrícula:', error);
-      toast.error('Erro ao criar matrícula');
+    // Actualização local imediata — botão desaparece sem esperar pela API
+    if (enrolledId !== null) {
+      setStudents(prev =>
+        prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
+      );
+      setFilteredStudents(prev =>
+        prev.map(s => s.id === enrolledId ? { ...s, has_registration: 1 as const } : s)
+      );
     }
+
+    // Sincronizar com a API em segundo plano
+    fetchInscribedStudents();
   };
 
   const formatDate = (dateString: string) => {
@@ -237,62 +226,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 
   // Abrir modal de edição
   const handleOpenEditModal = (student: InscribedStudent) => {
-    setEditForm({
-      name: student.name || '',
-      email: student.email || '',
-      bi_number: student.bi_number || '',
-      phone: student.phone || '',
-      gender: student.gender || 'M',
-      birth_date: student.birth_date || '',
-      address: student.address || ''
-    });
-    setEditModal({ isOpen: true, student });
-  };
-
-  // Salvar edição da inscrição
-  const handleSaveEdit = async () => {
-    if (!editModal.student) return;
-
-    if (!editForm.name.trim()) {
-      toast.error('O nome é obrigatório');
-      return;
-    }
-    if (!editForm.bi_number.trim()) {
-      toast.error('O número de BI é obrigatório');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch(`${API_URL}/students.php?id=${editModal.student.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: editForm.name,
-          email: editForm.email,
-          bi_number: editForm.bi_number,
-          phone: editForm.phone,
-          gender: editForm.gender,
-          birth_date: editForm.birth_date,
-          address: editForm.address
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success('Dados da inscrição actualizados com sucesso!');
-        setEditModal({ isOpen: false, student: null });
-        fetchInscribedStudents();
-      } else {
-        toast.error(result.message || 'Erro ao actualizar dados');
-      }
-    } catch (error) {
-      console.error('Erro ao actualizar:', error);
-      toast.error('Erro ao conectar com o servidor');
-    } finally {
-      setIsSaving(false);
-    }
+    setEditInscriptionModal({ isOpen: true, student });
   };
 
   // Baixar recibo de inscrição
@@ -838,168 +772,12 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
       )}
 
       {/* Modal de Edição de Inscrição */}
-      {editModal.isOpen && editModal.student && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-lg w-full animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 py-5 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <Edit2 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold">Editar Inscrição</h3>
-                    <p className="text-blue-100 text-sm">Informações do estudante</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditModal({ isOpen: false, student: null })}
-                  className="h-8 w-8 rounded-lg hover:bg-white/20 flex items-center justify-center"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Formulário */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-4">
-                {/* Nome Completo */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                    <User className="h-3 w-3 inline mr-1" />
-                    Nome Completo *
-                  </label>
-                  <Input
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    placeholder="Nome completo do estudante"
-                    className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                  />
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                    <Mail className="h-3 w-3 inline mr-1" />
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    placeholder="email@exemplo.com"
-                    className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                  />
-                </div>
-
-                {/* BI e Telefone em linha */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                      <CreditCard className="h-3 w-3 inline mr-1" />
-                      Número de BI *
-                    </label>
-                    <Input
-                      value={editForm.bi_number}
-                      onChange={(e) => setEditForm({ ...editForm, bi_number: e.target.value })}
-                      placeholder="000000000AA000"
-                      className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                      <Phone className="h-3 w-3 inline mr-1" />
-                      Telefone
-                    </label>
-                    <Input
-                      value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                      placeholder="+258 84 000 0000"
-                      className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                    />
-                  </div>
-                </div>
-
-                {/* Género e Data de Nascimento em linha */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                      Género
-                    </label>
-                    <select
-                      value={editForm.gender}
-                      onChange={(e) => setEditForm({ ...editForm, gender: e.target.value as 'M' | 'F' })}
-                      className="w-full h-11 px-3 border-2 border-slate-200 rounded-lg focus:border-[#F5821F] focus:outline-none text-sm"
-                    >
-                      <option value="M">Masculino</option>
-                      <option value="F">Feminino</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                      <Calendar className="h-3 w-3 inline mr-1" />
-                      Data de Nascimento
-                    </label>
-                    <Input
-                      type="date"
-                      value={editForm.birth_date}
-                      onChange={(e) => setEditForm({ ...editForm, birth_date: e.target.value })}
-                      className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                    />
-                  </div>
-                </div>
-
-                {/* Endereço */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                    Endereço
-                  </label>
-                  <Input
-                    value={editForm.address}
-                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                    placeholder="Endereço completo"
-                    className="h-11 border-2 border-slate-200 focus:border-[#F5821F]"
-                  />
-                </div>
-
-                {/* Info de dados não editáveis */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <p className="text-xs text-amber-700">
-                    <AlertTriangle className="h-4 w-4 inline mr-1" />
-                    Dados como username, nº de matrícula e credenciais de acesso não podem ser editados aqui.
-                  </p>
-                </div>
-              </div>
-
-              {/* Botões */}
-              <div className="flex gap-3 mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setEditModal({ isOpen: false, student: null })}
-                  className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400 font-bold"
-                  disabled={isSaving}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleSaveEdit}
-                  disabled={isSaving}
-                  className="flex-1 h-12 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold"
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Guardar Alterações
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditInscriptionModal
+        isOpen={editInscriptionModal.isOpen}
+        onClose={() => setEditInscriptionModal({ isOpen: false, student: null })}
+        student={editInscriptionModal.student}
+        onSuccess={fetchInscribedStudents}
+      />
     </div>
   );
 }

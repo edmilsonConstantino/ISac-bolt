@@ -215,11 +215,16 @@ export function CourseTab({
     }
   }, [availableRegistrationTypes, formData.registrationType, onChangeField]);
 
-  // Filtrar turmas por curso E turno selecionado
+  // Filtrar turmas por curso, nível (quando aplicável) e turno selecionado
   const turmasFiltradasPorTurno = useMemo(() => {
     if (!formData.courseId) return [];
 
     let turmasDoCurso = classes.filter((c) => c.curso === formData.courseId || (c as any).curso_id === formData.courseId);
+
+    // Se nível selecionado, mostrar apenas turmas desse nível
+    if (selectedNivel) {
+      turmasDoCurso = turmasDoCurso.filter((c) => c.nivel_id === selectedNivel.id);
+    }
 
     // Se turno selecionado, filtrar por turno
     if (selectedTurno) {
@@ -227,7 +232,7 @@ export function CourseTab({
     }
 
     return turmasDoCurso;
-  }, [classes, formData.courseId, selectedTurno]);
+  }, [classes, formData.courseId, selectedTurno, selectedNivel]);
 
   // Handler para selecionar turno
   const handleSelectTurno = (turno: Turno) => {

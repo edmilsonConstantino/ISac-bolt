@@ -112,53 +112,57 @@ export function StudentModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 pt-6 pb-8 relative">
+        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 pt-4 pb-4 relative">
           <div className="absolute inset-0 bg-black/5" />
           <div className="relative">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                Estudantes da Turma
-              </DialogTitle>
-              <p className="text-blue-200 text-sm mt-1">{className}</p>
-            </DialogHeader>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" />
+                    Estudantes da Turma
+                  </DialogTitle>
+                  <p className="text-blue-200 text-xs mt-0.5">{className}</p>
+                </DialogHeader>
+              </div>
+            </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-5 gap-3 mt-5">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Users className="h-3 w-3 text-blue-200" />
-                  <span className="text-[10px] text-blue-200 font-medium uppercase">Total</span>
+            <div className="grid grid-cols-5 gap-2">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20 flex items-center gap-2">
+                <Users className="h-3 w-3 text-blue-200 flex-shrink-0" />
+                <div>
+                  <span className="text-[9px] text-blue-200 font-medium uppercase block">Total</span>
+                  <p className="text-base font-bold text-white leading-none">{students.length}</p>
                 </div>
-                <p className="text-xl font-bold text-white">{students.length}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <CheckCircle className="h-3 w-3 text-green-300" />
-                  <span className="text-[10px] text-green-200 font-medium uppercase">Ativos</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20 flex items-center gap-2">
+                <CheckCircle className="h-3 w-3 text-green-300 flex-shrink-0" />
+                <div>
+                  <span className="text-[9px] text-green-200 font-medium uppercase block">Ativos</span>
+                  <p className="text-base font-bold text-white leading-none">{activeStudents.length}</p>
                 </div>
-                <p className="text-xl font-bold text-white">{activeStudents.length}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <XCircle className="h-3 w-3 text-red-300" />
-                  <span className="text-[10px] text-red-200 font-medium uppercase">Inativos</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20 flex items-center gap-2">
+                <XCircle className="h-3 w-3 text-red-300 flex-shrink-0" />
+                <div>
+                  <span className="text-[9px] text-red-200 font-medium uppercase block">Inativos</span>
+                  <p className="text-base font-bold text-white leading-none">{inactiveStudents.length}</p>
                 </div>
-                <p className="text-xl font-bold text-white">{inactiveStudents.length}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <TrendingUp className="h-3 w-3 text-yellow-300" />
-                  <span className="text-[10px] text-yellow-200 font-medium uppercase">Média</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20 flex items-center gap-2">
+                <TrendingUp className="h-3 w-3 text-yellow-300 flex-shrink-0" />
+                <div>
+                  <span className="text-[9px] text-yellow-200 font-medium uppercase block">Média</span>
+                  <p className="text-base font-bold text-white leading-none">{averageGrade.toFixed(1)}</p>
                 </div>
-                <p className="text-xl font-bold text-white">{averageGrade.toFixed(1)}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Calendar className="h-3 w-3 text-purple-300" />
-                  <span className="text-[10px] text-purple-200 font-medium uppercase">Presença</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20 flex items-center gap-2">
+                <Calendar className="h-3 w-3 text-purple-300 flex-shrink-0" />
+                <div>
+                  <span className="text-[9px] text-purple-200 font-medium uppercase block">Presença</span>
+                  <p className="text-base font-bold text-white leading-none">{averageAttendance}%</p>
                 </div>
-                <p className="text-xl font-bold text-white">{averageAttendance}%</p>
               </div>
             </div>
           </div>

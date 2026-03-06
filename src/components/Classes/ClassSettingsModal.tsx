@@ -1,6 +1,5 @@
 // src/components/Classes/ClassSettingsModal.tsx
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,12 +11,13 @@ import {
   BookOpen, GraduationCap, Shield, ClipboardList,
   X, Sun, Sunset, Moon, Clock, MapPin, Users,
   Calendar, Hash, CheckCircle, XCircle, Pause,
-  Trophy, AlertTriangle, Lock, Unlock, Save,
-  ChevronDown, Loader2, RefreshCw, Award, ArrowRight
+  Trophy, Lock, Unlock, Save,
+  Loader2, RefreshCw, Award, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import teacherService from "@/services/teacherService";
+import { ConfirmModal } from "@/components/shared/reusable/ConfirmModal";
 
 // ============ INTERFACES ============
 
@@ -105,6 +105,8 @@ export function ClassSettingsModal({
   const [activeTab, setActiveTab] = useState<'info' | 'teacher' | 'status' | 'grades' | 'resultados'>('info');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
+  const [freshProfessorId,   setFreshProfessorId]   = useState<number | null>(null);
+  const [freshProfessorNome, setFreshProfessorNome] = useState<string>('');
   const [gradePeriods, setGradePeriods] = useState<GradePeriod[]>([]);
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
   const [isLoadingPeriods, setIsLoadingPeriods] = useState(false);
@@ -114,7 +116,7 @@ export function ClassSettingsModal({
     targetStatus: string;
     title: string;
     message: string;
-    color: 'green' | 'yellow' | 'blue' | 'red';
+    variant: 'warning' | 'danger' | 'info';
   } | null>(null);
   const [showTeacherSelect, setShowTeacherSelect] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>('ativo');
@@ -136,16 +138,37 @@ export function ClassSettingsModal({
   useEffect(() => {
     if (isOpen && classData) {
       setActiveTab('info');
-      setSelectedTeacherId(classData.professor_id || classData.teacher_id || null);
       setStatusConfirmModal(null);
       setShowTeacherSelect(false);
-      // Inicializar status local
+
+      // Inicializar a partir dos dados do pai (fallback imediato)
+      const initProfId   = classData.professor_id || classData.teacher_id || null;
+      const initProfNome = classData.professor_nome || classData.teacher_name || '';
+      setFreshProfessorId(initProfId);
+      setFreshProfessorNome(initProfNome);
+      setSelectedTeacherId(initProfId);
+
       const normalizeStatus = (s: string) => {
         const map: Record<string, string> = { active: 'ativo', inactive: 'inativo', completed: 'concluido' };
         return map[s] || s || 'ativo';
       };
       setCurrentStatus(normalizeStatus(classData.status || ''));
       loadGradePeriods();
+
+      // Buscar dados frescos da turma para garantir docente actualizado
+      if (classData.id) {
+        fetch(`${API_URL}/turmas.php?id=${classData.id}`, { headers: getAuthHeaders() })
+          .then(r => r.json())
+          .then(result => {
+            const turma = result.success && result.data?.length > 0 ? result.data[0] : null;
+            if (turma) {
+              setFreshProfessorId(turma.professor_id ?? null);
+              setFreshProfessorNome(turma.professor_nome ?? '');
+              setSelectedTeacherId(turma.professor_id ?? null);
+            }
+          })
+          .catch(() => {}); // silently ignore — fallback already set
+      }
     }
   }, [isOpen, classData]);
 
@@ -236,12 +259,16 @@ export function ClassSettingsModal({
       if (result.success) {
         toast.success('Docente alterado com sucesso!');
         setShowTeacherSelect(false);
+        // Update local state immediately so "Docente Actual" reflects the new teacher
+        const newTeacher = teachers.find(t => t.id === selectedTeacherId);
+        setFreshProfessorId(selectedTeacherId);
+        setFreshProfessorNome(newTeacher?.nome || '');
         onClassUpdated();
       } else {
         toast.error(result.message || 'Erro ao alterar docente');
       }
     } catch (error) {
-      toast.error('Erro ao conectar com o servidor');
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsSaving(false);
     }
@@ -290,7 +317,7 @@ export function ClassSettingsModal({
         toast.error(result.message || 'Erro ao alterar status');
       }
     } catch (error) {
-      toast.error('Erro ao conectar com o servidor');
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsSaving(false);
     }
@@ -299,16 +326,18 @@ export function ClassSettingsModal({
   const handleSaveGradePeriods = async () => {
     if (!classData?.id) return;
 
+    // Recolher apenas os períodos que têm ambas as datas preenchidas
     const validPeriods = gradePeriods.filter(p => p.start_date && p.end_date);
     if (validPeriods.length === 0) {
-      toast.error('Configure pelo menos um período de avaliação');
+      toast.error('Configure pelo menos uma janela de avaliação com data de início e data limite');
       return;
     }
 
     // Validar datas
+    const LABELS: Record<number, string> = { 1: 'Teste 1', 2: 'Teste 2', 3: 'Exame Teórico', 4: 'Exame Prático' };
     for (const p of validPeriods) {
       if (p.start_date > p.end_date) {
-        toast.error(`${p.period_number}ª Avaliação: data de início deve ser antes da data de fim`);
+        toast.error(`${LABELS[p.period_number] ?? `Período ${p.period_number}`}: a data de início deve ser antes da data limite`);
         return;
       }
     }
@@ -330,13 +359,13 @@ export function ClassSettingsModal({
       });
       const result = await response.json();
       if (result.success) {
-        toast.success(result.message || 'Períodos guardados!');
+        toast.success(result.message || 'Janelas de avaliação guardadas!');
         loadGradePeriods();
       } else {
         toast.error(result.message || 'Erro ao guardar períodos');
       }
     } catch (error) {
-      toast.error('Erro ao conectar com o servidor');
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsSaving(false);
     }
@@ -461,8 +490,8 @@ export function ClassSettingsModal({
       } else {
         toast.error(result.message || 'Erro ao finalizar nível');
       }
-    } catch {
-      toast.error('Erro ao conectar com o servidor');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsFinalizing(null);
     }
@@ -491,8 +520,8 @@ export function ClassSettingsModal({
       } else {
         toast.error(result.message || 'Erro ao promover aluno');
       }
-    } catch {
-      toast.error('Erro ao conectar com o servidor');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsPromoting(null);
     }
@@ -615,8 +644,9 @@ export function ClassSettingsModal({
     ano_letivo: classData.ano_letivo || new Date().getFullYear(),
     data_inicio: classData.data_inicio || classData.start_date || '',
     data_fim: classData.data_fim || classData.end_date || '',
-    professor_id: classData.professor_id || classData.teacher_id || null,
-    professor_nome: classData.professor_nome || classData.teacher_name || '',
+    // freshProfessor* vem do fetch em tempo real ao abrir o modal (sobrepõe dados em cache do pai)
+    professor_id:   freshProfessorId   ?? classData.professor_id   ?? classData.teacher_id   ?? null,
+    professor_nome: freshProfessorNome || classData.professor_nome || classData.teacher_name || '',
     observacoes: classData.observacoes || classData.description || '',
     status: normalizeStatus(classData.status || ''),
     semestre: classData.semestre || '',
@@ -647,10 +677,9 @@ export function ClassSettingsModal({
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onClose} modal={!statusConfirmModal?.isOpen}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         className="max-w-[900px] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[90vh]"
-        style={statusConfirmModal?.isOpen ? { pointerEvents: 'none' } : undefined}
       >
         <DialogTitle className="sr-only">Configurações da Turma</DialogTitle>
 
@@ -960,7 +989,7 @@ export function ClassSettingsModal({
                             targetStatus: 'ativo',
                             title: 'Activar Turma',
                             message: 'Tem certeza que deseja activar esta turma? A turma voltará a estar activa e operacional.',
-                            color: 'green'
+                            variant: 'info'
                           })}
                           disabled={isSaving}
                         />
@@ -976,7 +1005,7 @@ export function ClassSettingsModal({
                             targetStatus: 'inativo',
                             title: 'Suspender Turma',
                             message: 'Tem certeza que deseja suspender esta turma? A turma ficará temporariamente suspensa, mas pode ser reactivada depois.',
-                            color: 'yellow'
+                            variant: 'warning'
                           })}
                           disabled={isSaving}
                         />
@@ -992,7 +1021,7 @@ export function ClassSettingsModal({
                             targetStatus: 'concluido',
                             title: 'Declarar Turma como Concluída',
                             message: 'Tem certeza que deseja declarar esta turma como concluída? Isto indica que a turma terminou o seu ciclo lectivo com sucesso.',
-                            color: 'blue'
+                            variant: 'info'
                           })}
                           disabled={isSaving}
                         />
@@ -1008,7 +1037,7 @@ export function ClassSettingsModal({
                             targetStatus: 'cancelado',
                             title: 'Cancelar Turma',
                             message: 'Tem certeza que deseja cancelar esta turma? Esta acção é definitiva e os estudantes matriculados podem ser afectados.',
-                            color: 'red'
+                            variant: 'danger'
                           })}
                           disabled={isSaving}
                         />
@@ -1026,134 +1055,143 @@ export function ClassSettingsModal({
               )}
 
               {/* ====== ABA 4: NOTAS ====== */}
-              {activeTab === 'grades' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Períodos de Avaliação</h3>
-                      <p className="text-xs text-slate-500">
-                        {isAdmin
-                          ? 'Defina os períodos em que os docentes podem lançar notas'
-                          : 'Visualize os períodos de lançamento de notas'}
-                      </p>
+              {activeTab === 'grades' && (() => {
+                const ASSESSMENT_COMPONENTS: { periodNumber: number; label: string; shortLabel: string; color: string; accent: string }[] = [
+                  { periodNumber: 1, label: 'Teste 1',        shortLabel: 'T1', color: 'bg-blue-600',   accent: 'border-blue-200 bg-blue-50' },
+                  { periodNumber: 2, label: 'Teste 2',        shortLabel: 'T2', color: 'bg-indigo-600', accent: 'border-indigo-200 bg-indigo-50' },
+                  { periodNumber: 3, label: 'Exame Teórico',  shortLabel: 'ET', color: 'bg-violet-600', accent: 'border-violet-200 bg-violet-50' },
+                  { periodNumber: 4, label: 'Exame Prático',  shortLabel: 'EP', color: 'bg-[#004B87]',  accent: 'border-sky-200 bg-sky-50' },
+                ];
+                return (
+                  <div className="space-y-5">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-slate-800">Janelas de Avaliação</h3>
+                        <p className="text-xs text-slate-500">
+                          {classData.nivel_nome
+                            ? `Nível ${classData.nivel_numero ?? ''} · ${classData.nivel_nome} · `
+                            : ''}
+                          Período de lançamento de notas por componente
+                        </p>
+                      </div>
+                      {isLoadingPeriods && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
                     </div>
-                    {isLoadingPeriods && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
-                  </div>
 
-                  {/* 4 period cards */}
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4].map(num => {
-                      const period = gradePeriods.find(p => p.period_number === num);
-                      const pStatus = getPeriodStatus(period);
-                      const PIcon = pStatus.icon;
-
-                      return (
-                        <div key={num} className="border-2 border-slate-200 rounded-xl overflow-hidden">
-                          {/* Period header */}
-                          <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 bg-[#004B87] rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">{num}</span>
+                    {/* One card per assessment component */}
+                    <div className="space-y-3">
+                      {ASSESSMENT_COMPONENTS.map(({ periodNumber, label, shortLabel, color, accent }) => {
+                        const period = gradePeriods.find(p => p.period_number === periodNumber);
+                        const pStatus = getPeriodStatus(period);
+                        const PIcon = pStatus.icon;
+                        return (
+                          <div key={periodNumber} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            {/* Card header */}
+                            <div className={cn("flex items-center justify-between px-4 py-2.5 border-b border-slate-200", accent)}>
+                              <div className="flex items-center gap-2.5">
+                                <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center text-white text-[11px] font-extrabold", color)}>
+                                  {shortLabel}
+                                </div>
+                                <span className="font-bold text-sm text-slate-800">{label}</span>
                               </div>
-                              <h4 className="font-bold text-sm text-slate-800">{num}ª Avaliação</h4>
+                              <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold", pStatus.bg)}>
+                                <PIcon className={cn("h-3 w-3", pStatus.color)} />
+                                <span className={pStatus.color}>{pStatus.label}</span>
+                              </div>
                             </div>
-                            <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold", pStatus.bg)}>
-                              <PIcon className={cn("h-3.5 w-3.5", pStatus.color)} />
-                              <span className={pStatus.color}>{pStatus.label}</span>
+
+                            {/* Card body */}
+                            <div className="p-4 bg-white">
+                              {isAdmin ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                                      Data de Início
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={period?.start_date || ''}
+                                      onChange={e => updatePeriod(periodNumber, 'start_date', e.target.value)}
+                                      className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                                      Data Limite
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={period?.end_date || ''}
+                                      onChange={e => updatePeriod(periodNumber, 'end_date', e.target.value)}
+                                      className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Início</p>
+                                    <p className="text-sm font-semibold text-slate-700 mt-0.5">
+                                      {period?.start_date ? formatDate(period.start_date) : '—'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data Limite</p>
+                                    <p className="text-sm font-semibold text-slate-700 mt-0.5">
+                                      {period?.end_date ? formatDate(period.end_date) : '—'}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Lock toggle - admin only */}
+                              {isAdmin && period?.start_date && period?.end_date && (
+                                <div className="mt-3 pt-3 border-t border-slate-100">
+                                  <button
+                                    onClick={() => updatePeriod(periodNumber, 'is_locked', period?.is_locked ? 0 : 1)}
+                                    className={cn(
+                                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                      period?.is_locked
+                                        ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                                        : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                                    )}
+                                  >
+                                    {period?.is_locked
+                                      ? <><Lock className="h-3 w-3" /> Bloqueado — clique para desbloquear</>
+                                      : <><Unlock className="h-3 w-3" /> Desbloqueado — clique para bloquear</>
+                                    }
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-
-                          {/* Period body */}
-                          <div className="p-5">
-                            {isAdmin ? (
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">
-                                    Data de Início
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={period?.start_date || ''}
-                                    onChange={e => updatePeriod(num, 'start_date', e.target.value)}
-                                    className="w-full h-10 px-3 border-2 border-slate-200 rounded-lg text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">
-                                    Data Limite
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={period?.end_date || ''}
-                                    onChange={e => updatePeriod(num, 'end_date', e.target.value)}
-                                    className="w-full h-10 px-3 border-2 border-slate-200 rounded-lg text-sm focus:border-[#F5821F] focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20"
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Início</p>
-                                  <p className="text-sm font-semibold text-slate-700 mt-1">
-                                    {formatDate(period?.start_date || '')}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Data Limite</p>
-                                  <p className="text-sm font-semibold text-slate-700 mt-1">
-                                    {formatDate(period?.end_date || '')}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Lock toggle - admin only */}
-                            {isAdmin && period?.start_date && period?.end_date && (
-                              <div className="mt-4 pt-3 border-t border-slate-100">
-                                <button
-                                  onClick={() => updatePeriod(num, 'is_locked', period?.is_locked ? 0 : 1)}
-                                  className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all",
-                                    period?.is_locked
-                                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                                  )}
-                                >
-                                  {period?.is_locked
-                                    ? <><Lock className="h-3.5 w-3.5" /> Bloqueado - Clique para desbloquear</>
-                                    : <><Unlock className="h-3.5 w-3.5" /> Desbloqueado - Clique para bloquear</>
-                                  }
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Save button - admin only */}
-                  {isAdmin && (
-                    <Button
-                      onClick={handleSaveGradePeriods}
-                      disabled={isSaving}
-                      className="w-full h-12 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-lg"
-                    >
-                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                      Guardar Períodos de Avaliação
-                    </Button>
-                  )}
-
-                  {!isAdmin && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                      <p className="text-xs text-yellow-700 flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
-                        Apenas o Super Admin pode configurar os períodos de lançamento de notas.
-                      </p>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* Save button - admin only */}
+                    {isAdmin && (
+                      <Button
+                        onClick={handleSaveGradePeriods}
+                        disabled={isSaving}
+                        className="w-full h-12 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-lg"
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Guardar Janelas de Avaliação
+                      </Button>
+                    )}
+
+                    {!isAdmin && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                        <p className="text-xs text-yellow-700 flex items-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          Apenas o Super Admin pode configurar as janelas de lançamento de notas.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* ====== ABA 5: RESULTADOS ====== */}
               {activeTab === 'resultados' && (
@@ -1424,103 +1462,24 @@ export function ClassSettingsModal({
       </DialogContent>
     </Dialog>
 
-    {/* ====== MODAL DE CONFIRMAÇÃO DE STATUS (via Portal) ====== */}
-    {statusConfirmModal?.isOpen && createPortal(
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        style={{ zIndex: 99999, pointerEvents: 'auto' }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+    {/* ====== MODAL DE CONFIRMAÇÃO DE STATUS ====== */}
+    <ConfirmModal
+      isOpen={!!statusConfirmModal?.isOpen}
+      title={statusConfirmModal?.title ?? ''}
+      subtitle="Confirmar alteração de status"
+      message={statusConfirmModal?.message}
+      detail={`${d.nome} · ${d.codigo}`}
+      variant={statusConfirmModal?.variant ?? 'warning'}
+      confirmLabel={isSaving ? 'A processar...' : 'Sim, Confirmar'}
+      cancelLabel="Cancelar"
+      onConfirm={() => {
+        if (statusConfirmModal) {
+          handleChangeStatus(statusConfirmModal.targetStatus);
           setStatusConfirmModal(null);
-        }}
-      >
-        <div
-          className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full animate-in zoom-in-95 duration-200"
-          style={{ pointerEvents: 'auto' }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className={cn(
-            "px-6 py-5 text-white",
-            statusConfirmModal.color === 'green' && "bg-gradient-to-r from-green-500 to-green-600",
-            statusConfirmModal.color === 'yellow' && "bg-gradient-to-r from-yellow-500 to-yellow-600",
-            statusConfirmModal.color === 'blue' && "bg-gradient-to-r from-blue-500 to-blue-600",
-            statusConfirmModal.color === 'red' && "bg-gradient-to-r from-red-500 to-red-600"
-          )}>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">{statusConfirmModal.title}</h3>
-                <p className="text-white/80 text-sm">Confirmar alteração de status</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Conteúdo */}
-          <div className="p-6">
-            <div className="bg-slate-50 rounded-xl p-4 mb-4">
-              <p className="font-bold text-lg text-[#004B87] text-center">{d.nome}</p>
-              <p className="text-sm text-slate-500 text-center">{d.codigo}</p>
-            </div>
-
-            <p className="text-slate-600 text-center mb-6">
-              {statusConfirmModal.message}
-            </p>
-
-            {/* Botões - usando elementos nativos para garantir eventos */}
-            <div className="flex gap-3" style={{ pointerEvents: 'auto' }}>
-              <button
-                type="button"
-                disabled={isSaving}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setStatusConfirmModal(null);
-                }}
-                className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 font-bold rounded-lg transition-colors"
-                style={{ pointerEvents: 'auto' }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isSaving}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleChangeStatus(statusConfirmModal.targetStatus);
-                  setStatusConfirmModal(null);
-                }}
-                className={cn(
-                  "flex-1 h-12 text-white font-bold rounded-lg flex items-center justify-center transition-colors",
-                  statusConfirmModal.color === 'green' && "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700",
-                  statusConfirmModal.color === 'yellow' && "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700",
-                  statusConfirmModal.color === 'blue' && "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
-                  statusConfirmModal.color === 'red' && "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                )}
-                style={{ pointerEvents: 'auto' }}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                )}
-                Sim, Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>,
-      document.body
-    )}
+        }
+      }}
+      onCancel={() => setStatusConfirmModal(null)}
+    />
     </>
   );
 }

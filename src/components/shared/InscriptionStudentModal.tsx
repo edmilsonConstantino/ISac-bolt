@@ -8,7 +8,7 @@ import {
   UserPlus, Mail, Phone, Calendar, MapPin,
   User, AlertCircle, Sparkles, ChevronRight, CheckCircle2,
   Key, Copy, BookOpen, X, ShieldAlert, Hash,
-  Printer, ArrowRight, Info, RefreshCw
+  Printer, ArrowRight, Info, RefreshCw, GraduationCap, Edit2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import studentService from "@/services/studentService";
@@ -77,6 +77,23 @@ interface InscriptionStudentModalProps {
   onClose: () => void;
   onSuccess: (studentId: number, credentials: { username: string; password: string }) => void;
   onProceedToRegistration?: (studentId: number) => void;
+  // Edit mode
+  isEditing?: boolean;
+  editStudentData?: {
+    id: number;
+    name: string;
+    email?: string;
+    phone?: string;
+    bi_number: string;
+    address?: string;
+    gender?: 'M' | 'F' | '';
+    birth_date?: string;
+    emergency_contact_1?: string;
+    emergency_contact_2?: string;
+    notes?: string;
+    is_bolsista?: boolean | number;
+  };
+  onEditSuccess?: () => void;
 }
 
 // ============================================
@@ -87,6 +104,9 @@ export function InscriptionStudentModal({
   onClose,
   onSuccess,
   onProceedToRegistration,
+  isEditing = false,
+  editStudentData,
+  onEditSuccess,
 }: InscriptionStudentModalProps) {
 
 
@@ -132,6 +152,7 @@ export function InscriptionStudentModal({
     emergency_contact_1: '',
     emergency_contact_2: '',
     notes: '',
+    isBolsista: false,
     // Campos de pagamento (se inscrição for paga)
     paymentMethod: 'cash' as PaymentMethod,
     paymentStatus: 'pending' as PaymentStatus,
@@ -141,13 +162,35 @@ export function InscriptionStudentModal({
   // Estado de loading para marcar como pago
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
+  // Pre-popular formulário quando estiver em modo de edição
+  useEffect(() => {
+    if (isOpen && isEditing && editStudentData) {
+      setFormData({
+        name: editStudentData.name || '',
+        email: editStudentData.email || '',
+        phone: editStudentData.phone || '',
+        bi_number: editStudentData.bi_number || '',
+        address: editStudentData.address || '',
+        gender: (editStudentData.gender || '') as 'M' | 'F' | '',
+        birth_date: editStudentData.birth_date || '',
+        emergency_contact_1: editStudentData.emergency_contact_1 || '',
+        emergency_contact_2: editStudentData.emergency_contact_2 || '',
+        notes: editStudentData.notes || '',
+        isBolsista: Boolean(editStudentData.is_bolsista),
+        paymentMethod: 'cash',
+        paymentStatus: 'pending',
+        paymentReference: '',
+      });
+      setActiveTab('personal');
+      setErrors({});
+      setShowSuccess(false);
+      setSavedCredentials(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isEditing]);
+
   // Handler para marcar como pago (apenas UI - backend será chamado no save)
   const handleMarkAsPaid = () => {
-    // Validar referência se não for cash
-    if (formData.paymentMethod !== 'cash' && !formData.paymentReference.trim()) {
-      showError("Por favor, insira a referência do pagamento antes de marcar como pago.");
-      return;
-    }
     setFormData(prev => ({ ...prev, paymentStatus: 'paid' }));
   };
 
@@ -206,16 +249,18 @@ const validateForm = () => {
     showError("Por favor, selecione o sexo do estudante.");
   }
 
-  // Pagamento (se inscrição for paga)
-  if (inscriptionIsPaid && inscriptionFee > 0) {
+  // Pagamento (se inscrição for paga) — apenas para nova inscrição
+  if (!isEditing && inscriptionIsPaid && inscriptionFee > 0) {
     if (formData.paymentStatus !== 'paid') {
       newErrors.payment = "Pagamento não confirmado";
       showError(`Clique em 'Marcar como Pago' para confirmar o pagamento da taxa de inscrição (${formatCurrency(inscriptionFee)}).`);
     }
-    if (formData.paymentMethod !== 'cash' && !formData.paymentReference.trim()) {
-      newErrors.paymentReference = "Referência é obrigatória";
-      showError("Por favor, insira a referência ou comprovativo do pagamento.");
-    }
+  }
+
+  // Telefone (se preenchido) — exactamente 9 dígitos
+  if (formData.phone && !/^\d{9}$/.test(formData.phone)) {
+    newErrors.phone = "Telefone deve ter exactamente 9 dígitos";
+    showError("O número de telefone deve ter exactamente 9 dígitos (ex: 841234567).");
   }
 
   // Data de nascimento (se preenchida)
@@ -269,6 +314,38 @@ const validateForm = () => {
     setIsSubmitting(true);
 
     try {
+      // ── MODO EDIÇÃO: PUT para actualizar dados do estudante ──────────────────
+      if (isEditing && editStudentData?.id) {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`http://localhost/API-LOGIN/api/students.php?id=${editStudentData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone || undefined,
+            bi_number: formData.bi_number.toUpperCase(),
+            address: formData.address || undefined,
+            gender: formData.gender,
+            birth_date: formData.birth_date || undefined,
+            emergency_contact_1: formData.emergency_contact_1 || undefined,
+            emergency_contact_2: formData.emergency_contact_2 || undefined,
+            notes: formData.notes || undefined,
+            is_bolsista: formData.isBolsista ? 1 : 0,
+          })
+        });
+        const result = await response.json();
+        if (result.success === false) {
+          throw new Error(result.message || 'Erro ao actualizar dados da inscrição');
+        }
+        onEditSuccess?.();
+        handleClose();
+        return;
+      }
+
       // Dados para API - senha gerada automaticamente pelo backend (1º acesso = username)
       const studentData = {
         name: formData.name,
@@ -283,6 +360,7 @@ const validateForm = () => {
         notes: formData.notes || undefined,
         enrollment_year: new Date().getFullYear(),
         status: 'ativo' as const,
+        is_bolsista: formData.isBolsista,
         // Taxa de inscrição congelada (valor no momento da inscrição)
         inscription_fee_amount: inscriptionIsPaid ? inscriptionFee : 0,
         // Se paymentStatus=paid, envia o valor total como amount_paid
@@ -357,6 +435,7 @@ const validateForm = () => {
       name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
       birth_date: '',
       emergency_contact_1: '', emergency_contact_2: '', notes: '',
+      isBolsista: false,
       paymentMethod: 'cash', paymentStatus: 'pending', paymentReference: ''
     });
     setErrors({});
@@ -375,6 +454,7 @@ const validateForm = () => {
         name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
         birth_date: '',
         emergency_contact_1: '', emergency_contact_2: '', notes: '',
+        isBolsista: false,
         paymentMethod: 'cash', paymentStatus: 'pending', paymentReference: ''
       });
       setErrors({});
@@ -391,10 +471,12 @@ const validateForm = () => {
   };
 
   const validateAndNext = () => {
-    // Tabs dinâmicos: inclui 'payment' apenas se inscrição for paga
-    const tabs: ('personal' | 'contacts' | 'payment' | 'credentials')[] = inscriptionIsPaid
-      ? ['personal', 'contacts', 'payment', 'credentials']
-      : ['personal', 'contacts', 'credentials'];
+    // Tabs dinâmicos: em edição não tem pagamento; em criação inclui pagamento se pago
+    const tabs: ('personal' | 'contacts' | 'payment' | 'credentials')[] = isEditing
+      ? ['personal', 'contacts', 'credentials']
+      : inscriptionIsPaid
+        ? ['personal', 'contacts', 'payment', 'credentials']
+        : ['personal', 'contacts', 'credentials'];
 
     const nextIndex = tabs.indexOf(activeTab) + 1;
     if (nextIndex < tabs.length) setActiveTab(tabs[nextIndex]);
@@ -871,12 +953,12 @@ const validateForm = () => {
             <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
               <div className="flex items-center gap-3 mb-12">
                 <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
-                  <UserPlus className="text-white h-6 w-6" />
+                  {isEditing ? <Edit2 className="text-white h-6 w-6" /> : <UserPlus className="text-white h-6 w-6" />}
                 </div>
                 <div>
-                  <h2 className="font-bold text-lg leading-none">Inscrição</h2>
+                  <h2 className="font-bold text-lg leading-none">{isEditing ? 'Editar' : 'Inscrição'}</h2>
                   <span className="text-[10px] text-blue-200 uppercase tracking-widest">
-                    Novo Estudante
+                    {isEditing ? 'Actualizar Dados' : 'Novo Estudante'}
                   </span>
                 </div>
               </div>
@@ -885,8 +967,8 @@ const validateForm = () => {
                 {[
                   { id: 'personal', label: 'Dados Pessoais', icon: User, desc: 'Informações Básicas' },
                   { id: 'contacts', label: 'Contatos', icon: Phone, desc: 'Emergência e Observações' },
-                  // Mostrar tab de pagamento apenas se inscrição for paga
-                  ...(inscriptionIsPaid ? [{ id: 'payment', label: 'Pagamento', icon: DollarSign, desc: `Taxa: ${formatCurrency(inscriptionFee)}` }] : []),
+                  // Mostrar tab de pagamento apenas se nova inscrição paga (não em edição)
+                  ...(!isEditing && inscriptionIsPaid ? [{ id: 'payment', label: 'Pagamento', icon: DollarSign, desc: `Taxa: ${formatCurrency(inscriptionFee)}` }] : []),
                   { id: 'credentials', label: 'Credenciais', icon: Key, desc: 'Acesso ao Portal' },
                 ].map((tab) => (
                   <button
@@ -929,7 +1011,7 @@ const validateForm = () => {
               <header className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
-                    Inscrição de Estudante
+                    {isEditing ? 'Editar Inscrição' : 'Inscrição de Estudante'}
                   </DialogTitle>
                   <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
                     <span>Cadastro + Credenciais</span>
@@ -1049,12 +1131,24 @@ const validateForm = () => {
                             <div className="relative">
                               <Phone className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                               <Input
-                                placeholder="+258 84 123 4567"
+                                placeholder="9 dígitos (ex: 841234567)"
                                 value={formData.phone}
-                                onChange={(e) => handleInputChange('phone', e.target.value)}
-                                className="h-12 pl-11 rounded-xl"
+                                maxLength={9}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                  handleInputChange('phone', val);
+                                }}
+                                className={cn("h-12 pl-11 rounded-xl", errors.phone && "border-red-400 bg-red-50")}
                               />
                             </div>
+                            {errors.phone ? (
+                              <p className="text-xs text-red-600 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {errors.phone}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-400 ml-1">{String(formData.phone).length}/9 dígitos</p>
+                            )}
                           </div>
                         </div>
 
@@ -1105,6 +1199,8 @@ const validateForm = () => {
                         </div>
                       </div>
                     </section>
+
+                    {/* Bolsa configurada durante a Matrícula */}
                   </div>
                 )}
 
@@ -1127,12 +1223,17 @@ const validateForm = () => {
                           <div className="relative">
                             <Phone className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                             <Input
-                              placeholder="+258 84 000 0000"
+                              placeholder="9 dígitos (ex: 841234567)"
                               value={formData.emergency_contact_1}
-                              onChange={(e) => handleInputChange('emergency_contact_1', e.target.value)}
+                              maxLength={9}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                handleInputChange('emergency_contact_1', val);
+                              }}
                               className={cn("h-12 pl-11 rounded-xl", errors.emergency_contact_1 && "border-red-500")}
                             />
                           </div>
+                          <p className="text-xs text-slate-400 ml-1">{String(formData.emergency_contact_1).length}/9 dígitos</p>
                         </div>
 
                         <div className="space-y-2">
@@ -1140,12 +1241,17 @@ const validateForm = () => {
                           <div className="relative">
                             <Phone className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                             <Input
-                              placeholder="+258 85 000 0000"
+                              placeholder="9 dígitos (ex: 851234567)"
                               value={formData.emergency_contact_2}
-                              onChange={(e) => handleInputChange('emergency_contact_2', e.target.value)}
+                              maxLength={9}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                handleInputChange('emergency_contact_2', val);
+                              }}
                               className={cn("h-12 pl-11 rounded-xl", errors.emergency_contact_2 && "border-red-500")}
                             />
                           </div>
+                          <p className="text-xs text-slate-400 ml-1">{String(formData.emergency_contact_2).length}/9 dígitos</p>
                         </div>
                       </div>
 
@@ -1203,18 +1309,17 @@ const validateForm = () => {
                           <span className="font-mono font-bold text-[#004B87] text-lg tracking-wide">
                             {(() => {
                               const name = formData.name.trim();
-                              const year = new Date().getFullYear();
-                              if (!name) return `STUD??.0001.${year}`;
+                              if (!name) return `STUDXX.XXXX.XXXX`;
                               const parts = name.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(Boolean);
                               const first = (parts[0] || '').replace(/[^A-Z]/g, '').charAt(0);
                               const last = parts.length > 1 ? (parts[parts.length - 1] || '').replace(/[^A-Z]/g, '').charAt(0) : '';
                               const initials = (first + last).padEnd(2, 'X');
-                              return `STUD${initials}.0001.${year}`;
+                              return `STUD${initials}.XXXX.XXXX`;
                             })()}
                           </span>
                         </div>
                         {!formData.name.trim() && (
-                          <p className="text-[10px] text-amber-600 mt-2">Preencha o nome para ver o username</p>
+                          <p className="text-[10px] text-amber-600 mt-2">Preencha o nome para ver o formato do username</p>
                         )}
                       </div>
 
@@ -1280,6 +1385,10 @@ const validateForm = () => {
                           <span className="text-sm text-slate-600">1º Acesso:</span>
                           <span className="text-sm font-mono font-bold text-slate-500">username = senha</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600">Bolsa:</span>
+                          <span className="text-xs text-slate-500">Definida na Matrícula</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1309,12 +1418,12 @@ const validateForm = () => {
                       {isSubmitting ? (
                         <>
                           <RefreshCw className="h-4 w-4 animate-spin" />
-                          Inscrevendo...
+                          {isEditing ? 'Guardando...' : 'Inscrevendo...'}
                         </>
                       ) : (
                         <>
                           <CheckCircle2 className="h-4 w-4" />
-                          Inscrever Estudante
+                          {isEditing ? 'Guardar Alterações' : 'Inscrever Estudante'}
                         </>
                       )}
                     </Button>

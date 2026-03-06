@@ -164,7 +164,11 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           user: state.user,
           isAuthenticated: state.isAuthenticated
-        })
+        }),
+        // Garante que isLoading nunca é restaurado como true após reload de página
+        onRehydrateStorage: () => (state) => {
+          if (state) state.isLoading = false;
+        }
       }
     ),
     { name: 'auth-store' }

@@ -91,6 +91,10 @@ const buildInitialFormData = (): RegistrationFormData => ({
   monthlyFee: 0,
   observations: "",
   registrationType: "new",
+  isBolsista: false,
+  bolsaTipo: "total" as "total" | "parcial" | "custom",
+  bolsaMotivo: "merit" as "merit" | "institutional" | "social",
+  bolsaDesconto: 100,
   // Campos de pagamento (ConfirmationTab)
   paidAmount: 0,
   paymentMethod: "cash",
@@ -153,6 +157,11 @@ export function RegistrationStudentModal({
     [courses, formData.courseId]
   );
 
+  const selectedClass = useMemo(
+    () => (formData.classId ? classes.find((c) => c.id === formData.classId) : undefined),
+    [classes, formData.classId]
+  );
+
   const filteredClasses = useMemo(() => {
     if (!formData.courseId) return [];
     return classes.filter((c) => {
@@ -202,17 +211,22 @@ export function RegistrationStudentModal({
         // classService returns fields in English (name, schedule, code, schedule_days).
         // CourseTab expects Portuguese field names (nome, turno, codigo, dias_semana).
         // Map here so CourseTab filters work correctly.
-        const mappedClasses: ClassItem[] = (classesData as ClassItem[]).map((c) => ({
-          id: c.id,
-          nome: c.name ?? c.nome ?? '',
-          codigo: c.code ?? c.codigo ?? null,
-          dias_semana: c.schedule_days ?? c.dias_semana ?? null,
-          curso: c.curso ?? null,
-          turno: (c.schedule ?? c.turno ?? null) as ClassItem['turno'],
-          capacity: c.capacity ?? null,
-          students: c.students ?? null,
-          nivel_id: (c as Record<string, unknown>).nivel_id ?? null,
-        }));
+        const mappedClasses: ClassItem[] = (classesData as ClassItem[]).map((c) => {
+          const raw = c as Record<string, unknown>;
+          return {
+            id: c.id,
+            nome: (c.name ?? c.nome ?? '') as string,
+            codigo: (c.code ?? c.codigo ?? null) as string | null,
+            dias_semana: (raw.schedule_days ?? c.dias_semana ?? null) as string | null,
+            curso: (c.curso ?? null) as string,
+            turno: (raw.schedule ?? c.turno ?? null) as ClassItem['turno'],
+            capacity: (c.capacity ?? null) as number | null,
+            students: (c.students ?? null) as number | null,
+            nivel_id: (raw.nivel_id ?? null) as number | null,
+            // Data de início da turma (necessário para o calendário de pagamentos)
+            data_inicio: (raw.data_inicio ?? raw.start_date ?? null) as string | null,
+          };
+        });
         setClasses(mappedClasses);
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -267,6 +281,7 @@ export function RegistrationStudentModal({
       onChangeField("studentName", student.name || "");
       onChangeField("studentCode", student.username || `MAT${student.id}`);
       onChangeField("registrationType", "new"); // Primeira matrícula
+      onChangeField("isBolsista", !!student["is_bolsista"]);
     }
   }, [isOpen, preSelectedStudentId, students]);
 
@@ -277,6 +292,8 @@ export function RegistrationStudentModal({
     onChangeField("studentId", student.id);
     onChangeField("studentName", student.name || "");
     onChangeField("studentCode", student.username || `MAT${student.id}`);
+    // Pre-populate bolsista flag from student profile
+    onChangeField("isBolsista", !!student["is_bolsista"]);
     setStudentSearch("");
   };
 
@@ -422,7 +439,8 @@ export function RegistrationStudentModal({
       case "payment":
         // 0 is a valid fee (means free). Only block if fee is null/undefined or negative.
         if (!formData.enrollmentFeeIsento && (formData.enrollmentFee == null || Number(formData.enrollmentFee) < 0)) return "Defina a taxa de matrícula";
-        if (!formData.monthlyFee || Number(formData.monthlyFee) <= 0) return "Defina a mensalidade";
+        // Bolsista → mensalidade isenta, não precisa de valor
+        if (!formData.isBolsista && (!formData.monthlyFee || Number(formData.monthlyFee) <= 0)) return "Defina a mensalidade";
         return null;
       case "confirmation":
         return null;
@@ -510,6 +528,10 @@ export function RegistrationStudentModal({
       monthly_fee: formData.monthlyFee,
       observations: formData.observations,
       registration_type: formData.registrationType,
+      is_bolsista: formData.isBolsista || false,
+      bolsa_tipo:     formData.isBolsista ? formData.bolsaTipo    : undefined,
+      bolsa_motivo:   formData.isBolsista ? formData.bolsaMotivo  : undefined,
+      bolsa_desconto: formData.isBolsista ? formData.bolsaDesconto : undefined,
       // Campos de pagamento (ConfirmationTab)
       paid_amount: formData.paidAmount || 0,
       payment_method: formData.paymentMethod || 'cash',
@@ -607,7 +629,7 @@ export function RegistrationStudentModal({
     <Dialog open={isOpen} onOpenChange={() => setShowCancelConfirm(true)}>
       <DialogContent
         className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white"
-        preventOutsideClose={true}
+
         hideCloseButton={true}
       >
         {/* Botão X para fechar */}
@@ -749,6 +771,13 @@ export function RegistrationStudentModal({
                   formData={formData}
                   onChangeField={onChangeField}
                   formatCurrency={formatCurrency}
+                  selectedNivel={selectedNivel}
+                  selectedCourse={selectedCourse as any}
+                  classStartDate={
+                    ((selectedClass as Record<string, unknown>)?.data_inicio as string | null | undefined)
+                    ?? undefined
+                  }
+                  enrollmentDate={(formData.enrollmentDate as string) ?? undefined}
                 />
               )}
 

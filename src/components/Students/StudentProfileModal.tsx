@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -22,9 +21,9 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SectionCard } from "@/components/ui/section-card";
 import {
   User,
   Phone,
@@ -85,10 +84,7 @@ export function StudentProfileModal({
 
   // Password reset state
   const [showPasswordReset, setShowPasswordReset] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    password: '',
-    confirmPassword: ''
-  });
+  const [passwordData, setPasswordData] = useState({ password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -143,7 +139,7 @@ export function StudentProfileModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleEdit = () => { setIsEditing(true); setErrors({}); };
+  const handleEdit   = () => { setIsEditing(true); setErrors({}); };
   const handleCancel = () => {
     setIsEditing(false);
     if (student) {
@@ -169,11 +165,7 @@ export function StudentProfileModal({
   const handleSave = () => {
     if (!validateForm()) return;
     if (student) {
-      const updatedStudent: Student = {
-        ...student,
-        ...formData
-      };
-      onSave(updatedStudent);
+      onSave({ ...student, ...formData });
       setIsEditing(false);
     }
   };
@@ -199,22 +191,18 @@ export function StudentProfileModal({
 
   const handlePasswordReset = () => {
     setPasswordError('');
-
     if (!passwordData.password || !passwordData.confirmPassword) {
       setPasswordError('Preencha ambos os campos de senha');
       return;
     }
-
     if (passwordData.password.length < 6) {
       setPasswordError('A senha deve ter no mínimo 6 caracteres');
       return;
     }
-
     if (passwordData.password !== passwordData.confirmPassword) {
       setPasswordError('As senhas não coincidem');
       return;
     }
-
     if (student?.id && onResetPassword) {
       onResetPassword(student.id, passwordData.password);
       setShowPasswordReset(false);
@@ -223,480 +211,386 @@ export function StudentProfileModal({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(amount);
 
   // ============================================================
   // DEFINIÇÃO DAS TABS
   // ============================================================
   const tabs: ProfileTab[] = [
+
+    // ── PERFIL ────────────────────────────────────────────────
     {
       id: 'perfil',
       label: 'Perfil',
       icon: User,
       color: PROFILE_MODAL_STYLES.tabs.blue,
       content: (
-        <div className="space-y-4">
+        <div className="space-y-5">
+
+          {/* Cartão de identidade */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#004B87] to-[#0066B3] p-5 text-white shadow-lg">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/5" />
+            <div className="pointer-events-none absolute right-4 top-10 h-20 w-20 rounded-full bg-white/5" />
+            <div className="relative flex items-center gap-5">
+              <div className="relative flex-shrink-0">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#F5821F] to-[#FF9933] flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-orange-500/30">
+                  {formData.name?.charAt(0)?.toUpperCase() || 'E'}
+                </div>
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[#004B87]",
+                  formData.status === 'active' ? 'bg-emerald-400' :
+                  formData.status === 'suspended' ? 'bg-amber-400' : 'bg-slate-400'
+                )} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold leading-tight truncate">{formData.name || '—'}</h3>
+                <p className="text-sm text-white/70 truncate mt-0.5">{formData.email || '—'}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
+                    formData.status === 'active'
+                      ? 'bg-emerald-400/20 text-emerald-200 border-emerald-400/30'
+                      : formData.status === 'suspended'
+                        ? 'bg-amber-400/20 text-amber-200 border-amber-400/30'
+                        : 'bg-slate-400/20 text-slate-300 border-slate-400/30'
+                  )}>
+                    {formData.status === 'active' ? '✓ Activo' :
+                     formData.status === 'suspended' ? '⚠ Suspenso' : 'Inactivo'}
+                  </span>
+                  {student.username && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-white/10 text-white/80 border border-white/20">
+                      {student.username}
+                    </span>
+                  )}
+                  {student.phone && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] bg-white/10 text-white/80 border border-white/20">
+                      <Phone className="h-3 w-3" />{student.phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Formulário */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Informações Pessoais */}
-            <Card className="border-2 border-[#004B87]/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-[#004B87] text-sm">
-                  <User className="h-4 w-4" />
-                  Informações Pessoais
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="name" className="text-xs text-slate-700 font-medium">
-                    Nome Completo <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
+
+            <SectionCard icon={User} title="Informações Pessoais" variant="navy" contentPadding="p-5 space-y-3.5">
+
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                  Nome Completo <span className="text-red-500 normal-case">*</span>
+                </Label>
+                <Input id="name" name="name" value={formData.name} onChange={handleInputChange}
+                  disabled={!isEditing}
+                  className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F] focus:ring-[#F5821F]/20")}
+                />
+                {errors.name && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                  Email <span className="text-red-500 normal-case">*</span>
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : "border-[#F5821F] focus:border-[#F5821F]"
-                    )}
-                  />
-                  {errors.name && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</p>}
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs text-slate-700 font-medium">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-9 text-sm pl-10",
-                        !isEditing ? "bg-slate-50" : "border-[#F5821F] focus:border-[#F5821F]"
-                      )}
-                    />
-                  </div>
-                  {errors.email && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="phone" className="text-xs text-slate-700 font-medium">Telefone</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+258 84 000 0000"
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-9 text-sm pl-10",
-                        !isEditing ? "bg-slate-50" : "border-[#F5821F] focus:border-[#F5821F]"
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="birthDate" className="text-xs text-slate-700 font-medium">Data de Nascimento</Label>
-                  <Input
-                    id="birthDate"
-                    name="birthDate"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : "border-[#F5821F] focus:border-[#F5821F]"
-                    )}
+                    className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F] focus:ring-[#F5821F]/20")}
                   />
                 </div>
+                {errors.email && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
+              </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="address" className="text-xs text-slate-700 font-medium">Endereço</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Telefone</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-9 text-sm pl-10",
-                        !isEditing ? "bg-slate-50" : "border-[#F5821F] focus:border-[#F5821F]"
-                      )}
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange}
+                      placeholder="+258 84 000 0000" disabled={!isEditing}
+                      className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2 pt-1">
-                  <Label className="text-xs text-slate-700 font-medium">Status</Label>
-                  <div className="grid grid-cols-3 gap-1">
-                    <Button
-                      type="button"
-                      variant={formData.status === "active" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleStatusChange("active")}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-8 text-xs",
-                        formData.status === "active"
-                          ? "bg-emerald-600 hover:bg-emerald-700"
-                          : "border border-slate-200"
-                      )}
-                    >
-                      Activo
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={formData.status === "suspended" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleStatusChange("suspended")}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-8 text-xs",
-                        formData.status === "suspended"
-                          ? "bg-amber-500 hover:bg-amber-600"
-                          : "border border-slate-200"
-                      )}
-                    >
-                      Suspenso
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={formData.status === "inactive" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleStatusChange("inactive")}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-8 text-xs",
-                        formData.status === "inactive"
-                          ? "bg-slate-400 hover:bg-slate-500"
-                          : "border border-slate-200"
-                      )}
-                    >
-                      Inactivo
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contatos de Emergência */}
-            <Card className="border-2 border-red-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-red-600 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  Contatos de Emergência
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="parentName" className="text-xs text-slate-700 font-medium">Nome do Responsável</Label>
-                  <Input
-                    id="parentName"
-                    name="parentName"
-                    value={formData.parentName}
-                    onChange={handleInputChange}
+                <div className="space-y-1.5">
+                  <Label htmlFor="birthDate" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nascimento</Label>
+                  <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : "border-[#004B87] focus:border-[#004B87]"
-                    )}
+                    className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
                   />
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="parentPhone" className="text-xs text-slate-700 font-medium">Telefone do Responsável</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="parentPhone"
-                      name="parentPhone"
-                      value={formData.parentPhone}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-9 text-sm pl-10",
-                        !isEditing ? "bg-slate-50" : "border-[#004B87] focus:border-[#004B87]"
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="emergencyContact" className="text-xs text-slate-700 font-medium">Contato de Emergência</Label>
-                  <Input
-                    id="emergencyContact"
-                    name="emergencyContact"
-                    value={formData.emergencyContact}
-                    onChange={handleInputChange}
+              <div className="space-y-1.5">
+                <Label htmlFor="address" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Endereço</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input id="address" name="address" value={formData.address} onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : "border-[#004B87] focus:border-[#004B87]"
-                    )}
+                    className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
                   />
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="emergencyPhone" className="text-xs text-slate-700 font-medium">Telefone de Emergência</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="emergencyPhone"
-                      name="emergencyPhone"
-                      value={formData.emergencyPhone}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className={cn(
-                        "h-9 text-sm pl-10",
-                        !isEditing ? "bg-slate-50" : "border-[#004B87] focus:border-[#004B87]"
-                      )}
-                    />
-                  </div>
+            </SectionCard>
+
+            <SectionCard icon={AlertCircle} title="Contactos de Emergência" variant="red" contentPadding="p-5 space-y-3.5">
+
+              <div className="space-y-1.5">
+                <Label htmlFor="parentName" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nome do Responsável</Label>
+                <Input id="parentName" name="parentName" value={formData.parentName} onChange={handleInputChange}
+                  disabled={!isEditing}
+                  className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="parentPhone" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Telefone do Responsável</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input id="parentPhone" name="parentPhone" value={formData.parentPhone} onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Dados de Acesso */}
-            <Card className="border-2 border-[#F5821F]/20 lg:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-[#F5821F] text-sm">
-                  <Lock className="h-4 w-4" />
-                  Dados de Acesso
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50 to-white border-2 border-[#F5821F]/20 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-lg flex items-center justify-center">
-                      <Key className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-slate-800">Senha de Acesso</p>
-                      <p className="text-xs text-slate-500">Última alteração: 15/02/2026</p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => setShowPasswordReset(true)}
-                    variant="outline"
-                    size="sm"
-                    className="border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white h-8 text-xs"
+              <div className="space-y-1.5">
+                <Label htmlFor="emergencyContact" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Contato de Emergência</Label>
+                <Input id="emergencyContact" name="emergencyContact" value={formData.emergencyContact} onChange={handleInputChange}
+                  disabled={!isEditing}
+                  className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="emergencyPhone" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Telefone de Emergência</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input id="emergencyPhone" name="emergencyPhone" value={formData.emergencyPhone} onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+                  />
+                </div>
+              </div>
+
+            </SectionCard>
+          </div>
+
+          {/* Estado + Acesso */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            <SectionCard icon={CheckCircle} title="Estado da Conta" variant="emerald">
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: 'active',    label: 'Activo',   activeClass: 'bg-emerald-500 text-white border-emerald-500 shadow-emerald-200', inactiveClass: 'border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600' },
+                  { value: 'suspended', label: 'Suspenso', activeClass: 'bg-amber-500 text-white border-amber-500 shadow-amber-200',       inactiveClass: 'border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-600'   },
+                  { value: 'inactive',  label: 'Inactivo', activeClass: 'bg-slate-500 text-white border-slate-500 shadow-slate-200',       inactiveClass: 'border-slate-200 text-slate-500 hover:border-slate-400'                       },
+                ] as const).map((s) => (
+                  <button key={s.value} type="button"
+                    onClick={() => handleStatusChange(s.value)}
+                    disabled={!isEditing}
+                    className={cn(
+                      "py-2.5 rounded-xl border-2 text-xs font-bold transition-all shadow-sm",
+                      formData.status === s.value ? s.activeClass + ' shadow' : s.inactiveClass,
+                      !isEditing && 'opacity-70 cursor-default'
+                    )}
                   >
-                    <Lock className="h-3 w-3 mr-1" />
-                    Resetar Senha
-                  </Button>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              icon={Lock}
+              title="Dados de Acesso"
+              variant="orange"
+              headerAction={
+                <Button onClick={() => setShowPasswordReset(true)} variant="outline" size="sm"
+                  className="h-8 text-xs border-2 border-[#F5821F]/50 text-[#F5821F] hover:bg-[#F5821F] hover:text-white rounded-lg transition-all"
+                >
+                  <Lock className="h-3 w-3 mr-1" /> Resetar
+                </Button>
+              }
+            >
+              <div className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-orange-50 to-white rounded-xl border border-[#F5821F]/15">
+                <div className="h-10 w-10 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Key className="h-5 w-5 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="font-semibold text-sm text-slate-800">Utilizador</p>
+                  <p className="text-xs text-slate-400 font-mono">{student.username || '—'}</p>
+                </div>
+              </div>
+            </SectionCard>
+
           </div>
         </div>
       )
     },
+
+    // ── ACADÉMICO ─────────────────────────────────────────────
     {
       id: 'academico',
-      label: 'Acadêmico',
+      label: 'Académico',
       icon: GraduationCap,
       color: PROFILE_MODAL_STYLES.tabs.orange,
       content: (
-        <div className="space-y-4">
-          <Card className="border-2 border-[#F5821F]/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-[#F5821F] text-sm">
-                <GraduationCap className="h-4 w-4" />
-                Informações Acadêmicas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="level" className="text-xs text-slate-700 font-medium">Nível</Label>
-                  <Select
-                    value={formData.level}
-                    onValueChange={(value) => handleSelectChange('level', value)}
-                    disabled={!isEditing}
-                  >
-                    <SelectTrigger className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : ""
-                    )}>
-                      <SelectValue placeholder="Selecionar nível" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A1">A1 - Básico</SelectItem>
-                      <SelectItem value="A2">A2 - Elementar</SelectItem>
-                      <SelectItem value="B1">B1 - Intermediário</SelectItem>
-                      <SelectItem value="B2">B2 - Intermediário Superior</SelectItem>
-                      <SelectItem value="C1">C1 - Avançado</SelectItem>
-                      <SelectItem value="C2">C2 - Proficiência</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        <div className="space-y-5">
 
-                <div className="space-y-1">
-                  <Label htmlFor="enrollmentDate" className="text-xs text-slate-700 font-medium">Data de Matrícula</Label>
-                  <Input
-                    id="enrollmentDate"
-                    name="enrollmentDate"
-                    type="date"
-                    value={formData.enrollmentDate}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={cn(
-                      "h-9 text-sm",
-                      !isEditing ? "bg-slate-50" : "border-[#004B87] focus:border-[#004B87]"
-                    )}
-                  />
-                </div>
+          <SectionCard icon={GraduationCap} title="Informações Académicas" variant="orange" contentPadding="p-5 space-y-4">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="level" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nível</Label>
+                <Select value={formData.level} onValueChange={(v) => handleSelectChange('level', v)} disabled={!isEditing}>
+                  <SelectTrigger className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "")}>
+                    <SelectValue placeholder="Selecionar nível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A1">A1 — Básico</SelectItem>
+                    <SelectItem value="A2">A2 — Elementar</SelectItem>
+                    <SelectItem value="B1">B1 — Intermédio</SelectItem>
+                    <SelectItem value="B2">B2 — Intermédio Superior</SelectItem>
+                    <SelectItem value="C1">C1 — Avançado</SelectItem>
+                    <SelectItem value="C2">C2 — Proficiência</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="notes" className="text-xs text-slate-700 font-medium">Observações</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleTextareaChange}
-                  className={cn(
-                    "text-sm h-20 resize-none",
-                    !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87] focus:border-[#004B87] focus:outline-none"
-                  )}
-                  disabled={!isEditing}
+              <div className="space-y-1.5">
+                <Label htmlFor="enrollmentDate" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Data de Matrícula</Label>
+                <Input id="enrollmentDate" name="enrollmentDate" type="date" value={formData.enrollmentDate}
+                  onChange={handleInputChange} disabled={!isEditing}
+                  className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Turma Atual */}
-          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-[#004B87] text-sm">
-                <BookOpen className="h-4 w-4" />
-                Turma Atual
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-white border-2 border-slate-200 rounded-lg text-center">
-                  <p className="text-xs text-slate-600 font-semibold mb-1">Turma</p>
-                  <p className="font-bold text-sm text-[#004B87]">{student.className || 'N/A'}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Observações</Label>
+              <Textarea id="notes" name="notes" value={formData.notes} onChange={handleTextareaChange}
+                disabled={!isEditing} rows={3}
+                className={cn("text-sm resize-none rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+              />
+            </div>
+
+          </SectionCard>
+
+          <SectionCard icon={BookOpen} title="Turma Actual" variant="navy">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Turma',   value: student.className || 'N/A' },
+                { label: 'Horário', value: 'Seg/Qua' },
+                { label: 'Sala',    value: '105' },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-100 text-center gap-1">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{item.label}</p>
+                  <p className="font-bold text-base text-[#004B87]">{item.value}</p>
                 </div>
-                <div className="p-3 bg-white border-2 border-slate-200 rounded-lg text-center">
-                  <p className="text-xs text-slate-600 font-semibold mb-1">Horário</p>
-                  <p className="font-semibold text-xs text-slate-700">Seg/Qua</p>
-                  <p className="text-xs text-slate-500">14:00-15:30</p>
-                </div>
-                <div className="p-3 bg-white border-2 border-slate-200 rounded-lg text-center">
-                  <p className="text-xs text-slate-600 font-semibold mb-1">Sala</p>
-                  <p className="font-bold text-lg text-[#004B87]">105</p>
-                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={DollarSign} title="Resumo Financeiro" variant="green" contentPadding="p-5 space-y-4">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-100 text-center gap-1">
+                <p className="text-[11px] font-semibold text-green-500 uppercase tracking-wider">Mensalidade</p>
+                <p className="text-xl font-black text-green-700">{formatCurrency(performanceData.monthlyFee)}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-100 text-center gap-1">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Pago</p>
+                <p className="text-xl font-black text-[#004B87]">{formatCurrency(performanceData.totalPaid)}</p>
+              </div>
+            </div>
 
-          {/* Informações Financeiras */}
-          <Card className="border-2 border-green-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-green-600 text-sm">
+            <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+              <span className="text-sm font-semibold text-green-700">Situação financeira</span>
+              <Badge className="bg-green-500 hover:bg-green-600 text-xs gap-1">
+                <CheckCircle className="h-3 w-3" /> Em Dia
+              </Badge>
+            </div>
+
+            {onViewPaymentDetails && (
+              <button
+                onClick={() => onViewPaymentDetails(student)}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+              >
                 <DollarSign className="h-4 w-4" />
-                Resumo Financeiro
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-white border-2 border-green-200 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(performanceData.monthlyFee)}
-                </div>
-                <div className="text-xs text-slate-600 font-medium mt-1">Mensalidade</div>
-              </div>
+                Ver Histórico Completo
+              </button>
+            )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
-                  <p className="text-xs text-green-700 font-semibold mb-1">Total Pago</p>
-                  <p className="text-base font-bold text-green-600">
-                    {formatCurrency(performanceData.totalPaid)}
-                  </p>
-                </div>
-                <div className="p-3 border-2 border-slate-200 rounded-lg">
-                  <p className="text-xs text-slate-600 font-semibold mb-1">Status</p>
-                  <Badge className="bg-green-500 hover:bg-green-600 text-xs">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Em Dia
-                  </Badge>
-                </div>
-              </div>
+          </SectionCard>
 
-              {onViewPaymentDetails && (
-                <Button
-                  onClick={() => onViewPaymentDetails(student)}
-                  className="w-full bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white h-9 text-sm"
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Ver Histórico Completo
-                </Button>
-              )}
-            </CardContent>
-          </Card>
         </div>
       )
     },
+
+    // ── HISTÓRICO ─────────────────────────────────────────────
     {
       id: 'historico',
       label: 'Histórico',
       icon: Activity,
       color: PROFILE_MODAL_STYLES.tabs.purple,
       content: (
-        <Card className="border-2 border-purple-500/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-purple-600 text-sm">
-              <Activity className="h-4 w-4" />
-              Histórico de Desempenho
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="space-y-5">
+
+          <SectionCard icon={Activity} title="Desempenho Académico" variant="purple" contentPadding="p-5 space-y-4">
+
             <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                <div className="text-3xl font-bold text-green-600">
-                  {performanceData.currentGrade.toFixed(1)}
-                </div>
-                <div className="text-xs text-green-700 font-medium mt-1">Nota Atual</div>
+              <div className="flex flex-col items-center justify-center p-5 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-100 text-center gap-1">
+                <p className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider">Nota Actual</p>
+                <p className="text-3xl font-black text-purple-700">{performanceData.currentGrade.toFixed(1)}</p>
+                <p className="text-[10px] text-purple-500">em 20 pontos</p>
               </div>
-
-              <div className="text-center p-4 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-lg">
-                <div className="text-3xl font-bold text-white">
-                  {performanceData.attendance}%
-                </div>
-                <div className="text-xs text-white/90 font-medium mt-1">Presença</div>
+              <div className="flex flex-col items-center justify-center p-5 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl text-center gap-1 shadow-md shadow-blue-900/15">
+                <p className="text-[11px] font-semibold text-white/70 uppercase tracking-wider">Presença</p>
+                <p className="text-3xl font-black text-white">{performanceData.attendance}%</p>
+                <p className="text-[10px] text-white/60">assistência geral</p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                <span className="text-xs text-slate-600 font-medium">Aulas Assistidas</span>
-                <span className="font-bold text-xs text-[#004B87]">
-                  {performanceData.attendedLessons}/{performanceData.totalLessons}
-                </span>
+            <div className="flex items-center justify-between px-4 py-3.5 bg-blue-50/60 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 bg-[#004B87]/10 rounded-lg flex items-center justify-center">
+                  <BookOpen className="h-4 w-4 text-[#004B87]" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700">Aulas Assistidas</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-base text-[#004B87]">{performanceData.attendedLessons}</span>
+                <span className="text-slate-400 text-sm">/</span>
+                <span className="font-semibold text-sm text-slate-500">{performanceData.totalLessons}</span>
+                <span className="text-xs text-slate-400 ml-1">aulas</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-medium">Taxa de Presença</span>
+                <span className="text-xs font-bold text-[#004B87]">{performanceData.attendance}%</span>
+              </div>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#004B87] to-[#0066B3] rounded-full transition-all"
+                  style={{ width: `${performanceData.attendance}%` }}
+                />
+              </div>
+            </div>
+
+          </SectionCard>
+
+          {formData.notes && (
+            <SectionCard icon={BookOpen} title="Observações do Perfil" variant="slate">
+              <p className="text-sm text-slate-600 leading-relaxed">{formData.notes}</p>
+            </SectionCard>
+          )}
+
+        </div>
       )
     }
   ];
@@ -719,103 +613,106 @@ export function StudentProfileModal({
         showEditButton={true}
       />
 
-      {/* Password Reset Dialog */}
+      {/* ============================================================ */}
+      {/* MODAL DE RESET DE SENHA                                       */}
+      {/* ============================================================ */}
       <AlertDialog open={showPasswordReset} onOpenChange={setShowPasswordReset}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-xl flex items-center justify-center">
+        <AlertDialogContent className="max-w-md p-0 overflow-hidden gap-0">
+
+          {/* Gradient Header */}
+          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] p-5">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/25 flex-shrink-0">
                 <Lock className="h-6 w-6 text-white" />
               </div>
               <div>
-                <AlertDialogTitle className="text-[#004B87]">Resetar Senha</AlertDialogTitle>
-                <AlertDialogDescription className="text-xs">
-                  Defina uma nova senha para {student?.name}
+                <AlertDialogTitle className="text-white font-bold text-base leading-tight m-0 p-0">
+                  Resetar Senha
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-white/70 text-xs mt-0.5">
+                  Nova senha para <span className="font-semibold text-white/90">{student?.name}</span>
                 </AlertDialogDescription>
               </div>
             </div>
-          </AlertDialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs text-slate-700 font-semibold">Nova Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={passwordData.password}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, password: e.target.value }))}
-                  className="pl-10 pr-10 h-9 text-sm"
-                  placeholder="Digite a nova senha"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-slate-700"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-xs text-slate-700 font-semibold">Confirmar Nova Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="pl-10 pr-10 h-9 text-sm"
-                  placeholder="Confirme a nova senha"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-slate-700"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {passwordError && (
-              <div className="p-3 bg-red-50 border-2 border-red-200 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <p className="text-xs text-red-700">{passwordError}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="p-3 bg-amber-50 border-2 border-amber-200 rounded-lg space-y-1">
-              <p className="text-xs text-amber-800 font-semibold">O que acontece após o reset:</p>
-              <p className="text-xs text-amber-700 leading-relaxed">
-                O estudante fará login com a senha temporária definida aqui e será obrigado a criar uma nova senha pessoal antes de aceder ao sistema.
-              </p>
-            </div>
           </div>
 
-          <AlertDialogFooter>
+          {/* Form Body */}
+          <div className="p-5 space-y-4 bg-slate-50/40">
+
+            <SectionCard icon={Key} title="Nova Senha de Acesso" variant="orange" contentPadding="p-4 space-y-3">
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nova Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={passwordData.password}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, password: e.target.value }))}
+                    className="h-10 text-sm pl-9 pr-10 rounded-xl border-[#F5821F]/50 focus:border-[#F5821F]"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Confirmar Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="h-10 text-sm pl-9 pr-10 rounded-xl border-[#F5821F]/50 focus:border-[#F5821F]"
+                    placeholder="Repetir senha"
+                  />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors">
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {passwordError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-200">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-xs text-red-600">{passwordError}</p>
+                </div>
+              )}
+
+            </SectionCard>
+
+            <SectionCard icon={AlertCircle} title="Atenção" variant="amber" contentPadding="p-4">
+              <p className="text-xs text-amber-700 leading-relaxed">
+                O estudante fará login com a senha temporária e será obrigado a criar uma nova senha pessoal antes de aceder ao sistema.
+              </p>
+            </SectionCard>
+
+          </div>
+
+          {/* Footer */}
+          <AlertDialogFooter className="px-5 py-4 bg-white border-t border-slate-200 sm:space-x-0 gap-2">
             <AlertDialogCancel
               onClick={() => {
                 setPasswordData({ password: '', confirmPassword: '' });
                 setPasswordError('');
               }}
-              className="text-xs h-9"
+              className="h-9 px-4 text-sm border border-slate-300 rounded-lg mt-0"
             >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handlePasswordReset}
-              className="bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white text-xs h-9"
+              className="h-9 px-5 text-sm rounded-lg bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-semibold border-0"
             >
-              <Key className="h-3 w-3 mr-1" />
-              Confirmar
+              <Key className="h-3.5 w-3.5 mr-1.5" /> Confirmar Reset
             </AlertDialogAction>
           </AlertDialogFooter>
+
         </AlertDialogContent>
       </AlertDialog>
     </>

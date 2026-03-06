@@ -2,13 +2,9 @@
 // Usado por todos os modais de perfil: Teacher, Student, Course, etc.
 
 import React, { ReactNode } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Edit, Save, X, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GradientButton } from "@/components/ui/gradient-button";
 
 // ============================================================
 // TIPOS
@@ -18,37 +14,38 @@ export interface ProfileTab {
   id: string;
   label: string;
   icon: LucideIcon;
-  color: string; // Ex: "#004B87", "#F5821F", "purple-500"
+  color: string;
   content: ReactNode;
 }
 
 export interface ProfileModalBaseProps {
-  // Controle do modal
   isOpen: boolean;
   onClose: () => void;
-
-  // Header
   title: string;
   headerIcon: LucideIcon;
   status?: 'active' | 'inactive' | 'suspended';
-  customBadge?: ReactNode; // Badge customizado opcional
-
-  // Edição
+  customBadge?: ReactNode;
   isEditing: boolean;
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
-
-  // Tabs
   tabs: ProfileTab[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
-
-  // Customização (opcional)
-  showEditButton?: boolean; // Default: true
+  showEditButton?: boolean;
   headerSubtitle?: string;
-  maxWidth?: string; // Default: "3xl"
+  maxWidth?: string;
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+const STATUS_CONFIG = {
+  active:    { dot: 'bg-emerald-400', badge: 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30', label: 'Activo' },
+  inactive:  { dot: 'bg-slate-400',   badge: 'bg-slate-500/20 text-slate-300 border border-slate-400/30',       label: 'Inactivo' },
+  suspended: { dot: 'bg-amber-400',   badge: 'bg-amber-500/20 text-amber-200 border border-amber-400/30',       label: 'Suspenso' },
+};
 
 // ============================================================
 // COMPONENTE BASE
@@ -70,176 +67,147 @@ export function ProfileModalBase({
   onTabChange,
   showEditButton = true,
   headerSubtitle,
-  maxWidth = "3xl"
+  maxWidth = "3xl",
 }: ProfileModalBaseProps) {
 
-  // Helper para cor do status
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'active': return 'bg-emerald-500';
-      case 'inactive': return 'bg-slate-400';
-      case 'suspended': return 'bg-amber-500';
-      default: return 'bg-slate-400';
-    }
-  };
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'active': return '✓ Activo';
-      case 'inactive': return 'Inactivo';
-      case 'suspended': return '⚠ Suspenso';
-      default: return 'N/A';
-    }
-  };
-
-  // Helper para cor da tab
-  const getTabBorderColor = (color: string) => {
-    // Se já é uma classe Tailwind completa (ex: "purple-500")
-    if (color.includes('-')) return color;
-    // Se é uma cor hex (ex: "#004B87")
-    return color;
-  };
+  const statusCfg = status ? STATUS_CONFIG[status] : null;
+  const initials = title?.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={cn(
-        "max-h-[90vh] p-0 flex flex-col",
-        `sm:max-w-${maxWidth}`
+        "p-0 flex flex-col overflow-hidden border-0 shadow-2xl rounded-2xl",
+        maxWidth === "3xl" ? "sm:max-w-4xl max-h-[90vh]" : `sm:max-w-${maxWidth} max-h-[90vh]`
       )}>
-        {/* ============================================================ */}
-        {/* HEADER - CORES ISAC (SÓ AZUL) */}
-        {/* ============================================================ */}
-        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] p-4 rounded-t-lg flex-shrink-0">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between text-white">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                  <HeaderIcon className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <span className="text-lg font-bold block">{title}</span>
-                  {headerSubtitle && (
-                    <span className="text-xs text-white/80 block mt-0.5">{headerSubtitle}</span>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    {/* Badge de status padrão */}
-                    {status && !customBadge && (
-                      <Badge className={cn(
-                        "text-[10px] px-2 py-0.5 border-0",
-                        getStatusColor(status)
-                      )}>
-                        {getStatusText(status)}
-                      </Badge>
-                    )}
+        <DialogTitle className="sr-only">{title}</DialogTitle>
 
-                    {/* Badge customizado */}
-                    {customBadge}
+        {/* ── HEADER ─────────────────────────────────────── */}
+        <div className="relative bg-gradient-to-br from-[#003A6B] via-[#004B87] to-[#0066B3] flex-shrink-0 overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
+          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/5" />
+          <div className="absolute top-2 right-24 h-10 w-10 rounded-full bg-[#F5821F]/15" />
 
-                    {/* Badge de edição */}
-                    {isEditing && (
-                      <Badge className="bg-white/90 text-[#004B87] text-[10px] px-2 py-0.5">
-                        <Edit className="h-3 w-3 mr-1" /> Editando
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+          <div className="relative px-6 pt-5 pb-4 flex items-center gap-4">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#F5821F] to-[#FF9933] flex items-center justify-center shadow-lg shadow-orange-500/30 font-black text-2xl text-white select-none">
+                {initials || <HeaderIcon className="h-7 w-7" />}
               </div>
-            </DialogTitle>
-          </DialogHeader>
-        </div>
-
-        {/* ============================================================ */}
-        {/* TABS */}
-        {/* ============================================================ */}
-        <div className="bg-[#F5F5DC] border-b border-slate-200 px-4 py-3 flex-shrink-0">
-          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-            <TabsList className="w-full h-auto bg-transparent p-0 gap-2 justify-start flex-wrap">
-              {tabs.map((tab) => {
-                const TabIcon = tab.icon;
-                const isActive = activeTab === tab.id;
-
-                // Determina a cor da borda baseado na cor fornecida
-                let borderColorClass = '';
-                let textColorClass = '';
-
-                if (tab.color.startsWith('#')) {
-                  // Cor hex - usa as cores ISAC padrão
-                  if (tab.color === '#004B87') {
-                    borderColorClass = 'data-[state=active]:border-[#004B87] data-[state=active]:text-[#004B87]';
-                  } else if (tab.color === '#F5821F') {
-                    borderColorClass = 'data-[state=active]:border-[#F5821F] data-[state=active]:text-[#F5821F]';
-                  } else {
-                    borderColorClass = 'data-[state=active]:border-[#004B87] data-[state=active]:text-[#004B87]';
-                  }
-                } else {
-                  // Classe Tailwind (ex: "purple-500", "green-600")
-                  borderColorClass = `data-[state=active]:border-${tab.color} data-[state=active]:text-${tab.color.replace('-', '-')}`;
-                }
-
-                return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-transparent",
-                      "data-[state=active]:bg-white data-[state=active]:shadow",
-                      "hover:bg-white/50 transition-all text-slate-600 font-medium",
-                      borderColorClass
-                    )}
-                  >
-                    <TabIcon className="h-4 w-4" />
-                    {tab.label}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-
-            {/* ============================================================ */}
-            {/* CONTEÚDO SCROLLABLE */}
-            {/* ============================================================ */}
-            <div className="mt-4 max-h-[calc(90vh-280px)] overflow-y-auto px-1">
-              {tabs.map((tab) => (
-                <TabsContent key={tab.id} value={tab.id} className="mt-0">
-                  {tab.content}
-                </TabsContent>
-              ))}
-            </div>
-          </Tabs>
-        </div>
-
-        {/* ============================================================ */}
-        {/* FOOTER */}
-        {/* ============================================================ */}
-        <div className="flex justify-end gap-2 p-3 border-t border-slate-200 bg-slate-50 flex-shrink-0">
-          {isEditing ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={onCancel}
-                className="h-9 px-4 text-sm border border-slate-300"
-              >
-                <X className="h-3 w-3 mr-1" /> Cancelar
-              </Button>
-              <GradientButton onClick={onSave} size="sm">
-                <Save className="h-3 w-3 mr-1" /> Guardar
-              </GradientButton>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="h-9 px-4 text-sm border border-slate-300"
-              >
-                Fechar
-              </Button>
-              {showEditButton && (
-                <GradientButton onClick={onEdit} variant="navy" size="sm">
-                  <Edit className="h-3 w-3 mr-1" /> Editar
-                </GradientButton>
+              {statusCfg && (
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[#004B87]",
+                  statusCfg.dot
+                )} />
               )}
-            </>
-          )}
+            </div>
+
+            {/* Info */}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold text-white leading-tight truncate">{title}</h2>
+              {headerSubtitle && (
+                <p className="text-sm text-white/70 mt-0.5 truncate">{headerSubtitle}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {statusCfg && !customBadge && (
+                  <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold", statusCfg.badge)}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", statusCfg.dot)} />
+                    {statusCfg.label}
+                  </span>
+                )}
+                {customBadge}
+                {isEditing && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F5821F]/20 text-orange-200 border border-orange-400/30">
+                    <Edit className="h-3 w-3" /> A editar
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* ── TAB BAR ────────────────────────────────────── */}
+          <div className="px-6 flex gap-1">
+            {tabs.map(tab => {
+              const TabIcon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl transition-all",
+                    isActive
+                      ? "bg-white text-[#004B87] shadow-sm"
+                      : "text-white/60 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <TabIcon className="h-3.5 w-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── CONTENT ─────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="p-5">
+            {tabs.map(tab => (
+              <div key={tab.id} className={activeTab === tab.id ? undefined : 'hidden'}>
+                {tab.content}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── FOOTER ──────────────────────────────────────── */}
+        <div className="flex-shrink-0 bg-white border-t border-slate-100 px-5 py-3 flex items-center justify-between">
+          <div className="text-xs text-slate-400">
+            {isEditing ? 'Edite os campos acima e clique em Guardar' : 'Visualização do perfil'}
+          </div>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={onCancel}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={onSave}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white text-sm font-bold hover:from-[#E07318] hover:to-[#F58820] transition-colors shadow-sm"
+                >
+                  <Save className="h-3.5 w-3.5" /> Guardar
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                {showEditButton && (
+                  <button
+                    onClick={onEdit}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white text-sm font-bold hover:from-[#003868] hover:to-[#004B87] transition-colors shadow-sm"
+                  >
+                    <Edit className="h-3.5 w-3.5" /> Editar
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -247,11 +215,10 @@ export function ProfileModalBase({
 }
 
 // ============================================================
-// ESTILOS COMPARTILHADOS (constantes para reutilização)
+// ESTILOS COMPARTILHADOS
 // ============================================================
 
 export const PROFILE_MODAL_STYLES = {
-  // Cores das tabs
   tabs: {
     blue: '#004B87',
     orange: '#F5821F',
@@ -259,29 +226,35 @@ export const PROFILE_MODAL_STYLES = {
     green: 'green-500',
     red: 'red-500',
   },
-
-  // Classes de cards
   card: {
-    blue: 'border-2 border-[#004B87]/20',
-    orange: 'border-2 border-[#F5821F]/20',
-    purple: 'border-2 border-purple-500/20',
-    green: 'border-2 border-green-200',
-    red: 'border-2 border-red-200',
-    neutral: 'border-2 border-slate-200',
+    blue:    'border border-slate-200 bg-white rounded-xl shadow-sm',
+    orange:  'border border-slate-200 bg-white rounded-xl shadow-sm',
+    purple:  'border border-slate-200 bg-white rounded-xl shadow-sm',
+    green:   'border border-slate-200 bg-white rounded-xl shadow-sm',
+    red:     'border border-slate-200 bg-white rounded-xl shadow-sm',
+    neutral: 'border border-slate-200 bg-white rounded-xl shadow-sm',
   },
-
-  // Classes de título de card
   cardTitle: {
-    blue: 'text-[#004B87] text-sm',
-    orange: 'text-[#F5821F] text-sm',
-    purple: 'text-purple-600 text-sm',
-    green: 'text-green-600 text-sm',
-    red: 'text-red-600 text-sm',
+    blue:   'text-[#004B87] text-sm font-semibold',
+    orange: 'text-[#F5821F] text-sm font-semibold',
+    purple: 'text-purple-600 text-sm font-semibold',
+    green:  'text-green-600 text-sm font-semibold',
+    red:    'text-red-600 text-sm font-semibold',
   },
-
-  // Classes de input quando está editando
   input: {
-    blue: 'border-[#004B87] focus:border-[#004B87]',
-    orange: 'border-[#F5821F] focus:border-[#F5821F]',
+    blue:   'border-[#004B87]/40 focus:border-[#004B87] focus:ring-2 focus:ring-[#004B87]/15',
+    orange: 'border-[#F5821F]/40 focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/15',
   },
 };
+
+// Helper: campo em modo de visualização
+export function InfoDisplay({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</p>
+      <div className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 min-h-[36px] flex items-center">
+        <span className="text-sm text-slate-800 font-medium">{value || <span className="text-slate-400 font-normal">—</span>}</span>
+      </div>
+    </div>
+  );
+}

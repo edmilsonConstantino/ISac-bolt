@@ -217,7 +217,7 @@ export function ClassModal({
       }
     } catch (error) {
       console.error('Erro ao carregar estudantes:', error);
-      toast.error('Erro ao conectar com o servidor');
+      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
     } finally {
       setIsLoadingStudents(false);
     }

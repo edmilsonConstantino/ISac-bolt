@@ -1,14 +1,14 @@
-import { useState, ComponentType } from "react";
+import { useState, useEffect, ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmModal } from "@/components/shared/reusable/ConfirmModal";
 import { toast } from "sonner";
 import {
   Lock,
   Shield,
   Copy,
   RefreshCw,
-  AlertTriangle,
   Key,
   Calendar,
   Clock,
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SystemUser } from "../Users/UsersList";
 import apiClient from "@/services/api";
+import userService from "@/services/userService";
 
 interface UserCredentialsModalProps {
   isOpen: boolean;
@@ -38,6 +39,32 @@ export function UserCredentialsModal({
   const [isResetting, setIsResetting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [lastAccess, setLastAccess] = useState<string | null>(null);
+  const [loadingLastAccess, setLoadingLastAccess] = useState(false);
+
+  // Busca o último acesso ao abrir — usa lastLogin do user object ou vai buscar ao access_logs
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    if (user.lastLogin) {
+      setLastAccess(user.lastLogin);
+      return;
+    }
+
+    setLoadingLastAccess(true);
+    userService.getAccessLogs({
+      user_id: user.id,
+      user_type: user.role,
+      status: 'success',
+      limit: 1,
+    })
+      .then(response => {
+        const latest = response.data[0];
+        setLastAccess(latest?.created_at ?? null);
+      })
+      .catch(() => setLastAccess(null))
+      .finally(() => setLoadingLastAccess(false));
+  }, [isOpen, user]);
 
   if (!user) return null;
 
@@ -52,19 +79,15 @@ export function UserCredentialsModal({
       toast.error("Não foi possível determinar a senha temporária.");
       return;
     }
-
     setIsResetting(true);
     try {
-      // Chamar API conforme o tipo de utilizador
       if (user.role === 'student') {
         await apiClient.put('/api/students.php', { id: user.id, password: tempPassword });
       } else if (user.role === 'teacher') {
         await apiClient.put('/api/professores.php', { id: user.id, password: tempPassword });
       } else {
-        // admin / academic_admin
         await apiClient.put('/api/users.php', { id: user.id, senha: tempPassword });
       }
-
       if (onResetPassword) onResetPassword(user.id);
       setResetDone(true);
       setConfirmReset(false);
@@ -80,31 +103,16 @@ export function UserCredentialsModal({
   const handleClose = () => {
     setConfirmReset(false);
     setResetDone(false);
+    setLastAccess(null);
     onClose();
   };
 
   const getRoleInfo = () => {
-    const roles: Record<string, { label: string; icon: ComponentType<{ className?: string }>; gradient: string }> = {
-      admin: {
-        label: "Super Admin",
-        icon: Shield,
-        gradient: "from-red-500 to-rose-600",
-      },
-      academic_admin: {
-        label: "Academic Admin",
-        icon: Briefcase,
-        gradient: "from-purple-500 to-violet-600",
-      },
-      teacher: {
-        label: "Docente",
-        icon: Users,
-        gradient: "from-blue-500 to-cyan-600",
-      },
-      student: {
-        label: "Estudante",
-        icon: GraduationCap,
-        gradient: "from-green-500 to-emerald-600",
-      }
+    const roles: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
+      admin:          { label: "Super Admin",    icon: Shield      },
+      academic_admin: { label: "Academic Admin", icon: Briefcase   },
+      teacher:        { label: "Docente",        icon: Users       },
+      student:        { label: "Estudante",      icon: GraduationCap },
     };
     return roles[user.role] || roles.student;
   };
@@ -114,210 +122,168 @@ export function UserCredentialsModal({
   const hasFirstAccess = user.role === 'student' || user.role === 'teacher';
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
-        {/* Header */}
-        <div className={`bg-gradient-to-r ${roleInfo.gradient} px-6 pt-6 pb-8 relative`}>
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Credenciais de Acesso
-              </DialogTitle>
-            </DialogHeader>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
 
-            <div className="mt-4 flex items-center gap-4">
-              <div className="h-14 w-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/30">
-                <span className="text-white font-bold text-2xl">
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-4 py-3 rounded-t-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-white">
+              <div className="relative flex-shrink-0">
+                <div className="h-10 w-10 bg-gradient-to-br from-[#F5821F] to-[#FF9933] rounded-xl flex items-center justify-center font-black text-lg text-white shadow-lg shadow-orange-500/25">
                   {user.name.charAt(0).toUpperCase()}
-                </span>
+                </div>
+                <div className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#004B87] ${user.status === 'active' ? 'bg-emerald-400' : 'bg-slate-400'}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-white truncate">{user.name}</h3>
-                <p className="text-white/80 text-sm truncate">{user.username || user.email || 'Sem identificador'}</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <Badge className="bg-white/20 text-white border-white/30 text-xs backdrop-blur-sm">
+                <span className="text-sm font-bold block leading-tight truncate">{user.name}</span>
+                <span className="text-xs text-white/70 font-mono block mt-0.5 truncate">
+                  {user.username || user.email || 'Sem identificador'}
+                </span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Badge className="bg-white/20 text-white border-white/30 text-[10px] px-1.5 py-0">
                     <RoleIcon className="h-3 w-3 mr-1" />
                     {roleInfo.label}
                   </Badge>
-                  <Badge className={`text-xs ${
-                    user.status === "active"
-                      ? "bg-green-400/30 text-green-100 border-green-400/40"
-                      : "bg-gray-400/30 text-gray-200 border-gray-400/40"
+                  <Badge className={`text-[10px] px-1.5 py-0 ${
+                    user.status === 'active'
+                      ? 'bg-emerald-400/25 text-emerald-100 border-emerald-400/40'
+                      : 'bg-slate-400/25 text-slate-200 border-slate-400/40'
                   }`}>
-                    {user.status === "active" ? "Ativo" : "Inativo"}
+                    {user.status === 'active' ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </div>
               </div>
-            </div>
-          </div>
+            </DialogTitle>
+          </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 pb-6 -mt-3 space-y-4">
-          {/* Username / Login */}
-          <div className="bg-white rounded-xl border-2 border-slate-200 p-4 shadow-sm hover:border-slate-300 transition-colors">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <div className="h-7 w-7 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Mail className="h-3.5 w-3.5 text-blue-600" />
+        {/* ── Corpo ───────────────────────────────────────────── */}
+        <div className="px-3 py-2.5 space-y-2">
+
+          {/* Credenciais */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#004B87]/5 border-b border-slate-100">
+              <Key className="h-3 w-3 text-[#004B87]" />
+              <span className="text-[10px] font-bold text-[#004B87] uppercase tracking-wide">Credenciais de Acesso</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="h-3.5 w-3.5 text-[#004B87] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide leading-none mb-0.5">
+                      {user.username ? 'Username / Login' : 'Email / Login'}
+                    </p>
+                    <p className="font-mono text-xs text-slate-800 truncate">
+                      {user.username || user.email || 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                {user.username ? 'Username / Login' : 'Email / Login'}
+                <button
+                  onClick={() => copyToClipboard(user.username || user.email || '', user.username ? "Username" : "Email")}
+                  className="h-6 px-2 text-[10px] text-slate-400 hover:text-[#004B87] hover:bg-blue-50 rounded flex items-center gap-1 flex-shrink-0 transition-colors"
+                >
+                  <Copy className="h-2.5 w-2.5" /> Copiar
+                </button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(user.username || user.email || '', user.username ? "Username" : "Email")}
-                className="h-7 px-2.5 text-xs text-slate-500 hover:text-[#004B87] hover:bg-blue-50"
-              >
-                <Copy className="h-3 w-3 mr-1" />
-                Copiar
-              </Button>
-            </div>
-            <div className="font-mono text-sm bg-slate-50 px-3 py-2.5 rounded-lg border border-slate-200 text-slate-800">
-              {user.username || user.email || 'N/A'}
-            </div>
-          </div>
-
-          {/* Password — criptografada, não visualizável */}
-          <div className="bg-white rounded-xl border-2 border-slate-200 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <div className="h-7 w-7 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Lock className="h-3.5 w-3.5 text-[#F5821F]" />
-              </div>
-              Senha
-            </div>
-            <div className="font-mono text-sm bg-slate-50 px-3 py-2.5 rounded-lg border border-slate-200 text-slate-400 tracking-widest select-none">
-              ••••••••••••
-            </div>
-          </div>
-
-          {/* Security notice */}
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="h-4 w-4 text-slate-500" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-sm text-slate-700 mb-0.5">Segurança</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  As senhas são cifradas e não podem ser visualizadas.
-                  {hasFirstAccess
-                    ? " Ao resetar, a senha temporária será o username. No próximo acesso, o utilizador será obrigado a definir uma nova senha pessoal."
-                    : " Ao resetar, a senha temporária será o username do utilizador."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Confirmation panel — shown when confirmReset is true */}
-          {confirmReset && !resetDone && (
-            <div className="bg-red-50 rounded-xl border border-red-200 p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <ShieldAlert className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Lock className="h-3.5 w-3.5 text-[#F5821F] flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-red-800 mb-0.5">Confirmar redefinição de senha</p>
-                  <p className="text-xs text-red-700 leading-relaxed">
-                    A senha de <strong>{user.name}</strong> será redefinida para o seu username
-                    {" "}<span className="font-mono font-bold">({user.username || user.email})</span>.
-                    {hasFirstAccess && " O utilizador será obrigado a definir uma nova senha no próximo acesso ao sistema."}
-                  </p>
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide leading-none mb-0.5">Senha</p>
+                  <p className="font-mono text-xs text-slate-400 tracking-widest select-none">••••••••</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmReset(false)}
-                  className="flex-1 h-9 text-xs border-red-200 text-red-600 hover:bg-red-100"
-                  disabled={isResetting}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleResetPassword}
-                  disabled={isResetting}
-                  className="flex-1 h-9 text-xs bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {isResetting ? (
-                    <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />A redefinir...</>
-                  ) : (
-                    "Confirmar Reset"
-                  )}
-                </Button>
-              </div>
             </div>
-          )}
+          </div>
 
-          {/* Success state */}
+          {/* Segurança */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-slate-100">
+              <Shield className="h-3 w-3 text-slate-500" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Segurança</span>
+            </div>
+            <p className="px-3 py-2 text-[11px] text-slate-500 leading-relaxed">
+              Senhas cifradas — não visíveis.
+              {hasFirstAccess
+                ? " No reset, a senha temporária = username; utilizador define nova senha no 1.º acesso."
+                : " No reset, a senha temporária = username."}
+            </p>
+          </div>
+
+          {/* Sucesso */}
           {resetDone && (
-            <div className="bg-green-50 rounded-xl border border-green-200 p-4 flex items-start gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-green-800 leading-relaxed">
-                Senha redefinida com sucesso. No próximo acesso, <strong>{user.name}</strong>{" "}
-                {hasFirstAccess
-                  ? "será solicitado a definir uma nova senha pessoal."
-                  : "deverá usar o username como senha."}
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
+              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <p className="text-xs text-green-700">
+                <strong>Senha redefinida.</strong> {user.name} deverá definir nova senha no próximo acesso.
               </p>
             </div>
           )}
 
-          {/* Access info */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wide">Criado em</span>
+          {/* Datas */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white rounded-lg px-3 py-2 border border-slate-100">
+              <div className="flex items-center gap-1 mb-0.5">
+                <Calendar className="h-2.5 w-2.5 text-slate-400" />
+                <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">Criado em</span>
               </div>
-              <p className="text-sm font-bold text-slate-800">
-                {new Date(user.createdAt).toLocaleDateString("pt-PT", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric"
-                })}
+              <p className="text-xs font-bold text-slate-700">
+                {new Date(user.createdAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
               </p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Clock className="h-3.5 w-3.5 text-slate-400" />
-                <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wide">Último acesso</span>
+            <div className="bg-white rounded-lg px-3 py-2 border border-slate-100">
+              <div className="flex items-center gap-1 mb-0.5">
+                <Clock className="h-2.5 w-2.5 text-slate-400" />
+                <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">Último acesso</span>
               </div>
-              <p className="text-sm font-bold text-slate-800">
-                {user.lastLogin
-                  ? new Date(user.lastLogin).toLocaleDateString("pt-PT", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric"
-                    })
-                  : "Nunca acessou"}
+              <p className="text-xs font-bold text-slate-700">
+                {loadingLastAccess
+                  ? <span className="text-slate-400 font-normal">A carregar...</span>
+                  : lastAccess
+                    ? new Date(lastAccess).toLocaleString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                    : <span className="text-slate-400 font-normal">Nunca acessou</span>
+                }
               </p>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-3 pt-1">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1 h-11 border-2 border-slate-200 hover:border-slate-300 font-medium"
-            >
-              Fechar
-            </Button>
-            {!resetDone && (
-              <Button
-                onClick={() => setConfirmReset(true)}
-                disabled={isResetting || confirmReset}
-                className="flex-1 h-11 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-60"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Resetar Senha
-              </Button>
-            )}
-          </div>
         </div>
+
+        {/* ── Footer ──────────────────────────────────────────── */}
+        <div className="flex justify-end gap-2 p-3 border-t border-slate-200 bg-white">
+          <Button variant="outline" onClick={handleClose}
+            className="h-8 px-3 text-xs border border-slate-300"
+          >
+            Fechar
+          </Button>
+          {!resetDone && (
+            <button
+              onClick={() => setConfirmReset(true)}
+              disabled={isResetting}
+              className="h-8 px-3 text-xs rounded-lg bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className="h-3 w-3" /> Resetar Senha
+            </button>
+          )}
+        </div>
+
       </DialogContent>
     </Dialog>
+
+    {/* ── Confirm Reset (overlay via ConfirmModal) ─────────── */}
+    <ConfirmModal
+      isOpen={confirmReset && !resetDone}
+      variant="danger"
+      title="Confirmar Redefinição"
+      subtitle="Esta acção não pode ser desfeita"
+      message={`A senha de "${user.name}" será redefinida para o username (${user.username || user.email}).${hasFirstAccess ? ' O utilizador será obrigado a definir uma nova senha no próximo acesso.' : ''}`}
+      confirmLabel={isResetting ? "A redefinir..." : "Confirmar Reset"}
+      cancelLabel="Cancelar"
+      onConfirm={handleResetPassword}
+      onCancel={() => setConfirmReset(false)}
+    />
+    </>
   );
 }

@@ -120,7 +120,7 @@ export function RecordPaymentModal({
       }
     } catch (error) {
       console.error('Erro ao registar pagamento:', error);
-      toast.error('Erro ao registar pagamento');
+      toast.error(error instanceof Error ? error.message : 'Erro ao registar pagamento');
     } finally {
       setIsLoading(false);
     }

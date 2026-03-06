@@ -1,9 +1,9 @@
 // src/types/finance.ts
 // Tipos unificados para o sistema financeiro
 
-export type PaymentStatus = 'pending' | 'overdue' | 'partial' | 'paid';
+export type PaymentStatus = 'pending' | 'overdue' | 'partial' | 'paid' | 'exempt';
 export type PaymentMethod = 'cash' | 'mpesa' | 'transfer' | 'card' | 'other';
-export type TransactionStatus = 'confirmed' | 'reversed';
+export type TransactionStatus = 'paid' | 'confirmed' | 'reversed' | 'void';
 
 // Parcela/Plano de pagamento (o que o estudante DEVE pagar)
 export interface PaymentPlanItem {
@@ -56,6 +56,7 @@ export interface StudentFinanceResponse {
     id: number;
     name: string;
     email: string;
+    is_bolsista?: boolean;
   };
   course: {
     id: string;
@@ -96,31 +97,36 @@ export interface PenaltyConfig {
 // Alias para compatibilidade
 export type PenaltySettings = PenaltyConfig;
 
-// Payload para registrar pagamento
+// Payload para registrar pagamento (FIFO automático no backend)
 export interface RecordPaymentPayload {
   student_id: number;
   curso_id: string;
   amount_paid: number;
   payment_method: PaymentMethod;
   paid_date: string;
-  alloc_mode: 'single_month' | 'oldest_first' | 'selected_months';
-  month_reference?: string; // se single_month
-  plan_ids?: number[]; // se selected_months
+  receipt_number?: string;
   observacoes?: string;
+  is_enrollment_fee?: boolean;
 }
 
-// Resposta ao registrar pagamento
+// Resposta ao registrar pagamento (nova API FIFO)
 export interface RecordPaymentResponse {
   success: boolean;
   payment_id: number;
-  receipt_number: string;
-  allocations: {
+  student_id: number;
+  curso_id: string;
+  amount_paid: number;
+  allocated_plans: {
     plan_id: number;
-    month_reference: string;
-    amount_allocated: number;
-    new_status: PaymentStatus;
+    due_date: string;
+    amount_due: number;
+    already_paid: number;
+    allocated_now: number;
+    plan_status: PaymentStatus;
   }[];
-  new_balance: number;
+  plans_covered: number;
+  plans_fully_paid: number;
+  wallet_contribution: number;
   message?: string;
 }
 
@@ -137,7 +143,8 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: 'Pendente',
   overdue: 'Em Atraso',
   partial: 'Parcial',
-  paid: 'Pago'
+  paid: 'Pago',
+  exempt: 'Isento'
 };
 
 // Helpers

@@ -199,8 +199,8 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         const updated = await classService.getByTeacher(teacherId);
         setTeacherClasses(updated);
         toast.success('Turma atualizada com sucesso!');
-      } catch {
-        toast.error('Erro ao atualizar turma');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao atualizar turma');
       }
     }
   };

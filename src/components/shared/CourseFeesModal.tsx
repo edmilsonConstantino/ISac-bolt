@@ -100,7 +100,7 @@ export function CourseFeesModal({ isOpen, onClose }: CourseFeesModalProps) {
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      toast.error('Erro ao actualizar taxas');
+      toast.error(error instanceof Error ? error.message : 'Erro ao actualizar taxas');
     } finally {
       setIsSaving(false);
     }

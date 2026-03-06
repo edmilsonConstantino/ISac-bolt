@@ -2,6 +2,7 @@
 // Reusable confirmation/warning modal — matches the matrícula cancel-confirm design.
 // Used wherever the system needs to ask "are you sure?" before a destructive action.
 
+import { createPortal } from "react-dom";
 import { AlertTriangle, Info, XCircle } from "lucide-react";
 
 type Variant = "warning" | "danger" | "info";
@@ -74,13 +75,17 @@ export function ConfirmModal({
   const styles = VARIANT_STYLES[variant];
   const { Icon } = styles;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-      onClick={onCancel}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: 99999 }}
+      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onClick={(e) => { e.stopPropagation(); onCancel(); }}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full animate-in zoom-in-95 duration-200"
+        style={{ pointerEvents: 'auto' }}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Coloured header */}
@@ -109,16 +114,18 @@ export function ConfirmModal({
           {!message && !detail && <div className="mb-4" />}
 
           {/* Buttons */}
-          <div className="flex gap-3 mt-2">
+          <div className="flex gap-3 mt-2" style={{ pointerEvents: 'auto' }}>
             <button
-              onClick={onCancel}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(); }}
               className="flex-1 h-12 rounded-xl border-2 border-slate-300 hover:border-slate-400
                 hover:bg-slate-50 font-bold text-slate-700 transition-colors text-sm"
             >
               {cancelLabel}
             </button>
             <button
-              onClick={onConfirm}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onConfirm(); }}
               className={`flex-1 h-12 rounded-xl bg-gradient-to-r ${styles.confirmGradient}
                 ${styles.confirmHover} text-white font-bold transition-all text-sm shadow-sm`}
             >
@@ -127,6 +134,7 @@ export function ConfirmModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

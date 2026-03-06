@@ -88,24 +88,28 @@ export function SetPasswordScreen() {
 
         {/* Header */}
         {isAdminReset ? (
-          <div className="bg-gradient-to-r from-[#7C2D12] to-[#C2410C] px-8 py-8 text-white text-center">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <ShieldAlert className="h-8 w-8 text-orange-300" />
+          <div className="bg-gradient-to-r from-[#7C2D12] to-[#C2410C] px-6 py-4 text-white flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShieldAlert className="h-5 w-5 text-orange-300" />
             </div>
-            <h1 className="text-2xl font-black mb-1">Redefinição de Senha</h1>
-            <p className="text-orange-200 text-sm">
-              Olá, <span className="font-bold text-white">{user?.nome || username}</span>
-            </p>
+            <div>
+              <h1 className="text-base font-black leading-tight">Redefinição de Senha</h1>
+              <p className="text-orange-200 text-xs mt-0.5">
+                Olá, <span className="font-bold text-white">{user?.nome || username}</span>
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-8 py-8 text-white text-center">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <ShieldCheck className="h-8 w-8 text-[#F5821F]" />
+          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 py-4 text-white flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="h-5 w-5 text-[#F5821F]" />
             </div>
-            <h1 className="text-2xl font-black mb-1">Primeiro Acesso</h1>
-            <p className="text-blue-200 text-sm">
-              Bem-vindo, <span className="font-bold text-white">{user?.nome || username}</span>!
-            </p>
+            <div>
+              <h1 className="text-base font-black leading-tight">Primeiro Acesso</h1>
+              <p className="text-blue-200 text-xs mt-0.5">
+                Bem-vindo, <span className="font-bold text-white">{user?.nome || username}</span>!
+              </p>
+            </div>
           </div>
         )}
 

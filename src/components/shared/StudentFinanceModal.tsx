@@ -31,7 +31,8 @@ import {
   CreditCard,
   TrendingUp,
   X,
-  FileText
+  FileText,
+  GraduationCap
 } from "lucide-react";
 import { financeService } from "@/services/financeService";
 import {
@@ -120,8 +121,6 @@ export function StudentFinanceModal({
         amount_paid: paymentForm.amount,
         payment_method: paymentForm.method,
         paid_date: paymentForm.date,
-        alloc_mode: 'single_month',
-        month_reference: selectedPlan.month_reference,
         observacoes: paymentForm.observacoes || undefined
       });
 
@@ -145,6 +144,8 @@ export function StudentFinanceModal({
         return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Atraso</Badge>;
       case 'partial':
         return <Badge className="bg-yellow-600"><Clock className="h-3 w-3 mr-1" /> Parcial</Badge>;
+      case 'exempt':
+        return <Badge className="bg-purple-600"><GraduationCap className="h-3 w-3 mr-1" /> Isento</Badge>;
       default:
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
     }
@@ -158,6 +159,12 @@ export function StudentFinanceModal({
             <DialogTitle className="flex items-center gap-2 text-[#004B87]">
               <DollarSign className="h-5 w-5" />
               {data?.student.name || 'Finanças do Estudante'}
+              {data?.student.is_bolsista && (
+                <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full">
+                  <GraduationCap className="h-3 w-3" />
+                  Bolsista
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -182,7 +189,14 @@ export function StudentFinanceModal({
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-slate-500">Mensalidade</p>
-                      <p className="font-bold text-[#F5821F]">{formatCurrency(data.course.monthly_fee)}</p>
+                      {data.student.is_bolsista ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-purple-600">
+                          <GraduationCap className="h-4 w-4" />
+                          Isenta
+                        </span>
+                      ) : (
+                        <p className="font-bold text-[#F5821F]">{formatCurrency(data.course.monthly_fee)}</p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-slate-500">Duração</p>
@@ -266,8 +280,9 @@ export function StudentFinanceModal({
                         <div
                           key={plan.id}
                           className={`p-3 rounded-lg border-2 ${
+                            plan.status === 'exempt'  ? 'border-purple-200 bg-purple-50/40' :
                             plan.status === 'overdue' ? 'border-red-200 bg-red-50' :
-                            plan.status === 'paid' ? 'border-green-200 bg-green-50' :
+                            plan.status === 'paid'    ? 'border-green-200 bg-green-50' :
                             'border-slate-200 bg-white'
                           }`}
                         >
@@ -275,36 +290,44 @@ export function StudentFinanceModal({
                             <div className="flex items-center gap-3">
                               <div className="text-center min-w-[70px]">
                                 <p className="text-xs text-slate-500">Mês</p>
-                                <p className="font-bold text-[#004B87]">
+                                <p className={`font-bold ${plan.status === 'exempt' ? 'text-purple-700' : 'text-[#004B87]'}`}>
                                   {formatMonthReference(plan.month_reference)}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-sm">
-                                  Base: <span className="font-medium">{formatCurrency(plan.base_amount)}</span>
-                                </p>
-                                {plan.penalty_amount > 0 && (
-                                  <p className="text-xs text-red-600">
-                                    Multa: +{formatCurrency(plan.penalty_amount)}
-                                    {plan.days_overdue > 0 && ` (${plan.days_overdue} dias)`}
-                                  </p>
+                                {plan.status === 'exempt' ? (
+                                  <p className="text-sm text-purple-600 font-medium">Mensalidade Isenta</p>
+                                ) : (
+                                  <>
+                                    <p className="text-sm">
+                                      Base: <span className="font-medium">{formatCurrency(plan.base_amount)}</span>
+                                    </p>
+                                    {plan.penalty_amount > 0 && (
+                                      <p className="text-xs text-red-600">
+                                        Multa: +{formatCurrency(plan.penalty_amount)}
+                                        {plan.days_overdue > 0 && ` (${plan.days_overdue} dias)`}
+                                      </p>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
 
                             <div className="flex items-center gap-3">
-                              <div className="text-right">
-                                <p className="text-xs text-slate-500">Total</p>
-                                <p className="font-bold">{formatCurrency(plan.total_expected)}</p>
-                              </div>
-                              {plan.paid_total > 0 && (
+                              {plan.status !== 'exempt' && (
+                                <div className="text-right">
+                                  <p className="text-xs text-slate-500">Total</p>
+                                  <p className="font-bold">{formatCurrency(plan.total_expected)}</p>
+                                </div>
+                              )}
+                              {plan.paid_total > 0 && plan.status !== 'exempt' && (
                                 <div className="text-right">
                                   <p className="text-xs text-slate-500">Pago</p>
                                   <p className="font-medium text-green-600">{formatCurrency(plan.paid_total)}</p>
                                 </div>
                               )}
                               {getStatusBadge(plan.status)}
-                              {plan.status !== 'paid' && (
+                              {plan.status !== 'paid' && plan.status !== 'exempt' && (
                                 <Button
                                   size="sm"
                                   onClick={() => openPaymentModal(plan)}

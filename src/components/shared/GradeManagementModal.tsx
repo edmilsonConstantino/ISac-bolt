@@ -15,7 +15,6 @@ import {
   FileText,
   Loader2,
   X,
-  ChevronDown,
   BarChart2,
   ClipboardList,
   Pen,
@@ -46,12 +45,6 @@ interface GradeManagementModalProps {
   students: Student[];
 }
 
-const PERIOD_NUMBER: Record<string, number> = {
-  bimestre1: 1,
-  bimestre2: 2,
-  bimestre3: 3,
-  bimestre4: 4,
-};
 
 const TABS = [
   { id: "overview",   label: "Visão Geral",  Icon: BarChart2     },
@@ -121,22 +114,22 @@ export function GradeManagementModal({
   classData,
   students
 }: GradeManagementModalProps) {
-  const [activeTab, setActiveTab]             = useState("overview");
-  const [selectedPeriod, setSelectedPeriod]   = useState("bimestre1");
-  const [grades, setGrades]                   = useState<StudentGrade[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
-  const [isSaving, setIsSaving]               = useState(false);
-  const [isLoading, setIsLoading]             = useState(false);
-  const [isEditMode, setIsEditMode]           = useState(false);
+  const [activeTab, setActiveTab]               = useState("overview");
+  const [grades, setGrades]                     = useState<StudentGrade[]>([]);
+  const [selectedStudent, setSelectedStudent]   = useState<number | null>(null);
+  const [isSaving, setIsSaving]                 = useState(false);
+  const [isLoading, setIsLoading]               = useState(false);
+  const [isEditMode, setIsEditMode]             = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedPeriodLabel, setSavedPeriodLabel] = useState("");
 
-  const periods = [
-    { value: "bimestre1", label: "1º Bimestre" },
-    { value: "bimestre2", label: "2º Bimestre" },
-    { value: "bimestre3", label: "3º Bimestre" },
-    { value: "bimestre4", label: "4º Bimestre" },
-  ];
+  // period_number = nível ordinal da turma (ou 1 para cursos sem nível)
+  const periodNum  = classData?.nivel_numero ?? 1;
+  const nivelLabel = classData?.nivel_nome
+    ? `Nível ${periodNum} · ${classData.nivel_nome}`
+    : classData?.nivel_id
+      ? `Nível ${periodNum}`
+      : 'Avaliação';
 
   // ── Calculate final grade (integer half-up) ──────────────────────────────
   const calculateFinalGrade = (g: StudentGrade): number => {
@@ -144,13 +137,12 @@ export function GradeManagementModal({
     return Math.round(raw);
   };
 
-  // ── Reset edit mode when period or modal changes ─────────────────────────
-  useEffect(() => { setIsEditMode(false); }, [selectedPeriod, isOpen]);
+  // ── Reset edit mode when modal opens/closes ───────────────────────────────
+  useEffect(() => { setIsEditMode(false); }, [isOpen]);
 
   // ── Load students + grades from backend ──────────────────────────────────
   useEffect(() => {
     if (!isOpen || !classData?.id) return;
-    const periodNum = PERIOD_NUMBER[selectedPeriod] ?? 1;
     setIsLoading(true);
 
     const getStudentList: Promise<Student[]> =
@@ -194,7 +186,7 @@ export function GradeManagementModal({
       .catch(() => setGrades([]))
       .finally(() => setIsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedPeriod, classData?.id]);
+  }, [isOpen, classData?.id, periodNum]);
 
   const updateGrade = (studentId: number, field: keyof StudentGrade, value: number) => {
     setGrades((prev) =>
@@ -223,7 +215,6 @@ export function GradeManagementModal({
 
   const handleSave = useCallback(async () => {
     if (!classData?.id) return;
-    const periodNum = PERIOD_NUMBER[selectedPeriod] ?? 1;
     setIsSaving(true);
     try {
       await Promise.all(
@@ -232,6 +223,7 @@ export function GradeManagementModal({
             class_id:            classData.id,
             student_id:          grade.studentId,
             period_number:       periodNum,
+            nivel_id:            classData.nivel_id ?? undefined,
             grade_teste1:        grade.teste1,
             grade_teste2:        grade.teste2,
             grade_exame_pratico: grade.examePratico,
@@ -239,20 +231,17 @@ export function GradeManagementModal({
             strengths:           null,
             improvements:        null,
             recommendations:     null,
-          })
+          } as any)
         )
       );
-      onSave({ classId: classData.id, period: selectedPeriod, grades });
+      onSave({ classId: classData.id, period: String(periodNum), grades });
 
-      // Auto-finalize level when saving the 4th bimestre
-      if (selectedPeriod === "bimestre4") {
-        await Promise.allSettled(
-          grades.map((grade) => gradeService.finalizeLevel(classData.id, grade.studentId))
-        );
-      }
+      // 1 turma = 1 nível = 1 avaliação → sempre finalizar ao guardar
+      await Promise.allSettled(
+        grades.map((grade) => gradeService.finalizeLevel(classData.id, grade.studentId))
+      );
 
-      // Show success modal (with warning only for bimestre1)
-      setSavedPeriodLabel(periods.find((p) => p.value === selectedPeriod)?.label ?? "");
+      setSavedPeriodLabel(nivelLabel);
       setIsEditMode(false);
       setShowSuccessModal(true);
     } catch (err: any) {
@@ -260,7 +249,7 @@ export function GradeManagementModal({
     } finally {
       setIsSaving(false);
     }
-  }, [grades, classData, selectedPeriod, onSave]);
+  }, [grades, classData, periodNum, nivelLabel, onSave]);
 
   const handleClose = () => {
     setGrades([]);
@@ -330,23 +319,12 @@ export function GradeManagementModal({
           {/* Orange accent line */}
           <div className="h-0.5 bg-gradient-to-r from-[#F5821F] via-[#FF9933] to-[#F5821F]" />
 
-          {/* Period selector row */}
+          {/* Nivel badge row */}
           <div className="px-4 py-2 flex items-center justify-between gap-4">
-            <div className="relative">
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="appearance-none bg-white/15 hover:bg-white/20 border border-white/20
-                  text-white text-sm font-semibold rounded-xl pl-3 pr-8 py-1.5
-                  focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer"
-              >
-                {periods.map((p) => (
-                  <option key={p.value} value={p.value} className="text-slate-800 bg-white">
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/70 pointer-events-none" />
+            <div className="flex items-center gap-1.5 bg-white/15 border border-white/20
+              text-white text-sm font-semibold rounded-xl px-3 py-1.5">
+              <Star className="h-3.5 w-3.5 text-[#FF9933]" />
+              {nivelLabel}
             </div>
 
             {isLoading && (
@@ -700,11 +678,9 @@ export function GradeManagementModal({
         {/* ── Footer ── */}
         <div className="flex-shrink-0 bg-white border-t border-slate-100 px-5 py-3 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-400">
-            {periods.find((p) => p.value === selectedPeriod)?.label} · {grades.length} estudante{grades.length !== 1 ? "s" : ""}
+            {nivelLabel}
+            {" · "}{grades.length} estudante{grades.length !== 1 ? "s" : ""}
             <span className="ml-2 text-slate-300">· Nota máx.: 20 · Mínimo aprovação: 10</span>
-            {selectedPeriod === "bimestre4" && (
-              <span className="ml-2 text-amber-400 font-medium">· Nível finalizado ao guardar</span>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <button

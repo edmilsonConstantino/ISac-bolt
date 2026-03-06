@@ -27,6 +27,8 @@ export interface Class {
   updated_at?: string;
   selectedStudentIds?: number[]; // IDs dos estudantes a adicionar (criação)
   nivel_id?: number | null;      // ID do nível (quando curso tem_niveis=true)
+  nivel_numero?: number | null;  // curso_niveis.nivel — ordinal (1, 2, 3…)
+  nivel_nome?: string | null;    // curso_niveis.nome (ex: "Nível 1", "Básico")
 }
 
 interface TurmaAPI {
@@ -220,7 +222,9 @@ class ClassService {
       status: this.mapStatusToReact(data.status),
       created_at: data.data_criacao || data.created_at,
       updated_at: data.data_atualizacao || data.updated_at,
-      nivel_id: data.nivel_id ? Number(data.nivel_id) : null
+      nivel_id: data.nivel_id ? Number(data.nivel_id) : null,
+      nivel_numero: data.nivel_numero != null ? Number(data.nivel_numero) : null,
+      nivel_nome: data.nivel_nome ?? null,
     };
   }
 

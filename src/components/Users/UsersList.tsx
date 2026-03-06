@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Permission } from "@/types";
 import { CreateUserModal } from "./CreateUserModal";
+import { EditUserModal } from "./EditUserModal";
 import { UserCredentialsModal } from "@/components/shared/UserCredentialsModal";
 import { UserAccessHistoryModal } from "@/components/shared/UserAccessHistoryModal";
 import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
@@ -42,6 +43,7 @@ export interface SystemUser {
   email?: string;
   username?: string;
   phone?: string;
+  bi_number?: string;
   role: 'admin' | 'academic_admin' | 'teacher' | 'student';
   status: 'active' | 'inactive';
   createdAt: string;
@@ -526,13 +528,11 @@ export function UsersList({
         currentUserRole={currentUserRole}
       />
 
-      <CreateUserModal
+      <EditUserModal
         isOpen={editUserModal.isOpen}
         onClose={() => setEditUserModal({ isOpen: false, user: null })}
+        user={editUserModal.user}
         onSave={handleUpdateUser}
-        userData={editUserModal.user}
-        isEditing={true}
-        currentUserRole={currentUserRole}
       />
 
       <UserCredentialsModal
