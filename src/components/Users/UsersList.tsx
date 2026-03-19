@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -92,30 +92,38 @@ export function UsersList({
   });
 
   // Academic admin não deve ver super admins na lista
-  const visibleUsers = currentUserRole === 'admin'
-    ? users
-    : users.filter(u => u.role !== 'admin');
+  const visibleUsers = useMemo(
+    () => currentUserRole === 'admin'
+      ? users
+      : users.filter(u => u.role !== 'admin'),
+    [users, currentUserRole]
+  );
 
-  const filteredUsers = visibleUsers.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.username || '').toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredUsers = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    return visibleUsers.filter(user => {
+      const matchesSearch = !search ||
+        user.name.toLowerCase().includes(search) ||
+        (user.email || '').toLowerCase().includes(search) ||
+        (user.username || '').toLowerCase().includes(search);
 
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+      const normalizedRole = (user.role || '').trim().toLowerCase();
+      const matchesRole = roleFilter === "all" || normalizedRole === roleFilter;
+      const matchesStatus = statusFilter === "all" || user.status === statusFilter;
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [visibleUsers, searchTerm, roleFilter, statusFilter]);
 
-  const stats = {
+  const stats = useMemo(() => ({
     total: visibleUsers.length,
-    admins: visibleUsers.filter(u => u.role === 'admin').length,
-    academicAdmins: visibleUsers.filter(u => u.role === 'academic_admin').length,
-    teachers: visibleUsers.filter(u => u.role === 'teacher').length,
-    students: visibleUsers.filter(u => u.role === 'student').length,
+    admins: visibleUsers.filter(u => (u.role || '').trim() === 'admin').length,
+    academicAdmins: visibleUsers.filter(u => (u.role || '').trim() === 'academic_admin').length,
+    teachers: visibleUsers.filter(u => (u.role || '').trim() === 'teacher').length,
+    students: visibleUsers.filter(u => (u.role || '').trim() === 'student').length,
     active: visibleUsers.filter(u => u.status === 'active').length,
     inactive: visibleUsers.filter(u => u.status === 'inactive').length
-  };
+  }), [visibleUsers]);
 
   const getRoleInfo = (role: SystemUser['role']) => {
     const roleMap: Record<string, { label: string; color: string; icon: any; bgColor: string }> = {

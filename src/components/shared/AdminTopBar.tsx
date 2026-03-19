@@ -90,30 +90,16 @@ export function AdminTopBar({
             <span className="text-xs text-emerald-700 font-semibold">Online</span>
           </div>
 
-          {/* User Card com cores ISAC */}
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-gradient-to-r from-[#004B87]/5 to-[#F5821F]/5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            {/* Avatar amarelo */}
-            <div className="h-8 w-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center font-bold text-white shadow-md flex-shrink-0 ring-2 ring-white text-sm">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-
-            {/* Info do usuário */}
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-[#004B87] leading-tight">{shortName}</span>
-              <span className="text-xs text-slate-500 font-medium leading-tight">{roleLabelMap[userRole || 'admin'] || 'Admin'}</span>
-            </div>
-
-            {/* Logout Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onLogout}
-              className="h-7 w-7 text-slate-400 hover:text-white hover:bg-red-500 rounded-lg transition-all ml-1"
-              title="Sair do Sistema"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          {/* Logout Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onLogout}
+            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-red-500 rounded-lg transition-all"
+            title="Sair do Sistema"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </header>

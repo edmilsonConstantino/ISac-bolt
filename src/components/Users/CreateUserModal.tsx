@@ -410,11 +410,12 @@ export function CreateUserModal({
                       type={showPassword ? "text" : "password"}
                       placeholder="Digite a senha"
                       value={formData.password}
+                      autoComplete="new-password"
                       onChange={(e) => {
                         setFormData({ ...formData, password: e.target.value });
                         if (errors.password) setErrors({ ...errors, password: "" });
                       }}
-                      className={`h-11 pr-10 ${errors.password ? "border-red-500" : ""}`}
+                      className={`h-11 pr-10 [&::-ms-reveal]:hidden [&::-webkit-contacts-auto-fill-button]:hidden ${errors.password ? "border-red-500" : ""}`}
                     />
                     <button
                       type="button"
@@ -442,11 +443,12 @@ export function CreateUserModal({
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="Confirme a senha"
                       value={formData.confirmPassword}
+                      autoComplete="new-password"
                       onChange={(e) => {
                         setFormData({ ...formData, confirmPassword: e.target.value });
                         if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" });
                       }}
-                      className={`h-11 pr-10 ${errors.confirmPassword ? "border-red-500" : ""}`}
+                      className={`h-11 pr-10 [&::-ms-reveal]:hidden [&::-webkit-contacts-auto-fill-button]:hidden ${errors.confirmPassword ? "border-red-500" : ""}`}
                     />
                     <button
                       type="button"

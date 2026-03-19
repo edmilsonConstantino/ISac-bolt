@@ -1,5 +1,5 @@
 // src/components/shared/PaymentList.tsx - COM TOGGLE GRID/LISTA
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ interface PaymentListProps {
   students: Student[];
   onOpenPaymentModal: (studentId: number) => void;
   formatCurrency: (amount: number) => string;
+  clearSearchTrigger?: number;
   getStudentPaymentInfo: (studentId: number, name: string, className: string) => {
     studentId: number;
     studentName: string;
@@ -40,19 +41,26 @@ interface PaymentListProps {
     monthlyFee: number;
     totalPaid: number;
     currentBalance: number;
-    overduePayments: any[];
+    overduePayments: { id: number; dueDate: string; amount: number }[];
     lastPaymentDate: string | null;
   };
 }
+
+type PaymentInfo = ReturnType<PaymentListProps['getStudentPaymentInfo']>;
 
 export function PaymentList({
   students,
   onOpenPaymentModal,
   formatCurrency,
+  clearSearchTrigger,
   getStudentPaymentInfo
 }: PaymentListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    if (clearSearchTrigger) setSearchTerm("");
+  }, [clearSearchTrigger]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid"); // NOVO: Toggle de visualização
 
   // Calcular estatísticas
@@ -116,7 +124,7 @@ export function PaymentList({
 
   const filteredStudents = getFilteredStudents();
 
-  const getPaymentStatusBadge = (paymentInfo: any) => {
+  const getPaymentStatusBadge = (paymentInfo: PaymentInfo) => {
     if (paymentInfo.overduePayments.length > 0) {
       return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> Em Atraso</Badge>;
     } else if (paymentInfo.currentBalance < 0) {

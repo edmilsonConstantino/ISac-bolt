@@ -189,56 +189,54 @@ function SelectedStudentCard({
 }) {
   return (
     <div className="relative">
-      <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-400 rounded-2xl p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-400 rounded-xl p-3 shadow-sm">
         {/* Badge */}
-        <div className="absolute -top-3 left-6 bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-md flex items-center gap-1">
+        <div className="absolute -top-3 left-4 bg-green-500 text-white px-3 py-0.5 rounded-full text-xs font-bold shadow-md flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
           ESTUDANTE SELECIONADO
         </div>
 
-        <div className="flex items-center gap-5 mt-2">
-          {/* Avatar grande */}
+        <div className="flex items-center gap-3 mt-1">
+          {/* Avatar */}
           <div className="relative flex-shrink-0">
-            <div className="h-20 w-20 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-2xl flex items-center justify-center shadow-xl">
-              <span className="text-white font-bold text-3xl">
+            <div className="h-12 w-12 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-xl">
                 {(student.name?.charAt(0) || "E").toUpperCase()}
               </span>
             </div>
-            <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-green-500 border-4 border-white rounded-full flex items-center justify-center">
-              <CheckCircle2 className="h-3 w-3 text-white" />
+            <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-2.5 w-2.5 text-white" />
             </div>
           </div>
 
           {/* Informações */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-bold text-[#004B87] mb-1 truncate">
+            <h3 className="text-base font-bold text-[#004B87] truncate leading-tight">
               {student.name}
             </h3>
-            <p className="text-sm text-slate-600 truncate mb-2">📧 {student.email}</p>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono bg-white px-3 py-1 rounded-lg text-[#004B87] font-semibold border border-slate-200">
+            <p className="text-xs text-slate-500 truncate">📧 {student.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-mono bg-white px-2 py-0.5 rounded-md text-[#004B87] font-semibold border border-slate-200">
                 {studentCode}
               </span>
-
               {student.phone && (
                 <span className="text-xs text-slate-500">📱 {student.phone}</span>
               )}
             </div>
           </div>
 
-          {/* Trocar - esconder se pré-selecionado */}
+          {/* Trocar / Da Inscrição */}
           {!isPreSelected && (
             <button
               type="button"
               onClick={onClear}
-              className="flex-shrink-0 px-4 py-2 bg-white border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 rounded-xl text-xs font-semibold transition-all"
+              className="flex-shrink-0 px-3 py-1.5 bg-white border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 rounded-lg text-xs font-semibold transition-all"
             >
               Trocar
             </button>
           )}
           {isPreSelected && (
-            <div className="flex-shrink-0 px-4 py-2 bg-blue-50 border-2 border-blue-200 text-blue-600 rounded-xl text-xs font-semibold">
+            <div className="flex-shrink-0 px-3 py-1.5 bg-blue-50 border-2 border-blue-200 text-blue-600 rounded-lg text-xs font-semibold">
               Da Inscrição
             </div>
           )}

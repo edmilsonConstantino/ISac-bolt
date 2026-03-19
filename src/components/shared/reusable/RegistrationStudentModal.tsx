@@ -629,7 +629,6 @@ export function RegistrationStudentModal({
     <Dialog open={isOpen} onOpenChange={() => setShowCancelConfirm(true)}>
       <DialogContent
         className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white"
-
         hideCloseButton={true}
       >
         {/* Botão X para fechar */}
@@ -643,7 +642,7 @@ export function RegistrationStudentModal({
         </button>
 
         <div className="flex h-[650px]">
-          {/* SIDEBAR (por enquanto no pai) */}
+          {/* SIDEBAR */}
           <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
             <div className="flex items-center gap-3 mb-12">
               <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
@@ -749,19 +748,10 @@ export function RegistrationStudentModal({
                   formatCurrency={formatCurrency}
                   isPreSelected={Boolean(preSelectedStudentId)}
                   getStudentCourseHistory={(studentId, courseId) => {
-                    // Verificar histórico do estudante no curso
-                    // Por enquanto, verifica nas existingRegistrations
                     const hasHistory = existingRegistrations.some(
                       (reg) => reg.studentId === studentId && reg.courseId === courseId
                     );
-
-                    // TODO: Implementar API para buscar módulos reprovados
-                    // Por enquanto, retorna sem módulos reprovados
-                    return {
-                      hasHistory,
-                      hasFailedModules: false,
-                      failedModules: [],
-                    };
+                    return { hasHistory, hasFailedModules: false, failedModules: [] };
                   }}
                 />
               )}
@@ -813,7 +803,6 @@ export function RegistrationStudentModal({
                   </Button>
                 ) : (
                   <div className="flex flex-col items-end gap-2">
-                    {/* Aviso de pagamento pendente */}
                     {!isEnrollmentPaid && (
                       <p className="text-xs text-red-500 font-medium">
                         ⚠️ Confirme o pagamento da taxa para finalizar
@@ -855,11 +844,10 @@ export function RegistrationStudentModal({
               <MessageCircle className="h-6 w-6" />
             </button>
 
-            {/* RECEIPT PROMPT MODAL - SUCESSO DA MATRÍCULA */}
+            {/* RECEIPT PROMPT MODAL */}
             {showReceiptPrompt && (
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-lg w-full">
-                  {/* Header azul de sucesso */}
                   <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-8 py-6 text-white text-center">
                     <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="h-10 w-10 text-white" />
@@ -867,10 +855,7 @@ export function RegistrationStudentModal({
                     <h3 className="text-2xl font-bold mb-1">Matrícula Concluída!</h3>
                     <p className="text-blue-100 text-sm">O estudante foi matriculado com sucesso no curso <strong>{formData.courseName}</strong></p>
                   </div>
-
-                  {/* Conteúdo */}
                   <div className="px-8 py-6">
-                    {/* Resumo do estudante */}
                     <div className="bg-slate-50 rounded-xl p-4 mb-6">
                       <div className="flex items-center gap-4">
                         <div className="h-14 w-14 bg-gradient-to-br from-[#004B87] to-[#0066B3] rounded-xl flex items-center justify-center text-white font-bold text-xl">
@@ -883,29 +868,17 @@ export function RegistrationStudentModal({
                         </div>
                       </div>
                     </div>
-
-                    <p className="text-slate-600 text-center mb-6">
-                      Deseja imprimir o recibo de matrícula agora?
-                    </p>
-
-                    {/* Botões */}
+                    <p className="text-slate-600 text-center mb-6">Deseja imprimir o recibo de matrícula agora?</p>
                     <div className="flex gap-3">
                       <Button
                         variant="outline"
-                        onClick={() => {
-                          setShowReceiptPrompt(false);
-                          onClose();
-                        }}
+                        onClick={() => { setShowReceiptPrompt(false); onClose(); }}
                         className="flex-1 h-12 border-2 border-slate-300 hover:border-slate-400"
                       >
                         Concluído
                       </Button>
                       <Button
-                        onClick={() => {
-                          handlePrintReceipt();
-                          setShowReceiptPrompt(false);
-                          onClose();
-                        }}
+                        onClick={() => { handlePrintReceipt(); setShowReceiptPrompt(false); onClose(); }}
                         className="flex-1 h-12 bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003A6B] hover:to-[#005599] text-white font-bold"
                       >
                         <Printer className="h-4 w-4 mr-2" />
@@ -925,26 +898,17 @@ export function RegistrationStudentModal({
                   <p className="text-slate-600 mb-6">
                     Deseja enviar uma mensagem de boas-vindas ao estudante <strong>{formData.studentName}</strong>?
                   </p>
-
                   <textarea
                     className="w-full h-32 p-3 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:outline-none resize-none mb-4"
                     placeholder="Digite sua mensagem aqui..."
                     defaultValue={`Olá ${formData.studentName},\n\nSeja bem-vindo(a) ao ISAC!\n\nSua matrícula foi realizada com sucesso no curso ${formData.courseName}.\n\nEstamos muito felizes em tê-lo(a) conosco!`}
                   />
-
                   <div className="flex gap-3">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setShowChatPrompt(false)}
-                      className="flex-1"
-                    >
+                    <Button variant="ghost" onClick={() => setShowChatPrompt(false)} className="flex-1">
                       Cancelar
                     </Button>
                     <Button
-                      onClick={() => {
-                        toast.success("Mensagem enviada com sucesso!");
-                        setShowChatPrompt(false);
-                      }}
+                      onClick={() => { toast.success("Mensagem enviada com sucesso!"); setShowChatPrompt(false); }}
                       className="flex-1 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
                     >
                       Enviar

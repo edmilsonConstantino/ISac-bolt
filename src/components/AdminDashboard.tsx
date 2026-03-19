@@ -21,8 +21,9 @@ import { Input } from "@/components/ui/input";
 import {
   Users, BookOpen, DollarSign, UserPlus, GraduationCap,
   LogOut, Shield, BarChart3, AlertTriangle, TrendingUp,
-  FileText, MessageCircle, Copy, Key, CheckCircle
+  FileText, MessageCircle, Copy, Key, CheckCircle, Zap, ArrowRightLeft
 } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 // Import dos componentes compartilhados
 import { ClassList } from "./Classes/ClassList";
@@ -55,6 +56,7 @@ import { InscriptionList } from "./shared/InscriptionList";
 import { PaymentsDashboard } from "./shared/PaymentsDashboard";
 import { ClassSettingsModal } from "./Classes/ClassSettingsModal";
 import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 
 // Types
@@ -66,6 +68,8 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
+
+  const { openConfirm, dialogProps } = useConfirmDialog();
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -92,6 +96,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [courses, setCourses] = useState<APICourse[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
 const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+  const [pendingTransitionsCount, setPendingTransitionsCount] = useState<number>(0);
 
   // Estados de loading
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
@@ -286,6 +291,17 @@ console.log('✅ Estudantes mapeados:', mappedStudents.length);
 
     // 5. 🆕 CARREGAR MATRÍCULAS (dependem de cursos, turmas e estudantes)
     await loadRegistrations();
+
+    // 6. Contar transições de nível pendentes
+    try {
+      const resp = await fetch('/api/level-transitions.php?action=count_pending', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      const json = await resp.json();
+      if (json.success) setPendingTransitionsCount(json.count);
+    } catch {
+      // não crítico
+    }
     
   } catch (error: any) {
     console.error("❌ Erro ao carregar dados:", error);
@@ -625,20 +641,19 @@ const handleSaveRegistration = async (registrationData: any) => {
   }
 };
 
-const handleDeleteRegistration = async (registrationId: number) => {
-  if (confirm("Tem certeza que deseja cancelar esta matrícula?")) {
-    try {
-      await registrationService.cancel(registrationId);
-      toast.success("Matrícula cancelada com sucesso!");
-      
-      // ✅ RECARREGAR LISTA DO BANCO
-      await loadRegistrations();
-      
-    } catch (error) {
-      console.error('❌ Erro ao cancelar matrícula:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
+const handleDeleteRegistration = (registrationId: number) => {
+  openConfirm(
+    { title: "Cancelar Matrícula", message: "Tem certeza que deseja cancelar esta matrícula? Esta acção não pode ser desfeita.", confirmLabel: "Cancelar Matrícula", variant: "warning" },
+    async () => {
+      try {
+        await registrationService.cancel(registrationId);
+        toast.success("Matrícula cancelada com sucesso!");
+        await loadRegistrations();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
+      }
     }
-  }
+  );
 };
 
 
@@ -754,17 +769,19 @@ const handleDeleteRegistration = async (registrationId: number) => {
     ));
   };
 
-  const handleDeleteTeacher = async (teacherId: number) => {
-    if (confirm("Tem certeza que deseja remover este docente?")) {
-      try {
-        await teacherService.delete(teacherId);
-        setTeacherStats(prev => prev.filter(t => t.id !== teacherId));
-        toast.success("Professor removido com sucesso!");
-      } catch (error: any) {
-        console.error("Erro ao deletar professor:", error);
-        toast.error(error.message || "Erro ao remover professor");
+  const handleDeleteTeacher = (teacherId: number) => {
+    openConfirm(
+      { title: "Remover Docente", message: "Tem certeza que deseja remover este docente? Esta acção não pode ser desfeita.", confirmLabel: "Remover" },
+      async () => {
+        try {
+          await teacherService.delete(teacherId);
+          setTeacherStats(prev => prev.filter(t => t.id !== teacherId));
+          toast.success("Professor removido com sucesso!");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao remover professor");
+        }
       }
-    }
+    );
   };
 
   const handleViewStudents = async (classItem: Class) => {
@@ -801,19 +818,20 @@ const handleDeleteRegistration = async (registrationId: number) => {
     setClassModal({ isOpen: true, classData: null, isCreating: true });
   };
 
-  const handleDeleteClass = async (classId: number) => {
-    if (confirm("Tem certeza que deseja deletar esta turma?")) {
-      try {
-        console.log('🗑️ Deletando turma:', classId);
-        await classService.delete(classId);
-        toast.success("Turma deletada com sucesso!");
-        await loadClasses();
-        await loadCourses();
-      } catch (error: any) {
-        console.error('❌ Erro ao deletar:', error);
-        toast.error(error.message || "Erro ao deletar turma");
+  const handleDeleteClass = (classId: number) => {
+    openConfirm(
+      { title: "Eliminar Turma", message: "Tem certeza que deseja eliminar esta turma? Esta acção é permanente e não pode ser desfeita.", confirmLabel: "Eliminar" },
+      async () => {
+        try {
+          await classService.delete(classId);
+          toast.success("Turma eliminada com sucesso!");
+          await loadClasses();
+          await loadCourses();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao eliminar turma");
+        }
       }
-    }
+    );
   };
 
   const handleSaveClass = async (classData: Partial<APIClass>) => {
@@ -842,17 +860,19 @@ const handleDeleteRegistration = async (registrationId: number) => {
     }
   };
 
-  const handleDeleteStudent = async (studentId: number) => {
-    if (confirm("Tem certeza que deseja remover este estudante?")) {
-      try {
-        await studentService.delete(studentId);
-        deleteStudent(studentId);
-        toast.success("Estudante removido com sucesso!");
-      } catch (error: any) {
-        console.error("Erro ao deletar estudante:", error);
-        toast.error(error.message || "Erro ao remover estudante");
+  const handleDeleteStudent = (studentId: number) => {
+    openConfirm(
+      { title: "Remover Estudante", message: "Tem certeza que deseja remover este estudante? Todos os dados associados serão afectados.", confirmLabel: "Remover" },
+      async () => {
+        try {
+          await studentService.delete(studentId);
+          deleteStudent(studentId);
+          toast.success("Estudante removido com sucesso!");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao remover estudante");
+        }
       }
-    }
+    );
   };
 
   const handleSendEmailToAll = () => {
@@ -954,18 +974,19 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     });
   };
 
-  const handleDeleteCourse = async (courseId: number) => {
-    if (confirm("Tem certeza que deseja desativar este curso?")) {
-      try {
-        console.log('🗑️ Deletando curso:', courseId);
-        await courseService.delete(courseId);
-        toast.success("Curso desativado com sucesso!");
-        await loadCourses();
-      } catch (error: any) {
-        console.error('❌ Erro ao deletar curso:', error);
-        toast.error(error.message || "Erro ao deletar curso");
+  const handleDeleteCourse = (courseId: number) => {
+    openConfirm(
+      { title: "Desativar Curso", message: "Tem certeza que deseja desativar este curso? Deixará de estar disponível para novas matrículas.", confirmLabel: "Desativar", variant: "warning" },
+      async () => {
+        try {
+          await courseService.delete(courseId);
+          toast.success("Curso desativado com sucesso!");
+          await loadCourses();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao desativar curso");
+        }
       }
-    }
+    );
   };
 
   const handleGenerateReport = (reportType: string, filters: any) => {
@@ -1084,103 +1105,270 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         <Tabs value={activeView} onValueChange={(v) => persistView(v as AdminView)} className="space-y-6">
           <TabsContent value="dashboard" className="space-y-6 mt-0">
             {/* Stats Grid - MELHORADO COM MAIS CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <AccentStatCard icon={GraduationCap} label="Estudantes" value={stats.totalStudents} subtitle="Total matriculados" color="blue" />
-              <AccentStatCard icon={Users} label="Docentes" value={stats.totalTeachers} subtitle="Total de professores" color="purple" />
-              <AccentStatCard icon={BookOpen} label="Turmas" value={stats.totalClasses} subtitle="Total de turmas" color="orange" />
-              <AccentStatCard icon={FileText} label="Matrículas" value={registrations.length} subtitle="Matrículas ativas" color="cyan" />
-              <AccentStatCard icon={DollarSign} label="Receita Total" value={formatCurrency(stats.totalRevenue)} subtitle="Arrecadado" color="green" />
-              <AccentStatCard icon={AlertTriangle} label="Em Débito" value={stats.studentsInDebt} subtitle="Estudantes devendo" color="red" />
-              <AccentStatCard icon={Shield} label="Usuários" value={systemUsers.length} subtitle="Total no sistema" color="pink" />
-              <AccentStatCard icon={BarChart3} label="Taxa de Aprovação" value="87%" subtitle="Média geral" color="indigo" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              {/* Turmas */}
+              <div className="bg-white rounded-2xl border border-[#F5821F]/20 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-8 bg-[#F5821F] rounded-lg flex items-center justify-center">
+                    <BookOpen className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-slate-500 font-medium">Turmas</span>
+                </div>
+                <div className="text-3xl font-bold text-[#F5821F]">{stats.totalClasses}</div>
+                <p className="text-xs text-slate-400 mt-1">Total de turmas</p>
+              </div>
+
+              {/* Receita Total */}
+              <div className="bg-white rounded-2xl border border-[#004B87]/20 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-8 bg-[#004B87] rounded-lg flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-slate-500 font-medium">Receita Total</span>
+                </div>
+                <div className="text-3xl font-bold text-[#004B87]">{formatCurrency(stats.totalRevenue)}</div>
+                <p className="text-xs text-slate-400 mt-1">Arrecadado</p>
+              </div>
+
+              {/* Em Débito */}
+              <div className="bg-white rounded-2xl border border-[#F5821F]/20 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-8 bg-[#F5821F] rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-slate-500 font-medium">Em Débito</span>
+                </div>
+                <div className="text-3xl font-bold text-[#F5821F]">{stats.studentsInDebt}</div>
+                <p className="text-xs text-slate-400 mt-1">Estudantes devendo</p>
+              </div>
+
+              {/* Usuários */}
+              <div className="bg-white rounded-2xl border border-[#004B87]/20 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-8 bg-[#004B87] rounded-lg flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-slate-500 font-medium">Usuários</span>
+                </div>
+                <div className="text-3xl font-bold text-[#004B87]">{systemUsers.length}</div>
+                <p className="text-xs text-slate-400 mt-1">Total no sistema</p>
+              </div>
+
+              {/* Transições Pendentes */}
+              <button
+                onClick={() => persistView('transitions')}
+                className={`bg-white rounded-2xl border shadow-sm p-5 hover:shadow-md transition-shadow text-left w-full ${
+                  pendingTransitionsCount > 0
+                    ? 'border-amber-300 hover:border-amber-400'
+                    : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                    pendingTransitionsCount > 0 ? 'bg-amber-500' : 'bg-slate-400'
+                  }`}>
+                    <ArrowRightLeft className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-slate-500 font-medium">Transições</span>
+                </div>
+                <div className={`text-3xl font-bold ${
+                  pendingTransitionsCount > 0 ? 'text-amber-500' : 'text-slate-400'
+                }`}>{pendingTransitionsCount}</div>
+                <p className="text-xs text-slate-400 mt-1">Níveis pendentes</p>
+              </button>
             </div>
 
             {/* Quick Actions */}
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-lg">Ações Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <Button variant="outline" className="w-full justify-start h-12 border-2 hover:border-blue-500 hover:bg-blue-50" onClick={handleOpenCreateStudentModal}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Cadastrar Estudante
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start h-12 border-2 hover:border-purple-500 hover:bg-purple-50" onClick={() => setCreateTeacherModal(true)}>
-                    <Users className="h-4 w-4 mr-2" />
-                    Adicionar Docente
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start h-12 border-2 hover:border-orange-500 hover:bg-orange-50" onClick={handleCreateClass}>
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Criar Turma
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start h-12 border-2 hover:border-green-500 hover:bg-green-50" onClick={() => setReportsModal(true)}>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Gerar Relatório
-                  </Button>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-lg flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <h3 className="text-base font-bold text-slate-800">Ações Rápidas</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <button
+                  onClick={handleOpenCreateStudentModal}
+                  className="group flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-[#F5821F] hover:bg-[#F5821F]/5 transition-all duration-200 text-left"
+                >
+                  <div className="h-10 w-10 bg-[#004B87]/10 group-hover:bg-[#F5821F]/15 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200">
+                    <UserPlus className="h-5 w-5 text-[#004B87] group-hover:text-[#F5821F] transition-colors duration-200" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-[#F5821F] transition-colors duration-200">Cadastrar Estudante</p>
+                    <p className="text-xs text-slate-400 group-hover:text-[#F5821F]/70 transition-colors duration-200">Novo aluno</p>
+                  </div>
+                </button>
 
-            {/* Financial Summary */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    Resumo Financeiro
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Receita Total</span>
-                      <span className="font-bold text-green-600">{formatCurrency(paymentSummary.totalRevenue)}</span>
+                <button
+                  onClick={() => setCreateTeacherModal(true)}
+                  className="group flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-[#F5821F] hover:bg-[#F5821F]/5 transition-all duration-200 text-left"
+                >
+                  <div className="h-10 w-10 bg-[#004B87]/10 group-hover:bg-[#F5821F]/15 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200">
+                    <Users className="h-5 w-5 text-[#004B87] group-hover:text-[#F5821F] transition-colors duration-200" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-[#F5821F] transition-colors duration-200">Adicionar Docente</p>
+                    <p className="text-xs text-slate-400 group-hover:text-[#F5821F]/70 transition-colors duration-200">Novo professor</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleCreateClass}
+                  className="group flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-[#F5821F] hover:bg-[#F5821F]/5 transition-all duration-200 text-left"
+                >
+                  <div className="h-10 w-10 bg-[#004B87]/10 group-hover:bg-[#F5821F]/15 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200">
+                    <BookOpen className="h-5 w-5 text-[#004B87] group-hover:text-[#F5821F] transition-colors duration-200" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-[#F5821F] transition-colors duration-200">Criar Turma</p>
+                    <p className="text-xs text-slate-400 group-hover:text-[#F5821F]/70 transition-colors duration-200">Nova turma</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setReportsModal(true)}
+                  className="group flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-[#F5821F] hover:bg-[#F5821F]/5 transition-all duration-200 text-left"
+                >
+                  <div className="h-10 w-10 bg-[#004B87]/10 group-hover:bg-[#F5821F]/15 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200">
+                    <BarChart3 className="h-5 w-5 text-[#004B87] group-hover:text-[#F5821F] transition-colors duration-200" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-[#F5821F] transition-colors duration-200">Gerar Relatório</p>
+                    <p className="text-xs text-slate-400 group-hover:text-[#F5821F]/70 transition-colors duration-200">Exportar dados</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Financial Overview */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-emerald-500 rounded-xl flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800">Visão Financeira</h3>
+                    <p className="text-xs text-slate-400">Resumo e estatísticas gerais</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-[#004B87]/8 border border-[#004B87]/20 rounded-xl px-3 py-1.5">
+                  <TrendingUp className="h-4 w-4 text-[#004B87]" />
+                  <span className="text-xs font-semibold text-[#004B87]">Taxa: {paymentSummary.collectionRate.toFixed(1)}%</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-5">
+                {/* Left: Metrics */}
+                <div className="lg:col-span-3 p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-4 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
+                      <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <DollarSign className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Receita Total</p>
+                        <p className="font-bold text-[#004B87]">{formatCurrency(paymentSummary.totalRevenue)}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Pendente</span>
-                      <span className="font-bold text-yellow-600">{formatCurrency(paymentSummary.totalPending)}</span>
+
+                    <div className="flex items-center gap-3 p-4 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
+                      <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Pendente</p>
+                        <p className="font-bold text-[#004B87]">{formatCurrency(paymentSummary.totalPending)}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Em Atraso</span>
-                      <span className="font-bold text-red-600">{formatCurrency(paymentSummary.totalOverdue)}</span>
+
+                    <div className="flex items-center gap-3 p-4 bg-[#F5821F]/8 rounded-xl border border-[#F5821F]/20">
+                      <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Em Atraso</p>
+                        <p className="font-bold text-[#F5821F]">{formatCurrency(paymentSummary.totalOverdue)}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Antecipado</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(paymentSummary.totalAdvance)}</span>
+
+                    <div className="flex items-center gap-3 p-4 bg-[#F5821F]/8 rounded-xl border border-[#F5821F]/20">
+                      <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <TrendingUp className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Antecipado</p>
+                        <p className="font-bold text-[#F5821F]">{formatCurrency(paymentSummary.totalAdvance)}</p>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
 
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                    Estatísticas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Receita Média Mensal</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(paymentSummary.averageMonthlyRevenue)}</span>
+                  {/* Stats row */}
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="text-center p-3 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
+                      <p className="text-lg font-bold text-[#004B87]">{paymentSummary.studentsWithAdvance}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Com Crédito</p>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Estudantes com Crédito</span>
-                      <span className="font-bold text-purple-600">{paymentSummary.studentsWithAdvance}</span>
+                    <div className="text-center p-3 bg-[#F5821F]/8 rounded-xl border border-[#F5821F]/20">
+                      <p className="text-lg font-bold text-[#F5821F]">{paymentSummary.studentsInDebt}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Em Débito</p>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Estudantes em Débito</span>
-                      <span className="font-bold text-red-600">{paymentSummary.studentsInDebt}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-sm font-medium text-slate-700">Taxa de Cobrança</span>
-                      <span className="font-bold text-green-600">{paymentSummary.collectionRate.toFixed(1)}%</span>
+                    <div className="text-center p-3 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
+                      <p className="text-lg font-bold text-[#004B87] text-sm leading-tight">{formatCurrency(paymentSummary.averageMonthlyRevenue)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Média/Mês</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Right: Donut Chart */}
+                <div className="lg:col-span-2 border-l border-slate-100 p-6 flex flex-col items-center justify-center">
+                  <p className="text-sm font-semibold text-slate-600 mb-1">Distribuição Financeira</p>
+                  <p className="text-xs text-slate-400 mb-4">Visão geral dos valores</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Receita', value: Math.max(paymentSummary.totalRevenue, 0.01) },
+                          { name: 'Pendente', value: Math.max(paymentSummary.totalPending, 0) },
+                          { name: 'Em Atraso', value: Math.max(paymentSummary.totalOverdue, 0) },
+                          { name: 'Antecipado', value: Math.max(paymentSummary.totalAdvance, 0) },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={3}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        <Cell fill="#004B87" />
+                        <Cell fill="#F5821F" />
+                        <Cell fill="#FF9933" />
+                        <Cell fill="#003868" />
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: number) => value <= 0.01 ? 'Sem dados' : formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2">
+                    {[
+                      { color: '#004B87', label: 'Receita' },
+                      { color: '#F5821F', label: 'Pendente' },
+                      { color: '#FF9933', label: 'Em Atraso' },
+                      { color: '#003868', label: 'Antecipado' },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center gap-1.5">
+                        <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-xs text-slate-500">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -1278,16 +1466,19 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
               permissions={adminPermissions}
               onViewUser={(user) => console.log('Ver usuário:', user)}
               onEditUser={(user) => console.log('Editar usuário:', user)}
-              onDeleteUser={async (userId) => {
-                if (confirm('Tem certeza que deseja remover este usuário?')) {
-                  try {
-                    await userService.delete(userId);
-                    setSystemUsers(prev => prev.filter(u => u.id !== userId));
-                    toast.success('Usuário removido com sucesso!');
-                  } catch (error: unknown) {
-                    toast.error(error instanceof Error ? error.message : 'Erro ao remover usuário');
+              onDeleteUser={(userId) => {
+                openConfirm(
+                  { title: "Remover Utilizador", message: "Tem certeza que deseja remover este utilizador? O acesso ao sistema será revogado imediatamente.", confirmLabel: "Remover" },
+                  async () => {
+                    try {
+                      await userService.delete(userId);
+                      setSystemUsers(prev => prev.filter(u => u.id !== userId));
+                      toast.success('Utilizador removido com sucesso!');
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : 'Erro ao remover utilizador');
+                    }
                   }
-                }
+                );
               }}
               onCreateUser={async (userData) => {
                 try {
@@ -1523,8 +1714,11 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
         onSave={() => {}}
         classData={launchGradesModal.classData}
         students={launchGradesModal.students}
+        onNavigateToTransitions={() => { handleCloseLaunchGrades(); setActiveView('transitions'); }}
       />
     )}
+
+    <ConfirmDialog {...dialogProps} />
 
     {/* FLOATING CHAT BUTTON */}
     <GradientButton

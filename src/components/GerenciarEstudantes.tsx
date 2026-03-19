@@ -133,6 +133,7 @@ const handleOpenProfile = (student: Student) => {
     setIsDialogOpen(false);
     setEditingStudent(null);
     setFormData({ name: "", email: "", phone: "", class: "", status: "ativo" });
+    setSearchTerm("");
   };
 
   const toggleStatus = (studentId: string) => {

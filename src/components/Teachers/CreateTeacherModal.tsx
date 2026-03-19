@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,7 +152,8 @@ export function CreateTeacherModal({
           data_inicio: formData.startDate,
           contato_emergencia: `${formData.emergencyContact1}${formData.emergencyContact2 ? ', ' + formData.emergencyContact2 : ''}` || undefined,
           observacoes: `${formData.qualifications}\n\n${formData.experience}\n\n${formData.notes}`.trim(),
-          status: 'ativo'
+          status: 'ativo',
+          assigned_classes: formData.assignedClasses.length > 0 ? formData.assignedClasses : undefined,
         };
 
         console.log('📤 Enviando dados do docente:', teacherData);
@@ -251,9 +251,54 @@ export function CreateTeacherModal({
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !successModal) handleClose(); }}>
       <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
-        <div className="flex h-[650px]">
+
+        <div className="relative flex h-[650px]">
+
+        {/* ── SUCCESS OVERLAY (on top of form) ── */}
+        {successModal && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl">
+            <div className="bg-white rounded-2xl overflow-hidden max-w-sm w-full mx-6 shadow-2xl">
+              <div className="bg-gradient-to-br from-[#003A6B] via-[#004B87] to-[#0066B3] px-6 py-8 text-white text-center relative overflow-hidden">
+                <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-white/5" />
+                <div className="absolute -bottom-4 -left-4 h-14 w-14 rounded-full bg-[#F5821F]/15" />
+                <div className="relative">
+                  <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/30">
+                    <CheckCircle2 className="h-9 w-9 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold">Docente Cadastrado!</h3>
+                  <p className="text-white/70 text-sm mt-1 capitalize">{successModal.name}</p>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5">Username gerado</p>
+                  <p className="font-mono font-bold text-[#004B87] text-sm tracking-wide">{successModal.username}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <div className="flex items-start gap-2">
+                    <Key className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-800 mb-0.5">Senha do primeiro acesso</p>
+                      <p className="text-xs text-amber-700">O docente usará o username como senha no primeiro login.</p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSuccessModal(null); handleClose(); }}
+                  className="w-full h-11 rounded-xl bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87] text-white font-bold text-sm transition-all shadow-sm"
+                >
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FORM (always rendered, visible behind overlay) */}
+        <div className="flex w-full">
 
           {/* SIDEBAR */}
           <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
@@ -1001,62 +1046,10 @@ export function CreateTeacherModal({
             </footer>
           </div>
         </div>
+        </div>
       </DialogContent>
     </Dialog>
 
-    {/* ── SUCCESS MODAL ─────────────────────────────────── */}
-    {successModal && createPortal(
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-        style={{ zIndex: 99999 }}
-      >
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full animate-in zoom-in-95 duration-200">
-          {/* Header */}
-          <div className="bg-gradient-to-br from-[#003A6B] via-[#004B87] to-[#0066B3] px-6 py-6 text-white text-center relative overflow-hidden">
-            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-white/5" />
-            <div className="absolute -bottom-4 -left-4 h-14 w-14 rounded-full bg-[#F5821F]/15" />
-            <div className="relative">
-              <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/30">
-                <CheckCircle2 className="h-9 w-9 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">Docente Cadastrado!</h3>
-              <p className="text-white/70 text-sm mt-1">{successModal.name}</p>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="p-6 space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5">
-                Username gerado
-              </p>
-              <p className="font-mono font-bold text-[#004B87] text-sm tracking-wide">
-                {successModal.username}
-              </p>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-start gap-2">
-                <Key className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-amber-800 mb-0.5">Senha do primeiro acesso</p>
-                  <p className="text-xs text-amber-700">O docente usará o username como senha no primeiro login.</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onMouseDown={() => { setSuccessModal(null); handleClose(); }}
-              className="w-full h-11 rounded-xl bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87] text-white font-bold text-sm transition-all shadow-sm"
-            >
-              Concluir
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    )}
     </>
   );
 }

@@ -84,6 +84,8 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
   const [settingsModal, setSettingsModal]   = useState(false);
   const [settingsTab, setSettingsTab]       = useState<"perfil" | "academico" | "seguranca">("perfil");
   const [studentClass, setStudentClass]     = useState<ServiceClass | null>(null);
+  const [startingNivel, setStartingNivel]   = useState<number>(1); // nível ordinal onde o estudante começou
+  const [hasNiveis, setHasNiveis]           = useState<boolean>(false); // true se o curso do estudante tem níveis
   const [studentGrades, setStudentGrades]   = useState<StudentGrade[]>([]);
   const [gradesLoading, setGradesLoading]   = useState(false);
   const [monthlyFee, setMonthlyFee]         = useState<number>(0);
@@ -101,7 +103,14 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
     });
     registrationService.getByStudent(currentStudentId).then((regs) => {
       const active = regs.find((r) => r.status === "active");
-      if (active) setMonthlyFee(Number(active.monthly_fee || 0));
+      if (active) {
+        setMonthlyFee(Number(active.monthly_fee || 0));
+        // Guardar nível de início (padrão = 1 se não tiver nível associado)
+        if (active.nivel_ordinal) {
+          setStartingNivel(Number(active.nivel_ordinal));
+          setHasNiveis(true);
+        }
+      }
       const names = regs
         .filter((r) => r.status === "active" && r.course_name)
         .map((r) => r.course_name as string);
@@ -187,9 +196,9 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
     return map[status] ?? null;
   };
 
-  const PERIOD_LABEL: Record<number, string> = {
-    1: "1º Bimestre", 2: "2º Bimestre", 3: "3º Bimestre", 4: "4º Bimestre",
-  };
+  const PERIOD_LABEL: Record<number, string> = hasNiveis
+    ? { 1: "Nível 1", 2: "Nível 2", 3: "Nível 3", 4: "Nível 4", 5: "Nível 5", 6: "Nível 6" }
+    : { 1: "Período 1", 2: "Período 2", 3: "Período 3", 4: "Período 4", 5: "Período 5", 6: "Período 6" };
 
   const openSettings = (tab: "perfil" | "academico" | "seguranca" = "perfil") => {
     setSettingsTab(tab);
@@ -411,23 +420,52 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   )}
                 </div>
 
-                {/* Awaiting renewal notice */}
+                {/* Awaiting renewal — banner destacado */}
                 {levelProgress.current_level?.status === 'awaiting_renewal' && (
-                  <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-emerald-800">
-                        Parabéns! Aprovado no Nível {levelProgress.current_level.level_number}
-                        {levelProgress.current_level.final_grade != null
-                          ? ` — Nota: ${Number(levelProgress.current_level.final_grade).toFixed(1)}`
-                          : ''}
-                      </p>
-                      {levelProgress.current_level.next_level_name && (
-                        <p className="text-xs text-emerald-700 mt-0.5">
-                          Dirija-se à secretaria para renovar a sua matrícula
-                          {' '}e iniciar {levelProgress.current_level.next_level_name}.
+                  <div className="mx-4 mb-3 bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-300 rounded-2xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-emerald-800 leading-tight">
+                          Parabéns! Concluíste o Nível {levelProgress.current_level.level_number}
                         </p>
-                      )}
+                        {levelProgress.current_level.final_grade != null && (
+                          <p className="text-xs text-emerald-700 mt-0.5">
+                            Nota Final: <span className="font-bold">{Number(levelProgress.current_level.final_grade).toFixed(1)}/20</span> · Aprovado
+                          </p>
+                        )}
+                        <p className="text-xs text-emerald-600 mt-1.5 leading-relaxed">
+                          {levelProgress.current_level.next_level_name
+                            ? `A tua inscrição no ${levelProgress.current_level.next_level_name} será processada em breve pela secretaria.`
+                            : 'A tua inscrição no próximo nível será processada em breve pela secretaria.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recovery — banner de análise */}
+                {levelProgress.current_level?.status === 'recovery' && (
+                  <div className="mx-4 mb-3 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 bg-amber-400 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-amber-800 leading-tight">
+                          Resultado em Análise — Nível {levelProgress.current_level.level_number}
+                        </p>
+                        {levelProgress.current_level.final_grade != null && (
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Nota Final: <span className="font-bold">{Number(levelProgress.current_level.final_grade).toFixed(1)}/20</span>
+                          </p>
+                        )}
+                        <p className="text-xs text-amber-600 mt-1.5 leading-relaxed">
+                          O teu resultado está em análise pela secretaria. Serás contactado em breve.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -590,7 +628,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-slate-800 text-sm">
-                              {PERIOD_LABEL[g.period_number] ?? `Bimestre ${g.period_number}`}
+                              {PERIOD_LABEL[g.period_number] ?? `Nível ${g.period_number}`}
                             </p>
                             {(g.grade_teste1 != null || g.grade_teste2 != null) && (
                               <p className="text-xs text-slate-400 mt-0.5">
@@ -675,46 +713,42 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               </div>
             )}
 
-            {/* No grades yet — show 4 placeholder bimester cards */}
+            {/* No grades yet — show single placeholder for current nivel */}
             {studentClass && !gradesLoading && studentGrades.length === 0 && (
-              <div className="space-y-3">
-                {([1, 2, 3, 4] as const).map((num) => (
-                  <div key={num} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-4 p-4">
-                      <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl font-bold text-slate-300">—</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-800 text-sm">
-                          {PERIOD_LABEL[num]}
-                        </p>
-                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
-                          Aguardando lançamento
-                        </span>
-                      </div>
-                    </div>
-                    <div className="border-t border-slate-100 p-4">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                        Notas do Bimestre
-                      </p>
-                      <div className="space-y-3">
-                        {([
-                          { label: "Teste 1",       weight: "20%" },
-                          { label: "Teste 2",       weight: "20%" },
-                          { label: "Exame Prático", weight: "30%" },
-                          { label: "Exame Teórico", weight: "30%" },
-                        ]).map((item) => (
-                          <div key={item.label} className="flex items-center gap-2.5">
-                            <span className="text-xs text-slate-400 w-28 flex-shrink-0">{item.label}</span>
-                            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden" />
-                            <span className="text-xs font-bold w-8 text-right flex-shrink-0 text-slate-300">—</span>
-                            <span className="text-[10px] text-slate-300 w-7 flex-shrink-0">{item.weight}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-4 p-4">
+                  <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl font-bold text-slate-300">—</span>
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 text-sm">
+                      {PERIOD_LABEL[startingNivel] ?? `Nível ${startingNivel}`}
+                    </p>
+                    <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
+                      Aguardando lançamento
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 p-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                    {hasNiveis ? "Notas do Nível" : "Notas do Período"}
+                  </p>
+                  <div className="space-y-3">
+                    {([
+                      { label: "Teste 1",       weight: "20%" },
+                      { label: "Teste 2",       weight: "20%" },
+                      { label: "Exame Prático", weight: "30%" },
+                      { label: "Exame Teórico", weight: "30%" },
+                    ]).map((item) => (
+                      <div key={item.label} className="flex items-center gap-2.5">
+                        <span className="text-xs text-slate-400 w-28 flex-shrink-0">{item.label}</span>
+                        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden" />
+                        <span className="text-xs font-bold w-8 text-right flex-shrink-0 text-slate-300">—</span>
+                        <span className="text-[10px] text-slate-300 w-7 flex-shrink-0">{item.weight}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -749,7 +783,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
 
                           <div className="flex-1 min-w-0 text-left">
                             <p className="font-semibold text-slate-800 text-sm">
-                              {PERIOD_LABEL[g.period_number] ?? `Bimestre ${g.period_number}`}
+                              {PERIOD_LABEL[g.period_number] ?? `Nível ${g.period_number}`}
                             </p>
                             {sb && (
                               <Badge className={`${sb.cls} border text-[10px] mt-1.5 inline-flex`}>{sb.label}</Badge>
@@ -767,7 +801,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                             {hasGrades && (
                               <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                  Notas do Bimestre
+                                  {hasNiveis ? "Notas do Nível" : "Notas do Período"}
                                 </p>
                                 <div className="space-y-3">
                                   {([

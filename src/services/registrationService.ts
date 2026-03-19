@@ -21,6 +21,9 @@ export interface Registration {
   payment_status: 'paid' | 'pending' | 'overdue';
   enrollment_fee: number;
   monthly_fee: number;
+  nivel_id?: number | null;
+  nivel_ordinal?: number | null;
+  nivel_nome?: string | null;
   username: string;
   observations?: string;
   created_at?: string;

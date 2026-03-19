@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   UserPlus, Mail, Phone, Calendar, MapPin,
-  User, AlertCircle, Sparkles, ChevronRight, CheckCircle2,
-  Key, Copy, BookOpen, X, ShieldAlert, Hash,
-  Printer, ArrowRight, Info, RefreshCw, GraduationCap, Edit2
+  User, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2,
+  Key, Copy, BookOpen, X, ShieldAlert,
+  Printer, ArrowRight, Info, RefreshCw, Edit2, Sparkles, Hash
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import studentService from "@/services/studentService";
@@ -192,6 +192,11 @@ export function InscriptionStudentModal({
   // Handler para marcar como pago (apenas UI - backend será chamado no save)
   const handleMarkAsPaid = () => {
     setFormData(prev => ({ ...prev, paymentStatus: 'paid' }));
+  };
+
+  // Handler para anular o registo de pagamento (volta a pendente)
+  const handleUnmarkPaid = () => {
+    setFormData(prev => ({ ...prev, paymentStatus: 'pending' }));
   };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -470,16 +475,25 @@ const validateForm = () => {
     }
   };
 
-  const validateAndNext = () => {
-    // Tabs dinâmicos: em edição não tem pagamento; em criação inclui pagamento se pago
-    const tabs: ('personal' | 'contacts' | 'payment' | 'credentials')[] = isEditing
+  const getAvailableTabs = () => {
+    return (isEditing
       ? ['personal', 'contacts', 'credentials']
       : inscriptionIsPaid
         ? ['personal', 'contacts', 'payment', 'credentials']
-        : ['personal', 'contacts', 'credentials'];
+        : ['personal', 'contacts', 'credentials']
+    ) as ('personal' | 'contacts' | 'payment' | 'credentials')[];
+  };
 
+  const validateAndNext = () => {
+    const tabs = getAvailableTabs();
     const nextIndex = tabs.indexOf(activeTab) + 1;
     if (nextIndex < tabs.length) setActiveTab(tabs[nextIndex]);
+  };
+
+  const handleBack = () => {
+    const tabs = getAvailableTabs();
+    const prevIndex = tabs.indexOf(activeTab) - 1;
+    if (prevIndex >= 0) setActiveTab(tabs[prevIndex]);
   };
 
   // Formatter de moeda
@@ -813,7 +827,6 @@ const validateForm = () => {
           <div className="flex">
             {/* Lado esquerdo - Confirmação */}
             <div className="flex-1 p-8">
-              {/* Header com ícone de sucesso */}
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center">
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
@@ -828,7 +841,6 @@ const validateForm = () => {
                 </div>
               </div>
 
-              {/* Resumo do estudante */}
               <div className="bg-slate-50 rounded-xl p-4 mb-6">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -842,28 +854,20 @@ const validateForm = () => {
                 </div>
               </div>
 
-              {/* Username + Instrução Primeiro Acesso */}
               <div className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border border-[#004B87]/20 rounded-xl p-4 mb-6">
                 <h3 className="text-xs font-bold text-[#004B87] uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Key className="h-3 w-3" />
                   Acesso ao Portal
                 </h3>
-
                 <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-3">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase">Username</span>
                     <p className="font-mono font-bold text-[#004B87]">{savedCredentials.username}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(savedCredentials.username, 'username')}
-                    className="h-8 w-8 p-0"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(savedCredentials.username, 'username')} className="h-8 w-8 p-0">
                     {copiedField === 'username' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <p className="text-[11px] text-amber-800 font-semibold flex items-start gap-1.5">
                     <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
@@ -879,14 +883,11 @@ const validateForm = () => {
                 <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mb-4">
                   <Sparkles className="h-6 w-6 text-[#F5821F]" />
                 </div>
-
                 <h3 className="text-lg font-bold mb-2">Próximo Passo</h3>
                 <p className="text-blue-100 text-sm mb-6">
                   Deseja matricular este estudante num curso agora?
                 </p>
-
                 <div className="space-y-3">
-                  {/* Botão Sim - Fazer Matrícula */}
                   {onProceedToRegistration && (
                     <Button
                       onClick={handleProceedToRegistration}
@@ -897,8 +898,6 @@ const validateForm = () => {
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   )}
-
-                  {/* Botão Imprimir Recibo */}
                   <Button
                     variant="outline"
                     onClick={handlePrintReceipt}
@@ -907,8 +906,6 @@ const validateForm = () => {
                     <Printer className="h-4 w-4" />
                     Imprimir Recibo
                   </Button>
-
-                  {/* Botão Não */}
                   <Button
                     variant="ghost"
                     onClick={handleClose}
@@ -918,8 +915,6 @@ const validateForm = () => {
                   </Button>
                 </div>
               </div>
-
-              {/* Info footer */}
               <div className="mt-auto pt-4 border-t border-white/10">
                 <p className="text-[10px] text-blue-200">
                   A matrícula pode ser feita posteriormente na página de matrículas.
@@ -967,7 +962,6 @@ const validateForm = () => {
                 {[
                   { id: 'personal', label: 'Dados Pessoais', icon: User, desc: 'Informações Básicas' },
                   { id: 'contacts', label: 'Contatos', icon: Phone, desc: 'Emergência e Observações' },
-                  // Mostrar tab de pagamento apenas se nova inscrição paga (não em edição)
                   ...(!isEditing && inscriptionIsPaid ? [{ id: 'payment', label: 'Pagamento', icon: DollarSign, desc: `Taxa: ${formatCurrency(inscriptionFee)}` }] : []),
                   { id: 'credentials', label: 'Credenciais', icon: Key, desc: 'Acesso ao Portal' },
                 ].map((tab) => (
@@ -1280,6 +1274,7 @@ const validateForm = () => {
                       isMarkingPaid={isMarkingPaid}
                       onChangeField={(field, value) => handleInputChange(field, value)}
                       onMarkAsPaid={handleMarkAsPaid}
+                      onUnmarkPaid={handleUnmarkPaid}
                       formatCurrency={formatCurrency}
                     />
                   </div>
@@ -1395,41 +1390,47 @@ const validateForm = () => {
                 )}
               </div>
 
-              {/* FOOTER */}
-              <footer className="px-10 py-6 border-t border-slate-100 bg-white flex justify-between items-center">
-                <Button variant="ghost" onClick={handleClose} className="text-slate-400 hover:text-slate-600 font-bold uppercase text-[11px] tracking-widest">
+              {/* Footer navigation */}
+              <div className="px-10 py-5 border-t border-slate-100 flex items-center justify-between bg-white">
+                <button
+                  onClick={handleClose}
+                  className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                >
                   Cancelar
-                </Button>
-
-                <div className="flex gap-3">
-                  {activeTab !== 'credentials' ? (
-                    <Button
-                      onClick={validateAndNext}
-                      className="bg-[#004B87] text-white hover:bg-[#003A6B] px-8 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-lg shadow-blue-200"
-                    >
-                      Próximo Passo <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSubmitting}
-                      className="bg-[#F5821F] text-white hover:bg-[#E07318] px-10 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-xl shadow-orange-500/30 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          {isEditing ? 'Guardando...' : 'Inscrevendo...'}
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4" />
-                          {isEditing ? 'Guardar Alterações' : 'Inscrever Estudante'}
-                        </>
-                      )}
-                    </Button>
-                  )}
+                </button>
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const tabs = getAvailableTabs();
+                    const currentIdx = tabs.indexOf(activeTab);
+                    return (
+                      <>
+                        {currentIdx > 0 && (
+                          <button onClick={handleBack} className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+                            <ChevronLeft className="h-4 w-4" /> Anterior
+                          </button>
+                        )}
+                        {activeTab !== 'credentials' ? (
+                          <button onClick={validateAndNext} className="px-6 py-2.5 rounded-xl bg-[#004B87] hover:bg-[#003A6B] text-white font-bold text-sm transition-colors flex items-center gap-2">
+                            Próximo <ChevronRight className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleSave}
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 rounded-xl bg-[#F5821F] hover:bg-[#E07318] text-white font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmitting ? (
+                              <><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{isEditing ? 'A guardar...' : 'A inscrever...'}</>
+                            ) : (
+                              <><CheckCircle2 className="h-4 w-4" />{isEditing ? 'Guardar Alterações' : 'Inscrever Estudante'}</>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
-              </footer>
+              </div>
             </div>
           </div>
         </DialogContent>

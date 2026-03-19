@@ -1,24 +1,21 @@
 import apiClient from './api';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface StudentGrade {
   id?: number;
   class_id: number;
   student_id: number;
   period_number: number;
 
-  // Grade inputs (0-10 each)
-  grade_teste1?: number | null;         // Teste 1 — 20%
-  grade_teste2?: number | null;         // Teste 2 — 20%
-  grade_exame_pratico?: number | null;  // Exame Prático — 30%
-  grade_exame_teorico?: number | null;  // Exame Teórico — 30%
 
-  // Calculated by backend (integer after half-up rounding)
+  grade_teste1?: number | null;      
+  grade_teste2?: number | null;     
+  grade_exame_pratico?: number | null;  
+  grade_exame_teorico?: number | null;
+
+
   final_grade?: number | null;
   attendance?: number | null;
 
-  // passed: raw >= 9.5 | failed: raw < 9.5
   status?: 'passed' | 'failed' | null;
   notes?: string | null;
   strengths?: string | null;
@@ -49,9 +46,7 @@ export interface FinalizeResult {
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 class GradeService {
-  /**
-   * Get all grades for a class (optionally filtered by period)
-   */
+
   async getByClass(classId: number, period?: number): Promise<StudentGrade[]> {
     try {
       const params = new URLSearchParams({ class_id: String(classId) });
@@ -79,9 +74,6 @@ class GradeService {
     }
   }
 
-  /**
-   * Get all grades of a student across all classes
-   */
   async getAllByStudent(studentId: number): Promise<StudentGrade[]> {
     try {
       const response = await apiClient.get(`/api/grades.php?student_id=${studentId}`);
@@ -92,9 +84,7 @@ class GradeService {
     }
   }
 
-  /**
-   * Save or update grades for a student in a period (UPSERT)
-   */
+
   async save(data: Partial<StudentGrade>): Promise<StudentGrade> {
     try {
       const response = await apiClient.post('/api/grades.php', data);
@@ -108,11 +98,7 @@ class GradeService {
     }
   }
 
-  /**
-   * Finalize the level for a student in a class.
-   * Calculates final_grade from all periods, updates student_level_progress.
-   * Level transition requires average raw >= 9.8.
-   */
+
   async finalizeLevel(classId: number, studentId: number): Promise<FinalizeResult> {
     try {
       const response = await apiClient.post('/api/grades.php?action=finalize_level', {
@@ -129,9 +115,6 @@ class GradeService {
     }
   }
 
-  /**
-   * Helper: Get status label (PT)
-   */
   getStatusLabel(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
       passed: 'Aprovado',
@@ -140,9 +123,7 @@ class GradeService {
     return status ? (map[status] ?? status) : '—';
   }
 
-  /**
-   * Helper: Get status color class (Tailwind)
-   */
+
   getStatusColor(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
       passed: 'text-emerald-600',
@@ -151,9 +132,7 @@ class GradeService {
     return status ? (map[status] ?? 'text-slate-500') : 'text-slate-400';
   }
 
-  /**
-   * Helper: Get status badge classes (Tailwind)
-   */
+
   getStatusBadge(status: StudentGrade['status']): string {
     const map: Record<string, string> = {
       passed: 'bg-emerald-100 text-emerald-700 border border-emerald-200',

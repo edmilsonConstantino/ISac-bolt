@@ -1,5 +1,5 @@
 // src/components/shared/PaymentsDashboard.tsx
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import {
   Wallet,
   GraduationCap,
   PlayCircle,
+  CheckCircle2,
   Info,
   Ban,
   RefreshCw,
@@ -41,6 +42,8 @@ import {
   Hash,
   TrendingUp,
   FileText,
+  X,
+  Printer,
 } from "lucide-react";
 import { PageHeader, PageHeaderTitle, PageHeaderSubtitle } from "@/components/ui/page-header";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
@@ -102,6 +105,7 @@ export function PaymentsDashboard() {
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [studentFinance, setStudentFinance] = useState<StudentFinanceResponse | null>(null);
   const [loadingFinance, setLoadingFinance] = useState(false);
+  const [financeDialogOpen, setFinanceDialogOpen] = useState(false);
 
   // Track overdue status per student (populated on load)
   const [overdueMap, setOverdueMap] = useState<Record<number, boolean>>({});
@@ -131,20 +135,27 @@ export function PaymentsDashboard() {
   const [voidReason, setVoidReason] = useState('');
   const [submittingVoid, setSubmittingVoid] = useState(false);
 
+  const [rightTab, setRightTab] = useState<'calendar' | 'history'>('calendar');
+
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchStudents = async () => {
     setLoadingStudents(true);
     try {
       const token = localStorage.getItem('access_token') || '';
-      const response = await fetch(`${API_URL}/students.php`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
+      const [studentsResp, overdueResp] = await Promise.all([
+        fetch(`${API_URL}/students.php`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/student-finance.php?overdue_summary=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      const data = await studentsResp.json();
       if (data.success) {
         setStudents(data.data || []);
       } else {
         toast.error(data.message || 'Erro ao carregar estudantes');
+      }
+      if (overdueResp.ok) {
+        const overdueData = await overdueResp.json();
+        if (overdueData.success) setOverdueMap(overdueData.data || {});
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
@@ -158,7 +169,6 @@ export function PaymentsDashboard() {
     try {
       const data = await financeService.getStudentFinance(studentId);
       setStudentFinance(data);
-      // Cache overdue status for the student list indicator
       setOverdueMap(prev => ({
         ...prev,
         [studentId]: (data.summary?.overdue_count ?? 0) > 0
@@ -173,13 +183,22 @@ export function PaymentsDashboard() {
 
   useEffect(() => { fetchStudents(); }, []);
 
-  useEffect(() => {
-    if (selectedStudentId) {
-      fetchStudentFinance(selectedStudentId);
-    } else {
-      setStudentFinance(null);
-    }
-  }, [selectedStudentId, fetchStudentFinance]);
+  // ── Open finance dialog ────────────────────────────────────────────────────
+
+  const openStudentFinance = (student: StudentListItem) => {
+    setSelectedStudentId(student.id);
+    setStudentFinance(null);
+    setRightTab('calendar');
+    setFinanceDialogOpen(true);
+    fetchStudentFinance(student.id);
+  };
+
+  const closeFinanceDialog = () => {
+    setFinanceDialogOpen(false);
+    setSelectedStudentId(null);
+    setStudentFinance(null);
+    setSearchTerm("");
+  };
 
   // ── Filtered students ──────────────────────────────────────────────────────
 
@@ -191,6 +210,8 @@ export function PaymentsDashboard() {
       s.email?.toLowerCase().includes(term)
     );
   }, [students, searchTerm]);
+
+  const overdueCount = Object.values(overdueMap).filter(Boolean).length;
 
   // ── Payment modal helpers ──────────────────────────────────────────────────
 
@@ -279,321 +300,490 @@ export function PaymentsDashboard() {
   };
 
   const summary = studentFinance?.summary;
+  const selectedStudent = students.find(s => s.id === selectedStudentId);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <PageHeader>
-        <div>
-          <PageHeaderTitle icon={<DollarSign className="h-7 w-7 text-[#004B87]" />}>
-            Gestão de Pagamentos
-          </PageHeaderTitle>
-          <PageHeaderSubtitle>
-            Seleccione um estudante para ver e gerir os pagamentos
-          </PageHeaderSubtitle>
+        <div className="flex items-center justify-between w-full">
+          <div>
+            <PageHeaderTitle icon={<DollarSign className="h-7 w-7 text-[#004B87]" />}>
+              Gestão de Pagamentos
+            </PageHeaderTitle>
+            <PageHeaderSubtitle>
+              Pesquise um estudante e clique para gerir os pagamentos
+            </PageHeaderSubtitle>
+          </div>
+          {/* Quick stats */}
+          <div className="hidden sm:flex items-center gap-3">
+            <div className="text-center px-4 py-2 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-xl font-bold text-[#004B87]">{students.length}</p>
+              <p className="text-xs text-slate-500">Estudantes</p>
+            </div>
+            {overdueCount > 0 && (
+              <div className="text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100">
+                <p className="text-xl font-bold text-red-600">{overdueCount}</p>
+                <p className="text-xs text-slate-500">Em Atraso</p>
+              </div>
+            )}
+          </div>
         </div>
       </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Pesquisar por nome ou email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-10"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0"
+          onClick={fetchStudents}
+          title="Actualizar lista"
+        >
+          <RefreshCw className={`h-4 w-4 ${loadingStudents ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
-        {/* ── Lista de Estudantes ─────────────────────────────────────────── */}
-        <div className="lg:col-span-1">
-          <Card className="shadow-lg border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[#004B87]" />
-                  <h3 className="font-semibold text-[#004B87]">Estudantes</h3>
-                  <span className="text-xs text-slate-500">({students.length})</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-[#004B87]"
-                  onClick={fetchStudents}
-                  title="Actualizar lista"
+      {/* ── Student List ────────────────────────────────────────────────────── */}
+      <Card className="shadow-sm border border-slate-200">
+        <CardContent className="p-0">
+
+          {/* List header */}
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-[#004B87]" />
+              <span className="font-semibold text-[#004B87] text-sm">Estudantes</span>
+              {!loadingStudents && (
+                <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {filteredStudents.length}
+                  {searchTerm ? ` de ${students.length}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Content */}
+          {loadingStudents ? (
+            <div className="py-16 text-center">
+              <Loader2 className="h-7 w-7 animate-spin mx-auto text-[#004B87]" />
+              <p className="mt-3 text-sm text-slate-500">A carregar estudantes...</p>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="py-16 text-center">
+              <Users className="h-10 w-10 mx-auto mb-3 text-slate-200" />
+              <p className="text-sm font-medium text-slate-500">
+                {searchTerm ? 'Nenhum estudante encontrado para essa pesquisa' : 'Nenhum estudante registado'}
+              </p>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="mt-2 text-xs text-[#F5821F] hover:underline"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
+                  Limpar pesquisa
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {filteredStudents.map((student) => {
+                const hasOverdue = overdueMap[student.id];
+                return (
+                  <button
+                    key={student.id}
+                    onClick={() => openStudentFinance(student)}
+                    className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors group flex items-center gap-4"
+                  >
+                    {/* Avatar */}
+                    <AvatarInitials name={student.name} size="md" shape="circle" />
 
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar estudante..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9"
-                />
-              </div>
+                    {/* Name + email */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-800 group-hover:text-[#004B87] transition-colors truncate">
+                        {student.name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">{student.email}</p>
+                    </div>
 
-              {loadingStudents ? (
-                <div className="py-8 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#004B87]" />
+                    {/* Status badge */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {hasOverdue ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">
+                          <AlertTriangle className="h-3 w-3" />
+                          Em Atraso
+                        </span>
+                      ) : overdueMap[student.id] === false ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-50 text-green-600 px-2.5 py-1 rounded-full">
+                          <CheckCircle className="h-3 w-3" />
+                          Em Dia
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#F5821F] text-white px-3 py-1.5 rounded-lg shadow-sm group-hover:bg-[#E07318] transition-colors hidden sm:flex">
+                        Ver pagamentos
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Finance Dialog ────────────────────────────────────────────────── */}
+      <Dialog open={financeDialogOpen} onOpenChange={(open) => !open && closeFinanceDialog()}>
+        <DialogContent className="max-w-2xl h-[88vh] overflow-hidden p-0 gap-0 rounded-2xl border-0 shadow-2xl flex flex-col">
+
+          {/* ── Gradient Header ── */}
+          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 pt-5 pb-5 relative shrink-0">
+            <div className="absolute inset-0 bg-black/5 rounded-t-2xl" />
+            <div className="relative">
+
+              {/* Top row: avatar + name + actions */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {selectedStudent && (
+                    <div className="h-11 w-11 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center shrink-0">
+                      <span className="text-white font-bold text-base">
+                        {selectedStudent.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="font-bold text-white text-base leading-tight">
+                      {selectedStudent?.name ?? '—'}
+                    </h2>
+                    <p className="text-blue-200 text-xs mt-0.5">
+                      {loadingFinance
+                        ? 'A carregar...'
+                        : studentFinance?.course?.name ?? 'Sem matrícula activa'}
+                    </p>
+                  </div>
                 </div>
-              ) : filteredStudents.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 text-sm">
-                  Nenhum estudante encontrado
-                </div>
-              ) : (
-                <div className="space-y-1 max-h-[520px] overflow-y-auto pr-1">
-                  {filteredStudents.map((student) => (
-                    <button
-                      key={student.id}
-                      onClick={() => setSelectedStudentId(student.id)}
-                      className={`w-full text-left p-3 rounded-lg transition-all border-2 ${
-                        selectedStudentId === student.id
-                          ? 'border-[#F5821F] bg-orange-50'
-                          : 'border-transparent hover:bg-slate-50'
-                      }`}
+
+                <div className="flex items-center gap-2">
+                  {!loadingFinance && studentFinance?.course && (
+                    <Button
+                      onClick={openAdvanceModal}
+                      size="sm"
+                      className="bg-[#F5821F] hover:bg-[#E07318] text-white border-0 h-8 px-3 text-xs font-semibold shadow-md"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <AvatarInitials name={student.name} size="sm" shape="circle" />
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm text-slate-800 truncate">{student.name}</p>
-                            <p className="text-xs text-slate-500 truncate">{student.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0 ml-1">
-                          {overdueMap[student.id] && (
-                            <span title="Tem prestações em atraso">
-                              <AlertTriangle className="h-4 w-4 text-red-500" />
-                            </span>
-                          )}
-                          <ChevronRight className="h-4 w-4 text-slate-400" />
-                        </div>
-                      </div>
-                    </button>
+                      <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                      Adicionar Crédito
+                    </Button>
+                  )}
+                  <button
+                    onClick={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                    disabled={loadingFinance}
+                    className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
+                    title="Actualizar"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 text-white ${loadingFinance ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats row — shown only when data is loaded */}
+              {!loadingFinance && summary && (
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Wallet className="h-3 w-3 text-blue-200" />
+                      <span className="text-[10px] text-blue-200 font-medium uppercase tracking-wide">Crédito</span>
+                    </div>
+                    <p className={`text-sm font-bold leading-none ${summary.wallet_balance > 0 ? 'text-white' : 'text-white/60'}`}>
+                      {formatCurrency(summary.wallet_balance)}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <CheckCircle className="h-3 w-3 text-green-300" />
+                      <span className="text-[10px] text-green-200 font-medium uppercase tracking-wide">Pago</span>
+                    </div>
+                    <p className="text-sm font-bold text-white leading-none">
+                      {formatCurrency(summary.total_paid)}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <AlertTriangle className="h-3 w-3 text-red-300" />
+                      <span className="text-[10px] text-red-200 font-medium uppercase tracking-wide">Atraso</span>
+                    </div>
+                    <p className={`text-sm font-bold leading-none ${summary.total_overdue > 0 ? 'text-red-300' : 'text-white/60'}`}>
+                      {formatCurrency(summary.total_overdue)}
+                    </p>
+                    {summary.overdue_count > 0 && (
+                      <p className="text-[10px] text-red-300/80 mt-0.5">{summary.overdue_count} parcela(s)</p>
+                    )}
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <TrendingUp className="h-3 w-3 text-orange-300" />
+                      <span className="text-[10px] text-orange-200 font-medium uppercase tracking-wide">Multas</span>
+                    </div>
+                    <p className={`text-sm font-bold leading-none ${summary.total_penalties > 0 ? 'text-orange-300' : 'text-white/60'}`}>
+                      {formatCurrency(summary.total_penalties)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Skeleton stats while loading */}
+              {loadingFinance && (
+                <div className="grid grid-cols-4 gap-2">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="bg-white/10 rounded-xl px-3 py-2 border border-white/20 h-[52px] animate-pulse" />
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
 
-        {/* ── Painel de Detalhe ───────────────────────────────────────────── */}
-        <div className="lg:col-span-2">
-          {!selectedStudentId ? (
-            /* Empty state */
-            <Card className="shadow-lg border-0">
-              <CardContent className="py-20 text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 text-slate-200" />
-                <h3 className="font-medium text-slate-500 mb-1">Nenhum estudante seleccionado</h3>
-                <p className="text-sm text-slate-400">
-                  Clique num estudante para ver e gerir os pagamentos
-                </p>
-              </CardContent>
-            </Card>
+          {/* ── Body (scrollable) ── */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {loadingFinance ? (
+              <div className="py-16 text-center">
+                <Loader2 className="h-7 w-7 animate-spin mx-auto text-[#004B87]" />
+                <p className="mt-3 text-sm text-slate-500">A carregar dados financeiros...</p>
+              </div>
 
-          ) : loadingFinance ? (
-            <Card className="shadow-lg border-0">
-              <CardContent className="py-20 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#004B87]" />
-                <p className="mt-3 text-slate-500 text-sm">A carregar dados financeiros...</p>
-              </CardContent>
-            </Card>
-
-          ) : !studentFinance ? (
-            /* Error / no data */
-            <Card className="shadow-lg border-0">
-              <CardContent className="py-16 text-center">
+            ) : !studentFinance ? (
+              <div className="py-12 text-center px-6">
                 <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-yellow-500" />
-                <p className="font-medium text-slate-600 mb-2">Erro ao carregar dados</p>
-                <Button variant="outline" size="sm" onClick={() => fetchStudentFinance(selectedStudentId)}>
+                <p className="font-medium text-slate-600 mb-3">Erro ao carregar dados</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />Tentar novamente
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
 
-          ) : !studentFinance.course ? (
-            /* Student without active enrollment */
-            <NoEnrollmentView
-              studentFinance={studentFinance}
-              onVoid={openVoidModal}
-              onRefresh={() => fetchStudentFinance(selectedStudentId)}
-            />
+            ) : !studentFinance.course ? (
+              <div className="p-5">
+                <NoEnrollmentView
+                  studentFinance={studentFinance}
+                  onVoid={openVoidModal}
+                  onRefresh={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                />
+              </div>
 
-          ) : (
-            /* ── Full finance view ── */
-            <div className="space-y-4">
-              {/* Student header */}
-              <Card className="shadow-lg border-0">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <AvatarInitials name={studentFinance.student.name} size="lg" />
-                      <div>
-                        <h3 className="font-bold text-lg text-[#004B87] leading-tight">
-                          {studentFinance.student.name}
-                        </h3>
-                        <p className="text-sm text-slate-500">
-                          {studentFinance.course.name}
-                        </p>
-                      </div>
-                    </div>
+            ) : (
+              <div className="p-5 space-y-4">
 
+                {/* Class info bar */}
+                {studentFinance.class && (
+                  <div className={`px-3 py-2.5 rounded-xl flex items-center justify-between text-sm border ${
+                    summary?.class_concluded
+                      ? 'bg-slate-50 border-slate-200'
+                      : summary?.class_started
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-amber-50 border-amber-200'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400"
-                        title="Actualizar"
-                        onClick={() => fetchStudentFinance(selectedStudentId)}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        onClick={openAdvanceModal}
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        <Wallet className="h-4 w-4 mr-1.5" />
-                        Adicionar Crédito
-                      </Button>
+                      <GraduationCap className={`h-4 w-4 ${
+                        summary?.class_concluded ? 'text-slate-500'
+                        : summary?.class_started ? 'text-green-600'
+                        : 'text-amber-600'
+                      }`} />
+                      <span className="font-semibold text-slate-700">{studentFinance.class.name}</span>
+                      {summary?.class_started && studentFinance.class.start_date && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-slate-500 text-xs">Início: {formatDate(studentFinance.class.start_date)}</span>
+                        </>
+                      )}
+                      {!summary?.class_started && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-amber-600 text-xs">Ainda não iniciou</span>
+                        </>
+                      )}
                     </div>
+                    {summary?.class_concluded ? (
+                      <Badge className="bg-slate-500 text-white text-xs">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />Concluída
+                      </Badge>
+                    ) : summary?.class_started ? (
+                      <Badge className="bg-green-600 text-white text-xs">
+                        <PlayCircle className="h-3 w-3 mr-1" />Em Andamento
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />Aguardando
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Tabs */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  {/* Tab headers */}
+                  <div className="flex bg-slate-50 border-b border-slate-200">
+                    <button
+                      onClick={() => setRightTab('calendar')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all border-b-2 ${
+                        rightTab === 'calendar'
+                          ? 'border-[#004B87] text-[#004B87] bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                      }`}
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Calendário
+                      {studentFinance.plans.length > 0 && (
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
+                          rightTab === 'calendar' ? 'bg-[#004B87] text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {studentFinance.plans.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setRightTab('history')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all border-b-2 ${
+                        rightTab === 'history'
+                          ? 'border-[#F5821F] text-[#F5821F] bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                      }`}
+                    >
+                      <Receipt className="h-4 w-4" />
+                      Histórico
+                      {studentFinance.recent_payments.length > 0 && (
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
+                          rightTab === 'history' ? 'bg-[#F5821F] text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {studentFinance.recent_payments.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
-                  {/* Class info bar */}
-                  {studentFinance.class && (
-                    <div className={`mt-3 px-3 py-2 rounded-lg flex items-center justify-between text-sm ${
-                      summary?.class_started
-                        ? 'bg-green-50 border border-green-200'
-                        : 'bg-amber-50 border border-amber-200'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className={`h-4 w-4 ${summary?.class_started ? 'text-green-600' : 'text-amber-600'}`} />
-                        <span className="font-medium">{studentFinance.class.name}</span>
-                        <span className="text-slate-500">·</span>
-                        <span className="text-slate-600">
-                          {summary?.class_started
-                            ? `Início: ${formatDate(studentFinance.class.start_date)}`
-                            : 'Turma ainda não iniciou'}
-                        </span>
-                      </div>
-                      {summary?.class_started ? (
-                        <Badge className="bg-green-600 text-white text-xs">
-                          <PlayCircle className="h-3 w-3 mr-1" />Em Andamento
-                        </Badge>
+                  {/* Calendar tab */}
+                  {rightTab === 'calendar' && (
+                    <div className="p-4 bg-white">
+                      {!summary?.class_started ? (
+                        <div className="py-8 text-center bg-amber-50 border border-amber-200 rounded-xl">
+                          <Info className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+                          {!studentFinance.class?.start_date ? (
+                            <>
+                              <p className="text-sm font-medium text-amber-700">Turma sem data de início definida</p>
+                              <p className="text-xs text-amber-600 mt-1 max-w-xs mx-auto">
+                                Após definida a data de início da turma, o calendário de pagamentos será gerado automaticamente.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-medium text-amber-700">Turma ainda não iniciou</p>
+                              <p className="text-xs text-amber-600 mt-1 max-w-xs mx-auto">
+                                Início previsto para <strong>{formatDate(studentFinance.class.start_date)}</strong>.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      ) : studentFinance.plans.length === 0 && summary?.class_concluded ? (
+                        <div className="py-8 text-center bg-slate-50 border border-slate-200 rounded-xl">
+                          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                          <p className="text-sm font-medium text-slate-600">Turma concluída</p>
+                          <p className="text-xs text-slate-400 mt-1">Todas as parcelas foram liquidadas.</p>
+                        </div>
+                      ) : studentFinance.plans.length === 0 ? (
+                        <div className="py-8 text-center bg-slate-50 rounded-xl text-slate-500">
+                          <Receipt className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm">Sem parcelas geradas</p>
+                        </div>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />Aguardando
-                        </Badge>
+                        <div className="space-y-2">
+                          {studentFinance.plans.map((plan) => (
+                            <PlanRow key={plan.id} plan={plan} onPay={openPaymentModal} />
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
 
-              {/* Summary cards */}
-              {summary && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <SummaryCard
-                    label="Crédito"
-                    value={formatCurrency(summary.wallet_balance)}
-                    icon={<Wallet className="h-4 w-4" />}
-                    color={summary.wallet_balance > 0 ? 'blue' : 'slate'}
-                  />
-                  <SummaryCard
-                    label="Total Pago"
-                    value={formatCurrency(summary.total_paid)}
-                    icon={<CheckCircle className="h-4 w-4" />}
-                    color="green"
-                  />
-                  <SummaryCard
-                    label="Em Atraso"
-                    value={formatCurrency(summary.total_overdue)}
-                    icon={<AlertTriangle className="h-4 w-4" />}
-                    color={summary.total_overdue > 0 ? 'red' : 'slate'}
-                    sub={summary.overdue_count > 0 ? `${summary.overdue_count} parcela(s)` : undefined}
-                  />
-                  <SummaryCard
-                    label="Multas"
-                    value={formatCurrency(summary.total_penalties)}
-                    icon={<TrendingUp className="h-4 w-4" />}
-                    color={summary.total_penalties > 0 ? 'orange' : 'slate'}
-                  />
+                  {/* History tab */}
+                  {rightTab === 'history' && (
+                    <div className="p-4 bg-white">
+                      {studentFinance.recent_payments.length === 0 ? (
+                        <div className="py-8 text-center bg-slate-50 rounded-xl text-slate-500">
+                          <Banknote className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm">Nenhum pagamento registado</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {studentFinance.recent_payments.map((payment) => (
+                            <PaymentRow key={payment.id} payment={payment} onVoid={openVoidModal} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Footer bar ── */}
+          <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between rounded-b-2xl">
+            <div className="flex items-center gap-2">
+              {!loadingFinance && studentFinance?.course && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
+                  onClick={() => setRightTab(rightTab === 'calendar' ? 'history' : 'calendar')}
+                >
+                  {rightTab === 'calendar'
+                    ? <><Receipt className="h-3.5 w-3.5" />Ver Histórico</>
+                    : <><Calendar className="h-3.5 w-3.5" />Ver Calendário</>
+                  }
+                </Button>
               )}
-
-              {/* Plans list */}
-              <Card className="shadow-lg border-0">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#004B87]" />
-                    Calendário de Pagamentos
-                    {studentFinance.plans.length > 0 && (
-                      <span className="text-xs text-slate-400 font-normal ml-1">
-                        ({studentFinance.plans.length} parcelas)
-                      </span>
-                    )}
-                  </h4>
-
-                  {!summary?.class_started ? (
-                    <div className="py-6 text-center bg-blue-50 border border-blue-200 rounded-lg">
-                      <Info className="h-7 w-7 mx-auto mb-2 text-blue-500" />
-                      <p className="text-sm font-medium text-blue-700">Turma ainda não iniciou</p>
-                      <p className="text-xs text-blue-600 mt-1 max-w-xs mx-auto">
-                        Os meses de pagamento serão gerados ao iniciar a turma.
-                        Pode registar crédito que será alocado automaticamente.
-                      </p>
-                    </div>
-                  ) : studentFinance.plans.length === 0 ? (
-                    <div className="py-6 text-center bg-slate-50 rounded-lg text-slate-500">
-                      <Receipt className="h-7 w-7 mx-auto mb-2 text-slate-300" />
-                      <p className="text-sm">Sem parcelas geradas</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-                      {studentFinance.plans.map((plan) => (
-                        <PlanRow
-                          key={plan.id}
-                          plan={plan}
-                          onPay={openPaymentModal}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Payment history */}
-              <Card className="shadow-lg border-0">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-[#004B87]" />
-                    Histórico de Pagamentos
-                    {studentFinance.recent_payments.length > 0 && (
-                      <span className="text-xs text-slate-400 font-normal ml-1">
-                        (últimos {studentFinance.recent_payments.length})
-                      </span>
-                    )}
-                  </h4>
-
-                  {studentFinance.recent_payments.length === 0 ? (
-                    <div className="py-6 text-center bg-slate-50 rounded-lg text-slate-500">
-                      <Banknote className="h-7 w-7 mx-auto mb-2 text-slate-300" />
-                      <p className="text-sm">Nenhum pagamento registado</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                      {studentFinance.recent_payments.map((payment) => (
-                        <PaymentRow
-                          key={payment.id}
-                          payment={payment}
-                          onVoid={openVoidModal}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {!loadingFinance && selectedStudentId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 text-xs gap-1.5 text-slate-500 hover:text-[#004B87]"
+                  onClick={() => fetchStudentFinance(selectedStudentId)}
+                  disabled={loadingFinance}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Actualizar
+                </Button>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+            <Button
+              size="sm"
+              className="h-8 px-4 text-xs font-semibold bg-[#004B87] hover:bg-[#003d6e] text-white gap-1.5"
+              onClick={closeFinanceDialog}
+            >
+              <X className="h-3.5 w-3.5" />
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Modal: Registar Pagamento ──────────────────────────────────────── */}
       <Dialog open={paymentModal.isOpen} onOpenChange={(open) => !open && closePaymentModal()}>
@@ -828,32 +1018,7 @@ export function PaymentsDashboard() {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function SummaryCard({
-  label, value, icon, color, sub
-}: {
-  label: string;
-  value: string;
-  icon: ReactNode;
-  color: 'blue' | 'green' | 'red' | 'orange' | 'slate';
-  sub?: string;
-}) {
-  const colors = {
-    blue:   { bg: 'bg-blue-50',   icon: 'text-blue-600',   val: 'text-blue-700' },
-    green:  { bg: 'bg-green-50',  icon: 'text-green-600',  val: 'text-green-700' },
-    red:    { bg: 'bg-red-50',    icon: 'text-red-600',    val: 'text-red-700' },
-    orange: { bg: 'bg-orange-50', icon: 'text-orange-600', val: 'text-orange-700' },
-    slate:  { bg: 'bg-slate-50',  icon: 'text-slate-400',  val: 'text-slate-600' },
-  };
-  const c = colors[color];
-  return (
-    <div className={`${c.bg} rounded-xl p-3 text-center`}>
-      <div className={`${c.icon} flex justify-center mb-1`}>{icon}</div>
-      <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className={`font-bold text-sm ${c.val} leading-tight`}>{value}</p>
-      {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
+
 
 function PlanRow({ plan, onPay }: { plan: PaymentPlanItem; onPay: (p: PaymentPlanItem) => void }) {
   const isPaid = plan.status === 'paid';
@@ -915,6 +1080,86 @@ function PlanRow({ plan, onPay }: { plan: PaymentPlanItem; onPay: (p: PaymentPla
   );
 }
 
+function printPaymentReceipt(payment: PaymentTransaction) {
+  const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
+  const mensalidadeMonths = Array.from(new Set(
+    (payment.allocations ?? []).filter(a => a.plan_type === 'mensalidade').map(a => a.month_reference)
+  ));
+  const allocationsHtml = mensalidadeMonths.length > 0
+    ? mensalidadeMonths.map(m => `<span style="display:inline-block;background:#e8f0fb;color:#004B87;padding:2px 8px;border-radius:4px;margin:2px;font-size:12px;font-weight:600">${formatMonthReference(m)}</span>`).join('')
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recibo de Pagamento</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 32px 0; }
+    .receipt { background: white; width: 420px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+    .header { background: linear-gradient(135deg, #004B87, #0066B3); padding: 24px; text-align: center; }
+    .logo-circle { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 22px; font-weight: 800; color: white; }
+    .header h1 { color: white; font-size: 18px; font-weight: 700; }
+    .header p { color: rgba(255,255,255,0.75); font-size: 11px; margin-top: 2px; }
+    .amount-block { background: #f0f7ff; border-bottom: 2px dashed #d0e4f7; padding: 20px 24px; text-align: center; }
+    .amount-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+    .amount-value { font-size: 32px; font-weight: 800; color: #004B87; margin: 4px 0 0; }
+    .body { padding: 20px 24px; }
+    .row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+    .row:last-child { border-bottom: none; }
+    .row-label { font-size: 12px; color: #94a3b8; font-weight: 500; }
+    .row-value { font-size: 13px; color: #1e293b; font-weight: 600; text-align: right; max-width: 220px; }
+    .months-section { margin: 12px 0 0; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+    .months-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid #bbf7d0; }
+    .void-badge { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; text-align: center; font-size: 10px; color: #94a3b8; }
+    @media print { body { background: white; padding: 0; } .receipt { box-shadow: none; border-radius: 0; width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="header">
+      <div class="logo-circle">I</div>
+      <h1>ISAC</h1>
+      <p>Instituto Superior de Artes e Cultura</p>
+    </div>
+    <div class="amount-block">
+      <p class="amount-label">Valor Pago</p>
+      <p class="amount-value">${formatCurrency(payment.amount_paid)}</p>
+    </div>
+    <div class="body">
+      <div class="row">
+        <span class="row-label">Estado</span>
+        <span class="row-value">
+          <span class="status-badge ${payment.status === 'void' || payment.status === 'reversed' ? 'void-badge' : ''}">
+            ${payment.status === 'void' || payment.status === 'reversed' ? '✕ Anulado' : '✓ Confirmado'}
+          </span>
+        </span>
+      </div>
+      ${payment.receipt_number ? `<div class="row"><span class="row-label">Nº Recibo</span><span class="row-value">${payment.receipt_number}</span></div>` : ''}
+      <div class="row"><span class="row-label">Método</span><span class="row-value">${methodLabel}</span></div>
+      <div class="row"><span class="row-label">Data de Pagamento</span><span class="row-value">${formatDate(payment.paid_date)}</span></div>
+      ${payment.payment_type_name ? `<div class="row"><span class="row-label">Tipo</span><span class="row-value">${payment.payment_type_name}</span></div>` : ''}
+      ${payment.observacoes ? `<div class="row"><span class="row-label">Observações</span><span class="row-value">${payment.observacoes}</span></div>` : ''}
+      ${allocationsHtml ? `<div class="months-section"><p class="months-label">Meses Cobertos</p><div>${allocationsHtml}</div></div>` : ''}
+    </div>
+    <div class="footer">
+      Emitido em ${new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' })} · Sistema Académico ISAC
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=520,height=700');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    win.print();
+  }
+}
+
 function PaymentRow({
   payment,
   onVoid,
@@ -923,65 +1168,138 @@ function PaymentRow({
   onVoid: (p: PaymentTransaction) => void;
 }) {
   const isVoid = payment.status === 'void' || payment.status === 'reversed';
+  const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
 
   return (
-    <div className={`flex items-center justify-between p-3 rounded-lg border ${isVoid ? 'border-slate-200 bg-slate-50 opacity-70' : 'border-slate-200 bg-white'}`}>
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
-          isVoid ? 'bg-slate-200' :
-          payment.is_advance ? 'bg-emerald-100' : 'bg-blue-100'
-        }`}>
-          {isVoid
-            ? <Ban className="h-4 w-4 text-slate-500" />
-            : payment.is_advance
-              ? <Wallet className="h-4 w-4 text-emerald-600" />
-              : <Banknote className="h-4 w-4 text-blue-600" />
-          }
-        </div>
-
-        <div className="min-w-0">
-          <p className={`font-semibold text-sm ${isVoid ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-            {formatCurrency(payment.amount_paid)}
-          </p>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs text-slate-500">
-              {PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method}
-            </span>
-            <span className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">{formatDate(payment.paid_date)}</span>
-            {payment.receipt_number && (
-              <>
-                <span className="text-slate-300">·</span>
-                <span className="text-xs text-slate-500 flex items-center gap-0.5">
-                  <FileText className="h-3 w-3" />{payment.receipt_number}
-                </span>
-              </>
-            )}
-            {payment.payment_type_name && (
-              <>
-                <span className="text-slate-300">·</span>
-                <span className="text-xs text-slate-400">{payment.payment_type_name}</span>
-              </>
-            )}
+    <div className={`rounded-xl border-2 transition-all ${
+      isVoid
+        ? 'border-slate-200 bg-slate-50/80 opacity-70'
+        : payment.is_advance
+          ? 'border-emerald-200 bg-emerald-50/40'
+          : 'border-slate-200 bg-white hover:border-[#004B87]/20 hover:shadow-sm'
+    }`}>
+      {/* Top row: type icon + amount + status */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+            isVoid ? 'bg-slate-200' :
+            payment.is_advance ? 'bg-emerald-100' : 'bg-[#004B87]/10'
+          }`}>
+            {isVoid
+              ? <Ban className="h-5 w-5 text-slate-500" />
+              : payment.is_advance
+                ? <Wallet className="h-5 w-5 text-emerald-600" />
+                : <Banknote className="h-5 w-5 text-[#004B87]" />
+            }
           </div>
-          {payment.observacoes && (
-            <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[200px]">{payment.observacoes}</p>
-          )}
+          <div>
+            <p className={`font-bold text-lg leading-tight ${isVoid ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+              {formatCurrency(payment.amount_paid)}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {payment.is_advance ? 'Adiantamento / Crédito' : 'Pagamento de Mensalidade'}
+            </p>
+          </div>
         </div>
+        <PaymentStatusBadge status={payment.status} />
       </div>
 
-      <div className="flex items-center gap-2 shrink-0 ml-2">
-        <PaymentStatusBadge status={payment.status} />
+      {/* Detail grid */}
+      <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
+        <div>
+          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Método</p>
+          <p className="text-sm font-medium text-slate-700">{methodLabel}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Data</p>
+          <p className="text-sm font-medium text-slate-700">{formatDate(payment.paid_date)}</p>
+        </div>
+        {payment.receipt_number && (
+          <div>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Nº Recibo</p>
+            <p className="text-sm font-medium text-slate-700 flex items-center gap-1">
+              <FileText className="h-3.5 w-3.5 text-slate-400" />
+              {payment.receipt_number}
+            </p>
+          </div>
+        )}
+        {payment.payment_type_name && (
+          <div>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Tipo</p>
+            <p className="text-sm font-medium text-slate-700">{payment.payment_type_name}</p>
+          </div>
+        )}
+        {payment.observacoes && (
+          <div className="col-span-2">
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Observações</p>
+            <p className="text-sm text-slate-600">{payment.observacoes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Months covered — only mensalidade allocations, not taxa_matricula */}
+      {(() => {
+        const mensalidadeMonths = Array.from(new Set(
+          (payment.allocations ?? [])
+            .filter(a => a.plan_type === 'mensalidade')
+            .map(a => a.month_reference)
+        ));
+        return mensalidadeMonths.length > 0 ? (
+          <div className="px-4 pb-3">
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1.5">Meses Cobertos</p>
+            <div className="flex flex-wrap gap-1.5">
+              {mensalidadeMonths.map((monthRef) => (
+                <span
+                  key={monthRef}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
+                    isVoid
+                      ? 'bg-slate-100 text-slate-400'
+                      : 'bg-[#004B87]/10 text-[#004B87]'
+                  }`}
+                >
+                  {formatMonthReference(monthRef)}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      })()}
+      {payment.is_advance && !isVoid && (
+        <div className="px-4 pb-3">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg">
+            <Wallet className="h-3 w-3" />
+            Crédito na conta do estudante
+          </span>
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="flex items-center justify-end gap-2 px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 rounded-b-xl">
+        {!isVoid && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
+            onClick={() => printPaymentReceipt(payment)}
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Imprimir Recibo
+          </Button>
+        )}
         {!isVoid && (
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+            size="sm"
+            className="h-7 px-3 text-xs gap-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
             title="Anular pagamento"
             onClick={() => onVoid(payment)}
           >
             <Ban className="h-3.5 w-3.5" />
+            Anular
           </Button>
+        )}
+        {isVoid && (
+          <span className="text-xs text-slate-400 italic">Pagamento anulado</span>
         )}
       </div>
     </div>
@@ -999,49 +1317,26 @@ function NoEnrollmentView({
 }) {
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <Card className="shadow-lg border-0">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AvatarInitials name={studentFinance.student.name} size="lg" />
-              <div>
-                <h3 className="font-bold text-lg text-[#004B87]">{studentFinance.student.name}</h3>
-                <p className="text-sm text-slate-500">{studentFinance.student.email}</p>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={onRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+        <span>
+          Este estudante não tem matrícula activa. Para registar pagamentos, matricule-o num curso primeiro.
+        </span>
+      </div>
 
-          <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>
-              Este estudante não tem matrícula activa. Para registar pagamentos, matricule-o num curso primeiro.
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Show payment history if any (from previous courses) */}
       {studentFinance.recent_payments.length > 0 && (
-        <Card className="shadow-lg border-0">
-          <CardContent className="p-4">
-            <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-[#004B87]" />
-              Histórico de Pagamentos Anteriores
-            </h4>
-            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-              {studentFinance.recent_payments.map((payment) => (
-                <PaymentRow key={payment.id} payment={payment} onVoid={onVoid} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div>
+          <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
+            <Receipt className="h-4 w-4 text-[#004B87]" />
+            Histórico de Pagamentos Anteriores
+          </h4>
+          <div className="space-y-2">
+            {studentFinance.recent_payments.map((payment) => (
+              <PaymentRow key={payment.id} payment={payment} onVoid={onVoid} />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
 }
-
-export default PaymentsDashboard;

@@ -45,6 +45,7 @@ export interface PaymentAllocation {
   id: number;
   payment_id: number;
   plan_id: number;
+  plan_type?: string; // 'mensalidade' | 'taxa_matricula' | etc.
   month_reference: string;
   amount_allocated: number;
 }
@@ -79,6 +80,7 @@ export interface StudentFinanceResponse {
     overdue_count: number;
     wallet_balance: number; // crédito disponível
     class_started: boolean;
+    class_concluded: boolean;
   };
   plans: PaymentPlanItem[];
   recent_payments: PaymentTransaction[];

@@ -21,9 +21,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   Pencil,
+  ArrowRightLeft,
+  XCircle,
 } from "lucide-react";
 import { Student, Class } from "../../types";
-import gradeService from "@/services/gradeService";
+import gradeService, { FinalizeResult } from "@/services/gradeService";
 import classService from "@/services/classService";
 import { toast } from "sonner";
 
@@ -43,6 +45,14 @@ interface GradeManagementModalProps {
   onSave: (gradeData: { classId: number; period: string; grades: StudentGrade[] }) => void;
   classData: Class;
   students: Student[];
+  readOnly?: boolean;
+  onNavigateToTransitions?: () => void;
+}
+
+interface StudentFinalizeResult {
+  studentName: string;
+  finalGrade: number;
+  levelStatus: 'awaiting_renewal' | 'failed';
 }
 
 
@@ -112,7 +122,9 @@ export function GradeManagementModal({
   onClose,
   onSave,
   classData,
-  students
+  students,
+  readOnly = false,
+  onNavigateToTransitions,
 }: GradeManagementModalProps) {
   const [activeTab, setActiveTab]               = useState("overview");
   const [grades, setGrades]                     = useState<StudentGrade[]>([]);
@@ -122,6 +134,7 @@ export function GradeManagementModal({
   const [isEditMode, setIsEditMode]             = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedPeriodLabel, setSavedPeriodLabel] = useState("");
+  const [finalizeResults, setFinalizeResults]   = useState<StudentFinalizeResult[]>([]);
 
   // period_number = nível ordinal da turma (ou 1 para cursos sem nível)
   const periodNum  = classData?.nivel_numero ?? 1;
@@ -237,9 +250,17 @@ export function GradeManagementModal({
       onSave({ classId: classData.id, period: String(periodNum), grades });
 
       // 1 turma = 1 nível = 1 avaliação → sempre finalizar ao guardar
-      await Promise.allSettled(
+      const finalizeSettled = await Promise.allSettled(
         grades.map((grade) => gradeService.finalizeLevel(classData.id, grade.studentId))
       );
+
+      // Mapear resultados para mostrar no modal de sucesso
+      const results: StudentFinalizeResult[] = finalizeSettled.map((res, i) => ({
+        studentName: grades[i].studentName,
+        finalGrade: res.status === 'fulfilled' ? (res.value as FinalizeResult).final_grade : grades[i].finalGrade,
+        levelStatus: res.status === 'fulfilled' ? (res.value as FinalizeResult).level_status : 'failed',
+      }));
+      setFinalizeResults(results);
 
       setSavedPeriodLabel(nivelLabel);
       setIsEditMode(false);
@@ -504,7 +525,7 @@ export function GradeManagementModal({
                       </div>
                       <div>
                         <div className="font-bold text-slate-800">{selectedStudentGrade.studentName}</div>
-                        <div className="text-sm text-slate-400">Avaliação por bimestre</div>
+                        <div className="text-sm text-slate-400">Avaliação por nível</div>
                       </div>
                       <div className="ml-auto text-center">
                         <div className="text-3xl font-bold" style={{ color: getGradeColor(selectedStudentGrade.finalGrade) }}>
@@ -524,7 +545,7 @@ export function GradeManagementModal({
 
                     {/* Grade inputs / read-only values */}
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                      Notas do Bimestre
+                      Notas do Nível
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {GRADES_CONFIG.map((cfg) => {
@@ -691,7 +712,7 @@ export function GradeManagementModal({
             >
               Fechar
             </button>
-            {!isEditMode ? (
+            {!readOnly && (!isEditMode ? (
               <button
                 onClick={() => setIsEditMode(true)}
                 className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#F5821F] hover:bg-[#e06a10]
@@ -712,7 +733,7 @@ export function GradeManagementModal({
                   : <><Save className="h-4 w-4" />Salvar Notas</>
                 }
               </button>
-            )}
+            ))}
           </div>
         </div>
       </DialogContent>
@@ -720,7 +741,7 @@ export function GradeManagementModal({
 
     {/* ── Success Modal ── */}
     <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-      <DialogContent className="w-[95vw] max-w-sm p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+      <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
         {/* Green header */}
         <div className="bg-gradient-to-r from-[#059669] to-[#047857] px-5 py-5 flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mb-3">
@@ -731,33 +752,95 @@ export function GradeManagementModal({
         </div>
         <div className="h-0.5 bg-gradient-to-r from-[#F5821F] via-[#FF9933] to-[#F5821F]" />
 
-        <div className="bg-slate-50 px-5 py-4 space-y-3">
-          {/* Warning — always shown */}
+        <div className="bg-slate-50 px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {/* Resultados por estudante */}
+          {finalizeResults.length > 0 && (() => {
+            const aprovados = finalizeResults.filter(r => r.levelStatus === 'awaiting_renewal');
+            const reprovados = finalizeResults.filter(r => r.levelStatus === 'failed');
+            return (
+              <div className="grid grid-cols-2 gap-2">
+                {/* Aprovados */}
+                <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                    <span className="text-xs font-bold text-green-800">Aprovados ({aprovados.length})</span>
+                  </div>
+                  {aprovados.length === 0 ? (
+                    <p className="text-[11px] text-green-500 italic">Nenhum</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {aprovados.map((r, i) => (
+                        <li key={i} className="flex items-center justify-between gap-1">
+                          <span className="text-[11px] text-green-700 truncate">{r.studentName.split(' ')[0]}</span>
+                          <span className="text-[11px] font-bold text-green-700 flex-shrink-0">{r.finalGrade}/20</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {/* Reprovados */}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                    <span className="text-xs font-bold text-red-800">Reprovados ({reprovados.length})</span>
+                  </div>
+                  {reprovados.length === 0 ? (
+                    <p className="text-[11px] text-red-400 italic">Nenhum</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {reprovados.map((r, i) => (
+                        <li key={i} className="flex items-center justify-between gap-1">
+                          <span className="text-[11px] text-red-700 truncate">{r.studentName.split(' ')[0]}</span>
+                          <span className="text-[11px] font-bold text-red-700 flex-shrink-0">{r.finalGrade}/20</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Warning */}
           <div className="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
             <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-xs font-bold text-amber-800 mb-0.5">Atenção aos Prazos</p>
               <p className="text-[11px] text-amber-700 leading-relaxed">
                 Respeite os prazos de lançamento das <strong>avaliações</strong> estabelecidos pela instituição.
-                Notas lançadas fora do prazo podem não ser consideradas.
               </p>
             </div>
           </div>
-
-          <p className="text-xs text-slate-500 text-center">
-            As notas foram registadas com sucesso no sistema.
-          </p>
         </div>
 
-        <div className="bg-white border-t border-slate-100 px-5 py-3 flex justify-center">
+        <div className="bg-white border-t border-slate-100 px-5 py-3 flex gap-2">
           <button
             onClick={() => setShowSuccessModal(false)}
-            className="px-6 py-2 rounded-xl text-sm font-bold text-white
-              bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#065f46]
-              shadow-md transition-all"
+            className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
           >
-            Entendido
+            Fechar
           </button>
+          {onNavigateToTransitions && finalizeResults.some(r => r.levelStatus === 'awaiting_renewal') && (
+            <button
+              onClick={() => { setShowSuccessModal(false); onNavigateToTransitions(); }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white
+                bg-gradient-to-r from-[#004B87] to-[#0066B3] hover:from-[#003868] hover:to-[#004B87]
+                shadow-md transition-all"
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Gerir Transições
+            </button>
+          )}
+          {(!onNavigateToTransitions || !finalizeResults.some(r => r.levelStatus === 'awaiting_renewal')) && (
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="flex-1 px-4 py-2 rounded-xl text-sm font-bold text-white
+                bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#065f46]
+                shadow-md transition-all"
+            >
+              Entendido
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

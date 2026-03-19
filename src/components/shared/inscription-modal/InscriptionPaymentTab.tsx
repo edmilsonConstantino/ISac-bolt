@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type PaymentMethod = "cash" | "transfer" | "mobile" | "check";
 export type PaymentStatus = "pending" | "paid" | "exempt" | "reversed";
@@ -25,6 +27,7 @@ interface InscriptionPaymentTabProps {
   isMarkingPaid?: boolean; // Loading state
   onChangeField: (field: string, value: string | number) => void;
   onMarkAsPaid: () => void;
+  onUnmarkPaid?: () => void;
   formatCurrency: (value: number) => string;
 }
 
@@ -47,13 +50,18 @@ export function InscriptionPaymentTab({
   isMarkingPaid = false,
   onChangeField,
   onMarkAsPaid,
+  onUnmarkPaid,
   formatCurrency,
 }: InscriptionPaymentTabProps) {
   const isPaid = paymentStatus === "paid";
   const isExempt = paymentStatus === "exempt";
   const isCompleted = isPaid || isExempt;
 
+  const { openConfirm, dialogProps } = useConfirmDialog();
+
   return (
+    <>
+    <ConfirmDialog {...dialogProps} />
     <div className="space-y-6">
       {/* Taxa de Inscrição - Valor a Pagar */}
       <section className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 rounded-xl border border-[#004B87]/20 p-3 flex items-center justify-between gap-4">
@@ -129,34 +137,66 @@ export function InscriptionPaymentTab({
                 </div>
               </div>
 
-              {/* Botão Marcar como Pago */}
-              <button
-                type="button"
-                onClick={onMarkAsPaid}
-                disabled={isCompleted || isMarkingPaid}
-                className={cn(
-                  "h-14 px-6 rounded-xl font-bold transition-all flex items-center gap-2",
-                  isCompleted
-                    ? "bg-green-100 text-green-700 border-2 border-green-200 cursor-default"
-                    : isMarkingPaid
-                    ? "bg-slate-200 text-slate-500 cursor-wait"
-                    : "bg-[#F5821F] text-white hover:bg-[#E07318] active:scale-95"
-                )}
-              >
-                {isMarkingPaid ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Processando...
-                  </>
-                ) : isCompleted ? (
-                  <>
+              {/* Botão Marcar como Pago / Pago + Anular */}
+              {isPaid ? (
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <div className="h-14 px-6 rounded-xl font-bold flex items-center gap-2 bg-green-100 text-green-700 border-2 border-green-200">
                     <CheckCircle2 className="h-5 w-5" />
                     Pago
-                  </>
-                ) : (
-                  "Marcar como Pago"
-                )}
-              </button>
+                  </div>
+                  {onUnmarkPaid && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openConfirm(
+                          {
+                            title: "Anular Pagamento",
+                            message: "Deseja anular o registo de pagamento? O estado voltará a 'Pendente'.",
+                            confirmLabel: "Anular",
+                            variant: "warning",
+                          },
+                          onUnmarkPaid
+                        )
+                      }
+                      className="text-xs text-slate-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Anular
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openConfirm(
+                      {
+                        title: "Confirmar Pagamento",
+                        message: `Confirma o recebimento de ${formatCurrency(inscriptionFee)} referente à taxa de inscrição?`,
+                        confirmLabel: "Confirmar Pagamento",
+                        variant: "info",
+                      },
+                      onMarkAsPaid
+                    )
+                  }
+                  disabled={isExempt || isMarkingPaid}
+                  className={cn(
+                    "h-14 px-6 rounded-xl font-bold transition-all flex items-center gap-2 shrink-0",
+                    isMarkingPaid
+                      ? "bg-slate-200 text-slate-500 cursor-wait"
+                      : "bg-[#F5821F] text-white hover:bg-[#E07318] active:scale-95"
+                  )}
+                >
+                  {isMarkingPaid ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Marcar como Pago"
+                  )}
+                </button>
+              )}
             </div>
           </section>
 
@@ -233,5 +273,6 @@ export function InscriptionPaymentTab({
         </div>
       </div>
     </div>
+    </>
   );
 }

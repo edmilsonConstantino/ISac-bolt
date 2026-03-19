@@ -30,6 +30,8 @@ import {
   RotateCcw,
   ClipboardCheck,
   Clock,
+  CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import levelTransitionService, {
@@ -250,7 +252,7 @@ export function LevelTransitionPanel() {
                   {levelTransitionService.getStatusLabel(s.status)}
                 </Badge>
                 {s.attempt > 1 && (
-                  <span className="text-xs text-slate-400">Attempt #{s.attempt}</span>
+                  <span className="text-xs text-slate-400">Tentativa #{s.attempt}</span>
                 )}
               </div>
             </div>
@@ -262,8 +264,15 @@ export function LevelTransitionPanel() {
               <div className={`text-2xl font-bold ${gradeColor(s.final_grade)}`}>
                 {s.final_grade !== null ? Number(s.final_grade).toFixed(1) : "—"}
               </div>
-              <div className="text-xs text-slate-400">Final Grade</div>
+              <div className="text-xs text-slate-400">Nota Final</div>
             </div>
+
+            {s.level_name && (
+              <div className="text-center hidden sm:block">
+                <div className="text-sm font-medium text-slate-700">{s.level_name}</div>
+                <div className="text-xs text-slate-400">Nível Actual</div>
+              </div>
+            )}
 
             {s.next_level_name && (
               <div className="text-center hidden sm:block">
@@ -271,7 +280,7 @@ export function LevelTransitionPanel() {
                   <ArrowRightCircle className="h-4 w-4" />
                   {s.next_level_name}
                 </div>
-                <div className="text-xs text-slate-400">Next Level</div>
+                <div className="text-xs text-slate-400">Próximo Nível</div>
               </div>
             )}
 
@@ -284,8 +293,8 @@ export function LevelTransitionPanel() {
           <div className="mt-3 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5">
             <Clock className="h-3.5 w-3.5 shrink-0" />
             <span>
-              Pending renewal: <strong>{s.pending_enrollment_number}</strong>
-              {s.pending_period && <> — period {s.pending_period}</>}
+              Renovação pendente: <strong>{s.pending_enrollment_number}</strong>
+              {s.pending_period && <> — período {s.pending_period}</>}
             </span>
           </div>
         )}
@@ -294,10 +303,22 @@ export function LevelTransitionPanel() {
   );
 
   // ─── Section header ────────────────────────────────────────────────────────
-  const SectionHeader = ({ label, count, color }: { label: string; count: number; color: string }) => (
-    <div className={`flex items-center gap-3 px-1`}>
-      <span className={`text-sm font-semibold ${color}`}>{label}</span>
-      <span className={`text-xs rounded-full px-2 py-0.5 font-bold ${color} bg-current/10`} style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
+  const SectionHeader = ({
+    label,
+    count,
+    bgColor,
+    textColor,
+    borderColor: bc,
+  }: {
+    label: string;
+    count: number;
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+  }) => (
+    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${bgColor} ${borderColor}`}>
+      <span className={`text-sm font-bold ${textColor}`}>{label}</span>
+      <span className={`text-xs rounded-full px-2 py-0.5 font-black ${textColor} bg-white/60`}>
         {count}
       </span>
     </div>
@@ -310,13 +331,13 @@ export function LevelTransitionPanel() {
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Course</label>
+          <label className="text-sm font-medium text-slate-700">Curso</label>
           <Select
             value={selectedCourseId ? String(selectedCourseId) : ""}
             onValueChange={(v) => setSelectedCourseId(Number(v))}
           >
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="Select course…" />
+              <SelectValue placeholder="Seleccionar curso…" />
             </SelectTrigger>
             <SelectContent>
               {courses.map((c) => (
@@ -327,14 +348,14 @@ export function LevelTransitionPanel() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Level</label>
+          <label className="text-sm font-medium text-slate-700">Nível</label>
           <Select
             value={selectedLevelId ? String(selectedLevelId) : ""}
             onValueChange={(v) => setSelectedLevelId(Number(v))}
             disabled={!levels.length}
           >
             <SelectTrigger className="w-56">
-              <SelectValue placeholder={levels.length ? "Select level…" : "Select a course first"} />
+              <SelectValue placeholder={levels.length ? "Seleccionar nível…" : "Seleccione um curso primeiro"} />
             </SelectTrigger>
             <SelectContent>
               {levels.map((l) => (
@@ -351,29 +372,65 @@ export function LevelTransitionPanel() {
           className="self-end"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          <span className="ml-2">Refresh</span>
+          <span className="ml-2">Actualizar</span>
         </Button>
       </div>
 
-      {/* ── Stats pills ─────────────────────────────────────────────────── */}
-      {transitions.length > 0 && (
-        <div className="flex gap-3 flex-wrap">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-sm">
-            <span className="font-bold text-emerald-700">{renewalEligible.length}</span>
-            <span className="text-emerald-600 ml-1">eligible for renewal</span>
+      {/* ── Progress flow stepper ────────────────────────────────────────── */}
+      {selectedLevelId && !isLoading && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Fluxo de Progressão</p>
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Step 1 */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+              renewalEligible.length > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+            }`}>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Aprovado
+              {renewalEligible.length > 0 && (
+                <span className="bg-emerald-600 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black ml-0.5">
+                  {renewalEligible.length}
+                </span>
+              )}
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
+            {/* Step 2 */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+              renewalPending.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400'
+            }`}>
+              <Clock className="h-3.5 w-3.5" />
+              Renovação Criada
+              {renewalPending.length > 0 && (
+                <span className="bg-blue-600 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black ml-0.5">
+                  {renewalPending.length}
+                </span>
+              )}
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
+            {/* Step 3 */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-400">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Confirmado
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
+            {/* Step 4 */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-400">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Activo no Próximo Nível
+            </div>
+            {recoveryStudents.length > 0 && (
+              <>
+                <span className="text-slate-300 text-xs mx-1">·</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-100 text-orange-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Recuperação
+                  <span className="bg-orange-600 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black ml-0.5">
+                    {recoveryStudents.length}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
-          {renewalPending.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
-              <span className="font-bold text-blue-700">{renewalPending.length}</span>
-              <span className="text-blue-600 ml-1">pending confirmation</span>
-            </div>
-          )}
-          {recoveryStudents.length > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-sm">
-              <span className="font-bold text-orange-700">{recoveryStudents.length}</span>
-              <span className="text-orange-600 ml-1">in recovery</span>
-            </div>
-          )}
         </div>
       )}
 
@@ -386,14 +443,14 @@ export function LevelTransitionPanel() {
         <Card>
           <CardContent className="py-14 text-center text-slate-400">
             <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>Select a course and level to view students.</p>
+            <p>Seleccione um curso e um nível para ver os estudantes.</p>
           </CardContent>
         </Card>
       ) : transitions.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center text-slate-400">
             <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No students awaiting action at this level.</p>
+            <p>Nenhum estudante aguarda acção neste nível.</p>
           </CardContent>
         </Card>
       ) : (
@@ -403,9 +460,11 @@ export function LevelTransitionPanel() {
           {renewalEligible.length > 0 && (
             <div className="space-y-3">
               <SectionHeader
-                label="Eligible for Renewal"
+                label="Elegíveis para Renovação"
                 count={renewalEligible.length}
-                color="text-emerald-700"
+                bgColor="bg-emerald-50"
+                textColor="text-emerald-700"
+                borderColor="border-emerald-200"
               />
               {renewalEligible.map((s) => (
                 <StudentCard
@@ -429,7 +488,7 @@ export function LevelTransitionPanel() {
                         onClick={() => openAction("fail", s)}
                       >
                         <XCircle className="h-3.5 w-3.5 mr-1" />
-                        Fail
+                        Reprovar
                       </Button>
                     </>
                   }
@@ -442,9 +501,11 @@ export function LevelTransitionPanel() {
           {renewalPending.length > 0 && (
             <div className="space-y-3">
               <SectionHeader
-                label="Pending Confirmation"
+                label="Aguardam Confirmação"
                 count={renewalPending.length}
-                color="text-blue-700"
+                bgColor="bg-blue-50"
+                textColor="text-blue-700"
+                borderColor="border-blue-200"
               />
               {renewalPending.map((s) => (
                 <StudentCard
@@ -458,7 +519,7 @@ export function LevelTransitionPanel() {
                       onClick={() => openAction("confirmar", s)}
                     >
                       <ClipboardCheck className="h-3.5 w-3.5 mr-1" />
-                      Confirm
+                      Confirmar
                     </Button>
                   }
                 />
@@ -470,9 +531,11 @@ export function LevelTransitionPanel() {
           {recoveryStudents.length > 0 && (
             <div className="space-y-3">
               <SectionHeader
-                label="Recovery"
+                label="Recuperação"
                 count={recoveryStudents.length}
-                color="text-orange-700"
+                bgColor="bg-orange-50"
+                textColor="text-orange-700"
+                borderColor="border-orange-200"
               />
               {recoveryStudents.map((s) => (
                 <StudentCard
@@ -487,7 +550,7 @@ export function LevelTransitionPanel() {
                         onClick={() => openAction("promote", s)}
                       >
                         <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                        Promote
+                        Promover
                       </Button>
                       <Button
                         size="sm"
@@ -496,7 +559,7 @@ export function LevelTransitionPanel() {
                         onClick={() => openAction("repeat", s)}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                        Repeat
+                        Repetir
                       </Button>
                       <Button
                         size="sm"
@@ -505,7 +568,7 @@ export function LevelTransitionPanel() {
                         onClick={() => openAction("fail", s)}
                       >
                         <XCircle className="h-3.5 w-3.5 mr-1" />
-                        Fail
+                        Reprovar
                       </Button>
                     </>
                   }
@@ -525,13 +588,12 @@ export function LevelTransitionPanel() {
             {pendingAction.type === "renovar" && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Create Renewal Registration</DialogTitle>
+                  <DialogTitle>Criar Renovação de Matrícula</DialogTitle>
                   <DialogDescription>
-                    Create a pending registration for{" "}
-                    <strong>{pendingAction.student.student_name}</strong> to enroll
-                    in{" "}
+                    Criar matrícula pendente para{" "}
+                    <strong>{pendingAction.student.student_name}</strong> no{" "}
                     <strong>
-                      {pendingAction.student.next_level_name ?? "the next level"}
+                      {pendingAction.student.next_level_name ?? "próximo nível"}
                     </strong>
                     .
                   </DialogDescription>
@@ -540,7 +602,7 @@ export function LevelTransitionPanel() {
                 <div className="space-y-4 py-2">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">
-                      Period <span className="text-slate-400 font-normal">(e.g. 2026/2)</span>
+                      Período <span className="text-slate-400 font-normal">(ex: 2026/2)</span>
                     </label>
                     <Input
                       value={renovarPeriod}
@@ -551,7 +613,7 @@ export function LevelTransitionPanel() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Enrollment Fee (MZN)</label>
+                      <label className="text-sm font-medium">Taxa de Inscrição (MZN)</label>
                       <Input
                         type="number"
                         min="0"
@@ -560,7 +622,7 @@ export function LevelTransitionPanel() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Monthly Fee (MZN)</label>
+                      <label className="text-sm font-medium">Mensalidade (MZN)</label>
                       <Input
                         type="number"
                         min="0"
@@ -573,15 +635,15 @@ export function LevelTransitionPanel() {
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
-                      This creates a <strong>pending</strong> registration. You
-                      will assign the class and confirm later.
+                      Será criada uma matrícula <strong>pendente</strong>. A turma será
+                      atribuída e confirmada numa etapa seguinte.
                     </span>
                   </div>
                 </div>
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setPendingAction(null)} disabled={actionLoading}>
-                    Cancel
+                    Cancelar
                   </Button>
                   <Button
                     onClick={executeAction}
@@ -589,7 +651,7 @@ export function LevelTransitionPanel() {
                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Create Renewal
+                    Criar Renovação
                   </Button>
                 </DialogFooter>
               </>
@@ -599,12 +661,12 @@ export function LevelTransitionPanel() {
             {pendingAction.type === "confirmar" && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Confirm Renewal</DialogTitle>
+                  <DialogTitle>Confirmar Renovação</DialogTitle>
                   <DialogDescription>
-                    Assign a class and confirm the renewal for{" "}
+                    Atribuir turma e confirmar a renovação de{" "}
                     <strong>{pendingAction.student.student_name}</strong>.
                     {pendingAction.student.pending_enrollment_number && (
-                      <> Registration: <strong>{pendingAction.student.pending_enrollment_number}</strong></>
+                      <> Matrícula: <strong>{pendingAction.student.pending_enrollment_number}</strong></>
                     )}
                   </DialogDescription>
                 </DialogHeader>
@@ -612,7 +674,7 @@ export function LevelTransitionPanel() {
                 <div className="space-y-4 py-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">
-                      Destination Class <span className="text-red-500">*</span>
+                      Turma de Destino <span className="text-red-500">*</span>
                     </label>
                     {nextLevelClasses.length > 0 ? (
                       <Select
@@ -620,25 +682,25 @@ export function LevelTransitionPanel() {
                         onValueChange={(v) => setDestClassId(Number(v))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose a class…" />
+                          <SelectValue placeholder="Escolher turma…" />
                         </SelectTrigger>
                         <SelectContent>
                           {nextLevelClasses.map((nc) => (
                             <SelectItem key={nc.class_id} value={String(nc.class_id)}>
-                              {nc.class_name} — {nc.vagas_ocupadas}/{nc.capacidade_maxima} students
+                              {nc.class_name} — {nc.vagas_ocupadas}/{nc.capacidade_maxima} estudantes
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
                       <p className="text-sm text-slate-500 italic">
-                        No classes available for the next level. Create one first.
+                        Nenhuma turma disponível para o próximo nível. Crie uma turma primeiro.
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Payment Status</label>
+                    <label className="text-sm font-medium">Estado do Pagamento</label>
                     <Select
                       value={paymentStatus}
                       onValueChange={(v) => setPaymentStatus(v as "paid" | "pending")}
@@ -647,8 +709,8 @@ export function LevelTransitionPanel() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -656,7 +718,7 @@ export function LevelTransitionPanel() {
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setPendingAction(null)} disabled={actionLoading}>
-                    Cancel
+                    Cancelar
                   </Button>
                   <Button
                     onClick={executeAction}
@@ -664,7 +726,7 @@ export function LevelTransitionPanel() {
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Confirm & Enroll
+                    Confirmar e Inscrever
                   </Button>
                 </DialogFooter>
               </>
@@ -674,31 +736,31 @@ export function LevelTransitionPanel() {
             {pendingAction.type === "promote" && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Promote Student</DialogTitle>
+                  <DialogTitle>Promover Estudante</DialogTitle>
                   <DialogDescription>
-                    Directly promote{" "}
-                    <strong>{pendingAction.student.student_name}</strong> to{" "}
-                    <strong>{pendingAction.student.next_level_name ?? "the next level"}</strong>.
+                    Promover directamente{" "}
+                    <strong>{pendingAction.student.student_name}</strong> para o{" "}
+                    <strong>{pendingAction.student.next_level_name ?? "próximo nível"}</strong>.
                   </DialogDescription>
                 </DialogHeader>
 
                 {nextLevelClasses.length > 0 && (
                   <div className="space-y-1.5 py-2">
                     <label className="text-sm font-medium">
-                      Destination class{" "}
-                      <span className="text-slate-400 font-normal">(optional)</span>
+                      Turma de destino{" "}
+                      <span className="text-slate-400 font-normal">(opcional)</span>
                     </label>
                     <Select
                       value={destClassId ? String(destClassId) : ""}
                       onValueChange={(v) => setDestClassId(v ? Number(v) : null)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="No class assigned yet" />
+                        <SelectValue placeholder="Sem turma atribuída" />
                       </SelectTrigger>
                       <SelectContent>
                         {nextLevelClasses.map((nc) => (
                           <SelectItem key={nc.class_id} value={String(nc.class_id)}>
-                            {nc.class_name} — {nc.vagas_ocupadas}/{nc.capacidade_maxima} students
+                            {nc.class_name} — {nc.vagas_ocupadas}/{nc.capacidade_maxima} estudantes
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -708,7 +770,7 @@ export function LevelTransitionPanel() {
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setPendingAction(null)} disabled={actionLoading}>
-                    Cancel
+                    Cancelar
                   </Button>
                   <Button
                     onClick={executeAction}
@@ -716,7 +778,7 @@ export function LevelTransitionPanel() {
                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Confirm
+                    Confirmar
                   </Button>
                 </DialogFooter>
               </>
@@ -727,12 +789,12 @@ export function LevelTransitionPanel() {
               <>
                 <DialogHeader>
                   <DialogTitle>
-                    {pendingAction.type === "fail" ? "Confirm Failure" : "Repeat Level"}
+                    {pendingAction.type === "fail" ? "Confirmar Reprovação" : "Repetir Nível"}
                   </DialogTitle>
                   <DialogDescription>
                     {pendingAction.type === "fail"
-                      ? `Mark ${pendingAction.student.student_name} as failed for ${pendingAction.student.level_name}?`
-                      : `Enroll ${pendingAction.student.student_name} to repeat ${pendingAction.student.level_name}?`}
+                      ? `Marcar ${pendingAction.student.student_name} como reprovado em ${pendingAction.student.level_name}?`
+                      : `Inscrever ${pendingAction.student.student_name} para repetir ${pendingAction.student.level_name}?`}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -740,15 +802,15 @@ export function LevelTransitionPanel() {
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
-                      The student's current level progress will be closed as failed.
-                      You can still enroll them to repeat the level.
+                      O progresso do estudante neste nível será encerrado como reprovado.
+                      Poderá ainda inscrevê-lo para repetir o nível.
                     </span>
                   </div>
                 )}
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setPendingAction(null)} disabled={actionLoading}>
-                    Cancel
+                    Cancelar
                   </Button>
                   <Button
                     onClick={executeAction}
@@ -760,7 +822,7 @@ export function LevelTransitionPanel() {
                     }
                   >
                     {actionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Confirm
+                    Confirmar
                   </Button>
                 </DialogFooter>
               </>

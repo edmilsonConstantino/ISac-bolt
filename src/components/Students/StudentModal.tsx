@@ -298,16 +298,6 @@ export function StudentModal({
                           <div className="text-[10px] text-slate-400 font-medium">Média</div>
                         </div>
 
-                        {student.attendance !== undefined && (
-                          <div className="text-center px-3 border-l border-slate-200">
-                            <div className={`text-lg font-bold ${
-                              (student.attendance || 0) >= 75 ? "text-emerald-600" : "text-red-600"
-                            }`}>
-                              {student.attendance}%
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-medium">Presença</div>
-                          </div>
-                        )}
 
                         <Badge className={`${gradeStatus.class} border text-[10px] px-2 py-0.5 font-semibold ml-1`}>
                           {gradeStatus.label}

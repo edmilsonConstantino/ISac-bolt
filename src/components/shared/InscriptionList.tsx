@@ -46,12 +46,14 @@ interface InscribedStudent {
 
 interface InscriptionListProps {
   onProceedToRegistration?: (studentId: number) => void;
+  currentUserRole?: string;
 }
 
-export function InscriptionList({ onProceedToRegistration }: InscriptionListProps) {
+export function InscriptionList({ onProceedToRegistration, currentUserRole }: InscriptionListProps) {
   const [students, setStudents] = useState<InscribedStudent[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<InscribedStudent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ativo' | 'inativo'>('all');
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -73,43 +75,46 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
     };
   };
 
-  const fetchInscribedStudents = async () => {
+  const fetchInscribedStudents = async (silent = false) => {
+    if (!silent) setInitialLoading(true);
     setIsLoading(true);
+
+    // Timeout de 10s para evitar spinner infinito
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
     try {
-      // Verificar se o token existe
       const token = localStorage.getItem('access_token');
       if (!token) {
-        console.error('❌ Token não encontrado no localStorage');
         toast.error('Sessão expirada. Faça login novamente.');
+        setStudents([]);
+        setFilteredStudents([]);
         return;
       }
 
-      console.log('🔑 Token encontrado, fazendo requisição...');
+      const fetchOpts = { headers: getAuthHeaders(), signal: controller.signal };
 
-      let response = await fetch(`${API_URL}/students.php?status=inscrito&with_credentials=true`, {
-        headers: getAuthHeaders()
-      });
+      let response = await fetch(`${API_URL}/students.php?status=inscrito&with_credentials=true`, fetchOpts);
 
-      // Verificar status da resposta
       if (response.status === 401) {
-        console.error('❌ Token inválido ou expirado (401)');
         toast.error('Sessão expirada. Faça login novamente.');
         localStorage.removeItem('access_token');
+        setStudents([]);
+        setFilteredStudents([]);
         return;
       }
 
       let result = await response.json();
 
       if (!result.success || !result.data) {
-        response = await fetch(`${API_URL}/students.php?with_credentials=true`, { headers: getAuthHeaders() });
-
+        response = await fetch(`${API_URL}/students.php?with_credentials=true`, fetchOpts);
         if (response.status === 401) {
-          console.error('❌ Token inválido ou expirado (401)');
           toast.error('Sessão expirada. Faça login novamente.');
           localStorage.removeItem('access_token');
+          setStudents([]);
+          setFilteredStudents([]);
           return;
         }
-
         result = await response.json();
       }
 
@@ -117,28 +122,31 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
         const inscribed = result.data.filter((s: any) =>
           s && s.username && s.username.trim().length > 0
         );
-
-        console.log('✅ Estudantes Inscritos:', inscribed);
         setStudents(inscribed);
         setFilteredStudents(inscribed);
       } else {
-        console.error('❌ Resposta da API inválida:', result);
-        toast.error('Erro ao carregar estudantes inscritos');
+        setStudents([]);
+        setFilteredStudents([]);
       }
     } catch (error) {
-      console.error('❌ Erro ao buscar estudantes inscritos:', error);
-      toast.error('Erro ao conectar com o servidor');
+      if ((error as Error).name !== 'AbortError') {
+        console.error('❌ Erro ao buscar estudantes inscritos:', error);
+      }
+      setStudents([]);
+      setFilteredStudents([]);
     } finally {
+      clearTimeout(timeout);
       setIsLoading(false);
+      setInitialLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInscribedStudents();
+    fetchInscribedStudents(false);
   }, []);
 
-  // Auto-refresh: recarrega ao voltar ao tab ou a cada 30s
-  useAutoRefresh(fetchInscribedStudents, { interval: 30_000 });
+  // Auto-refresh silencioso: não mostra spinner, apenas actualiza os dados
+  useAutoRefresh(() => fetchInscribedStudents(true), { interval: 30_000 });
 
   useEffect(() => {
     let filtered = students;
@@ -161,6 +169,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
   }, [searchTerm, statusFilter, students]);
 
   const handleInscriptionSuccess = () => {
+    setSearchTerm("");
     fetchInscribedStudents();
   };
 
@@ -189,6 +198,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
       );
     }
 
+    setSearchTerm("");
     // Sincronizar com a API em segundo plano
     fetchInscribedStudents();
   };
@@ -299,15 +309,17 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setIsSettingsOpen(true)}
-              className="border-2 border-slate-300 hover:border-slate-400"
-              title="Configurações de Inscrição"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Configurações
-            </Button>
+            {currentUserRole !== 'academic_admin' && (
+              <Button
+                variant="outline"
+                onClick={() => setIsSettingsOpen(true)}
+                className="border-2 border-slate-300 hover:border-slate-400"
+                title="Configurações de Inscrição"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações
+              </Button>
+            )}
             <GradientButton onClick={() => setIsModalOpen(true)}>
               <UserPlus className="h-5 w-5" />
               Nova Inscrição
@@ -368,7 +380,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
 
         <Button
           variant="outline"
-          onClick={fetchInscribedStudents}
+          onClick={() => fetchInscribedStudents(false)}
           className="h-12 px-4 rounded-xl border-2"
           disabled={isLoading}
         >
@@ -384,7 +396,7 @@ export function InscriptionList({ onProceedToRegistration }: InscriptionListProp
       </div>
 
       {/* Students Display */}
-      {isLoading ? (
+      {initialLoading ? (
         <Card className="shadow-lg border-0">
           <CardContent className="pt-12 pb-12">
             <div className="flex flex-col items-center justify-center">

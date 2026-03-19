@@ -39,6 +39,7 @@ export interface CreateTeacherData {
   contato_emergencia?: string;
   observacoes?: string;
   status?: string;
+  assigned_classes?: number[];
 }
 
 class TeacherService {
@@ -77,13 +78,14 @@ class TeacherService {
   /**
    * Criar novo professor (apenas Admin)
    */
-  async create(teacherData: CreateTeacherData): Promise<{ success: boolean; message: string; id?: number }> {
+  async create(teacherData: CreateTeacherData): Promise<{ success: boolean; message: string; id?: number; username?: string }> {
     try {
       const response = await apiClient.post<ApiResponse<any>>('/api/professores.php', teacherData);
       return {
         success: response.data.success,
         message: response.data.message || 'Professor criado com sucesso',
-        id: response.data.data?.id
+        id: response.data.id,
+        username: response.data.credentials?.username
       };
     } catch (error: any) {
       console.error('Erro ao criar professor:', error);

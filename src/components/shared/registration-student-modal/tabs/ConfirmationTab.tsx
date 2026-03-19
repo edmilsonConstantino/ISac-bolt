@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircle2, GraduationCap, User, BookOpen, Calendar,
   CreditCard, DollarSign, Wallet, Building, Smartphone,
-  Clock, BadgeCheck, FileText, Sparkles
+  Clock, BadgeCheck, FileText, Sparkles, RotateCcw
 } from "lucide-react";
 import type { RegistrationFormData, PaymentMethod } from "../types/registrationModal.types";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface PaymentItem {
   id: string;
@@ -36,6 +37,7 @@ export function ConfirmationTab({
   selectedStudent,
   selectedCourse,
 }: ConfirmationTabProps) {
+  const { openConfirm, dialogProps } = useConfirmDialog();
   const isBolsista = Boolean(formData.isBolsista);
   const enrollmentFee = Number(formData.enrollmentFee || 0);
   const monthlyFee = Number(formData.monthlyFee || 0);
@@ -129,81 +131,85 @@ export function ConfirmationTab({
   };
 
   return (
+    <>
+    <ConfirmDialog {...dialogProps} />
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
       {/* ===== RESUMO ACADÉMICO ===== */}
-      <section className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border-2 border-[#004B87]/20 rounded-2xl p-6">
-        <h3 className="text-sm font-bold text-[#004B87] mb-4 flex items-center gap-2">
-          <GraduationCap className="h-4 w-4 text-[#F5821F]" />
-          Resumo da Matrícula
-        </h3>
+      <section className="bg-gradient-to-br from-[#004B87]/5 to-[#F5821F]/5 border-2 border-[#004B87]/20 rounded-2xl p-4">
+        {/* Header: título + badge de estado */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-[#004B87] flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-[#F5821F]" />
+            Resumo da Matrícula
+          </h3>
+          <div className={cn(
+            "px-3 py-1 rounded-full text-xs font-bold",
+            isEnrollmentPaid ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+          )}>
+            {isEnrollmentPaid ? '✓ Activa' : '⏳ Pendente'}
+          </div>
+        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {/* Coluna 1 - Estudante */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
-              <div className="h-10 w-10 bg-[#004B87] rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Estudante</p>
-                <p className="font-bold text-slate-800">{selectedStudent?.name || formData.studentName || '-'}</p>
-              </div>
+        {/* Linha 1: Estudante (largura total) */}
+        <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 mb-2">
+          <div className="h-8 w-8 bg-[#004B87] rounded-lg flex items-center justify-center flex-shrink-0">
+            <User className="h-4 w-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none mb-0.5">Estudante</p>
+            <p className="font-bold text-slate-800 text-sm truncate">{selectedStudent?.name || formData.studentName || '-'}</p>
+          </div>
+          {formData.studentCode && (
+            <span className="ml-auto flex-shrink-0 text-xs font-mono bg-slate-100 text-[#004B87] px-2 py-0.5 rounded-md font-semibold">
+              {formData.studentCode}
+            </span>
+          )}
+        </div>
+
+        {/* Linha 2: Curso + Período em 2 colunas */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100">
+            <div className="h-8 w-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <BookOpen className="h-4 w-4 text-white" />
             </div>
-
-            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
-              <div className="h-10 w-10 bg-purple-500 rounded-full flex items-center justify-center">
-                <BookOpen className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Curso</p>
-                <p className="font-bold text-slate-800">{selectedCourse?.nome || formData.courseName || '-'}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none mb-0.5">Curso</p>
+              <p className="font-bold text-slate-800 text-sm truncate">{selectedCourse?.nome || formData.courseName || '-'}</p>
             </div>
           </div>
 
-          {/* Coluna 2 - Detalhes */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
-              <div className="h-10 w-10 bg-orange-500 rounded-full flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">
-                  {formData.className ? 'Período / Turma' : 'Período'}
-                </p>
-                <p className="font-bold text-slate-800">
-                  {formData.period}{formData.className ? ` / ${formData.className}` : ''}
-                </p>
-                {!formData.className && (
-                  <p className="text-xs text-slate-400 italic">Turma não atribuída</p>
-                )}
-              </div>
+          <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100">
+            <div className="h-8 w-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Calendar className="h-4 w-4 text-white" />
             </div>
-
-            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100">
-              <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center">
-                <BadgeCheck className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Tipo de Inscrição</p>
-                <p className="font-bold text-slate-800">{getRegistrationTypeLabel()}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none mb-0.5">Período</p>
+              <p className="font-bold text-slate-800 text-sm truncate">{formData.period || '-'}</p>
             </div>
           </div>
         </div>
 
-        {/* Número de Matrícula */}
-        <div className="mt-4 p-4 bg-white rounded-xl border-2 border-dashed border-[#F5821F]/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Número de Matrícula</p>
-              <p className="font-mono text-xl font-bold text-[#004B87]">{formData.studentCode || '-'}</p>
+        {/* Linha 3: Turma + Tipo de Inscrição em 2 colunas */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100">
+            <div className="h-8 w-8 bg-sky-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="h-4 w-4 text-white" />
             </div>
-            <div className={cn(
-              "px-4 py-2 rounded-full text-sm font-bold",
-              isEnrollmentPaid ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-            )}>
-              {isEnrollmentPaid ? 'Activa' : 'Pendente'}
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none mb-0.5">Turma</p>
+              <p className="font-bold text-slate-800 text-sm truncate">
+                {formData.className || <span className="text-slate-400 font-normal italic text-xs">Não atribuída</span>}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100">
+            <div className="h-8 w-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <BadgeCheck className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none mb-0.5">Tipo</p>
+              <p className="font-bold text-slate-800 text-sm truncate">{getRegistrationTypeLabel()}</p>
             </div>
           </div>
         </div>
@@ -369,22 +375,53 @@ export function ConfirmationTab({
               </span>
             </div>
 
-            {/* Botão Marcar como Pago */}
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setPaidAmount(totalToPay)}
-                disabled={paidAmount >= totalToPay}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2 h-12 rounded-xl font-bold transition-all",
-                  paidAmount >= totalToPay
-                    ? "bg-green-100 text-green-700 border-2 border-green-300 cursor-default"
-                    : "bg-[#F5821F] hover:bg-[#E07318] text-white shadow-lg shadow-orange-200"
-                )}
-              >
-                <CheckCircle2 className="h-5 w-5" />
-                {paidAmount >= totalToPay ? 'Pagamento Completo' : 'Marcar como Pago'}
-              </button>
+            {/* Botão Marcar como Pago / Cancelar Pagamento */}
+            <div className="mt-3 space-y-1">
+              {paidAmount >= totalToPay ? (
+                <>
+                  <div className="w-full flex items-center justify-center gap-2 h-12 rounded-xl font-bold bg-green-100 text-green-700 border-2 border-green-300">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Pagamento Completo
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openConfirm(
+                        {
+                          title: "Cancelar Pagamento",
+                          message: "Deseja cancelar o registo de pagamento? O valor pago voltará a zero.",
+                          confirmLabel: "Cancelar Pagamento",
+                          variant: "warning",
+                        },
+                        async () => setPaidAmount(0)
+                      )
+                    }
+                    className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-all"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Cancelar Pagamento
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openConfirm(
+                      {
+                        title: "Confirmar Pagamento",
+                        message: `Confirma o recebimento de ${formatCurrency(totalToPay)}?`,
+                        confirmLabel: "Confirmar Pagamento",
+                        variant: "info",
+                      },
+                      async () => setPaidAmount(totalToPay)
+                    )
+                  }
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-xl font-bold transition-all bg-[#F5821F] hover:bg-[#E07318] text-white shadow-lg shadow-orange-200"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  Marcar como Pago
+                </button>
+              )}
             </div>
           </div>
 
@@ -466,5 +503,6 @@ export function ConfirmationTab({
         />
       </section>
     </div>
+    </>
   );
 }

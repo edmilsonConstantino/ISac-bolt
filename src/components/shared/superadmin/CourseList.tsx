@@ -101,10 +101,7 @@ export function CourseList({
     return icons[tipo] || '';
   };
 
-  const getDuracaoText = (tipo: string, valor: number) => {
-    if (tipo === 'tecnico_superior') {
-      return `${valor} ${valor === 1 ? 'Ano' : 'Anos'}`;
-    }
+  const getDuracaoText = (_tipo: string, valor: number) => {
     return `${valor} ${valor === 1 ? 'Mês' : 'Meses'}`;
   };
 
@@ -316,19 +313,13 @@ export function CourseList({
                       )}
                     </div>
                     <p className="text-xs text-[#F5821F] font-medium">{course.codigo}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-slate-500">
-                        {course.categoria?.nome || 'Sem categoria'}
-                      </span>
-                      {course.niveis && course.niveis.length > 0 && (
-                        <>
-                          <span className="text-xs text-slate-400">{'\u2022'}</span>
-                          <span className="text-xs text-purple-600">
-                            {course.niveis.length} niveis
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    {course.niveis && course.niveis.length > 0 && (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-purple-600">
+                          {course.niveis.length} níveis
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

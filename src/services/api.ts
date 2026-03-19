@@ -9,6 +9,7 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: false,
+  timeout: 15000, // 15s — prevents infinite spinner when server is unresponsive
 });
 
 // ============================================================

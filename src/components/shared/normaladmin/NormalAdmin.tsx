@@ -8,6 +8,7 @@ import classService, { Class as APIClass } from "@/services/classService";
 import teacherService, { Teacher, CreateTeacherData } from "@/services/teacherService";
 import courseService, { Course as APICourse } from "@/services/courseService";
 import registrationService from '@/services/registrationService';
+import userService, { SystemUserAPI } from '@/services/userService';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ import { LevelTransitionPanel } from "../LevelTransitionPanel";
 import { AdminSidebar, AdminView } from "../AdminSidebar";
 import { InscriptionList } from "../InscriptionList";
 import { PaymentsDashboard } from "../PaymentsDashboard";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ClassSettingsModal } from "../../Classes/ClassSettingsModal";
 import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
 
@@ -56,6 +58,8 @@ interface NormalAdminProps {
 }
 
 export function NormalAdmin({ onLogout }: NormalAdminProps) {
+  const { openConfirm, dialogProps } = useConfirmDialog();
+
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -160,11 +164,9 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   const [showChatModal, setShowChatModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
 
-  // Estados para usuários e notas
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [selectedGradesClassId, setSelectedGradesClassId] = useState<number | undefined>(undefined);
 
-  // Verificar autenticação
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -175,17 +177,33 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   }, [isAuthenticated]);
 
-  // Carregar dados de usuários
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    const mockUsers: SystemUser[] = [
-      { id: 1, name: "Admin ISAC", email: "admin@isac.ac.mz", role: "admin", status: "active", createdAt: "2024-01-15", lastLogin: "2025-01-25" },
-      { id: 2, name: "João Silva", email: "joao.silva@isac.ac.mz", role: "teacher", status: "active", createdAt: "2024-02-20", lastLogin: "2025-01-24", phone: "+258 84 123 4567" },
-    ];
-    setSystemUsers(mockUsers);
+    userService.getAll()
+      .then((apiUsers: SystemUserAPI[]) => {
+        const mapped: SystemUser[] = apiUsers.map(u => ({
+          id: u.id,
+          name: u.nome,
+          email: u.email,
+          username: u.username,
+          phone: u.phone,
+          bi_number: u.bi_number,
+          role: u.role,
+          status: u.status,
+          createdAt: u.created_at,
+          lastLogin: u.last_login,
+          avatar: u.avatar,
+          sourceTable: u.source_table,
+        }));
+        setSystemUsers(mapped);
+      })
+      .catch(() => {
+        // fallback silencioso — lista vazia
+        setSystemUsers([]);
+      });
   }, [isAuthenticated]);
 
-  // Carregar dados da API
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -256,7 +274,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     loadAllData();
   }, [isAuthenticated]);
 
-  // Funções auxiliares
+
   const addStudent = (student: Omit<Student, 'id'> | Student) => {
     if ('id' in student) {
       setStudents(prev => [...prev, student]);
@@ -305,7 +323,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  // Carregar matrículas
+
   const loadRegistrations = async () => {
     try {
       setIsLoadingRegistrations(true);
@@ -358,9 +376,8 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useAutoRefresh(refreshAll, { interval: 60_000 });
-  // ─────────────────────────────────────────────────────────────────────
 
-  // Funções de pagamento
+
   const getStudentPaymentInfo = (studentId: number, name: string, className: string) => {
     return {
       studentId,
@@ -439,7 +456,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     collectionRate: paymentSummary.collectionRate
   };
 
-  // ========== HANDLERS ==========
 
   // Matrículas
   const handleAddRegistration = () => {
@@ -492,17 +508,19 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  const handleDeleteRegistration = async (registrationId: number) => {
-    if (confirm("Tem certeza que deseja cancelar esta matrícula?")) {
-      try {
-        await registrationService.cancel(registrationId);
-        toast.success("Matrícula cancelada com sucesso!");
-        await loadRegistrations();
-      } catch (error) {
-        console.error('Erro ao cancelar matrícula:', error);
-        toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
+  const handleDeleteRegistration = (registrationId: number) => {
+    openConfirm(
+      { title: "Cancelar Matrícula", message: "Tem certeza que deseja cancelar esta matrícula? Esta acção não pode ser desfeita.", confirmLabel: "Cancelar Matrícula", variant: "warning" },
+      async () => {
+        try {
+          await registrationService.cancel(registrationId);
+          toast.success("Matrícula cancelada com sucesso!");
+          await loadRegistrations();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'Erro ao cancelar matrícula');
+        }
       }
-    }
+    );
   };
 
   // Professores
@@ -598,17 +616,19 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     ));
   };
 
-  const handleDeleteTeacher = async (teacherId: number) => {
-    if (confirm("Tem certeza que deseja remover este docente?")) {
-      try {
-        await teacherService.delete(teacherId);
-        setTeacherStats(prev => prev.filter(t => t.id !== teacherId));
-        toast.success("Professor removido com sucesso!");
-      } catch (error: any) {
-        console.error("Erro ao deletar professor:", error);
-        toast.error(error.message || "Erro ao remover professor");
+  const handleDeleteTeacher = (teacherId: number) => {
+    openConfirm(
+      { title: "Remover Docente", message: "Tem certeza que deseja remover este docente? Esta acção não pode ser desfeita.", confirmLabel: "Remover", variant: "danger" },
+      async () => {
+        try {
+          await teacherService.delete(teacherId);
+          setTeacherStats(prev => prev.filter(t => t.id !== teacherId));
+          toast.success("Professor removido com sucesso!");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao remover professor");
+        }
       }
-    }
+    );
   };
 
   // Turmas
@@ -646,18 +666,20 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     setClassModal({ isOpen: true, classData: null, isCreating: true });
   };
 
-  const handleDeleteClass = async (classId: number) => {
-    if (confirm("Tem certeza que deseja deletar esta turma?")) {
-      try {
-        await classService.delete(classId);
-        toast.success("Turma deletada com sucesso!");
-        await loadClasses();
-        await loadCourses();
-      } catch (error: any) {
-        console.error('Erro ao deletar turma:', error);
-        toast.error(error.message || "Erro ao deletar turma");
+  const handleDeleteClass = (classId: number) => {
+    openConfirm(
+      { title: "Eliminar Turma", message: "Tem certeza que deseja eliminar esta turma? Esta acção não pode ser desfeita.", confirmLabel: "Eliminar", variant: "danger" },
+      async () => {
+        try {
+          await classService.delete(classId);
+          toast.success("Turma eliminada com sucesso!");
+          await loadClasses();
+          await loadCourses();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao eliminar turma");
+        }
       }
-    }
+    );
   };
 
   const handleSaveClass = async (classData: Partial<APIClass>) => {
@@ -678,17 +700,19 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  const handleDeleteStudent = async (studentId: number) => {
-    if (confirm("Tem certeza que deseja remover este estudante?")) {
-      try {
-        await studentService.delete(studentId);
-        deleteStudent(studentId);
-        toast.success("Estudante removido com sucesso!");
-      } catch (error: any) {
-        console.error("Erro ao deletar estudante:", error);
-        toast.error(error.message || "Erro ao remover estudante");
+  const handleDeleteStudent = (studentId: number) => {
+    openConfirm(
+      { title: "Remover Estudante", message: "Tem certeza que deseja remover este estudante? Esta acção não pode ser desfeita.", confirmLabel: "Remover", variant: "danger" },
+      async () => {
+        try {
+          await studentService.delete(studentId);
+          deleteStudent(studentId);
+          toast.success("Estudante removido com sucesso!");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao remover estudante");
+        }
       }
-    }
+    );
   };
 
   const handleSendEmailToAll = () => {
@@ -762,17 +786,19 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     }
   };
 
-  const handleDeleteCourse = async (courseId: number) => {
-    if (confirm("Tem certeza que deseja desativar este curso?")) {
-      try {
-        await courseService.delete(courseId);
-        toast.success("Curso desativado com sucesso!");
-        await loadCourses();
-      } catch (error: any) {
-        console.error('Erro ao deletar curso:', error);
-        toast.error(error.message || "Erro ao deletar curso");
+  const handleDeleteCourse = (courseId: number) => {
+    openConfirm(
+      { title: "Desativar Curso", message: "Tem certeza que deseja desativar este curso?", confirmLabel: "Desativar", variant: "warning" },
+      async () => {
+        try {
+          await courseService.delete(courseId);
+          toast.success("Curso desativado com sucesso!");
+          await loadCourses();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Erro ao desativar curso");
+        }
       }
-    }
+    );
   };
 
   // Notas
@@ -993,7 +1019,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
               <ClassList
                 classes={classes}
                 permissions={academicAdminPermissions}
-                currentUserRole="admin"
+                currentUserRole="academic_admin"
                 onViewStudents={handleViewStudents}
                 onManageClass={handleManageClass}
                 onCreateClass={handleCreateClass}
@@ -1033,6 +1059,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
             <TabsContent value="inscriptions" className="mt-0">
               <InscriptionList
+                currentUserRole="academic_admin"
                 onProceedToRegistration={(studentId) => {
                   setRegistrationModal({
                     isOpen: true,
@@ -1056,10 +1083,13 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
                 onViewUser={(user) => console.log('Ver usuário:', user)}
                 onEditUser={(user) => console.log('Editar usuário:', user)}
                 onDeleteUser={(userId) => {
-                  if (confirm('Tem certeza que deseja remover este usuário?')) {
-                    setSystemUsers(prev => prev.filter(u => u.id !== userId));
-                    toast.success('Usuário removido com sucesso!');
-                  }
+                  openConfirm(
+                    { title: "Remover Usuário", message: "Tem certeza que deseja remover este usuário? Esta acção não pode ser desfeita.", confirmLabel: "Remover", variant: "danger" },
+                    async () => {
+                      setSystemUsers(prev => prev.filter(u => u.id !== userId));
+                      toast.success('Usuário removido com sucesso!');
+                    }
+                  );
                 }}
                 onCreateUser={(userData) => {
                   const newUser: SystemUser = {
@@ -1230,8 +1260,11 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
           onSave={() => {}}
           classData={launchGradesModal.classData}
           students={launchGradesModal.students}
+          readOnly={true}
         />
       )}
+
+      <ConfirmDialog {...dialogProps} />
 
       {/* FLOATING CHAT BUTTON */}
       <GradientButton

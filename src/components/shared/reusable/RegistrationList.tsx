@@ -23,14 +23,13 @@ import {
   User,
   Printer,
   UserCircle,
-  Settings
 } from "lucide-react";
 import { RegistrationProfileModal } from "../RegistrationProfileModal";
 import { Permission } from "../../types";
 
 // Componentes reutilizaveis
 import { PageHeader, PageHeaderTitle, PageHeaderSubtitle, PageHeaderActions } from "@/components/ui/page-header";
-import { SearchBar, FilterSelect, ViewToggle } from "@/components/ui/search-bar";
+import { SearchBar, ViewToggle } from "@/components/ui/search-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatCard } from "@/components/ui/stat-card";
 import { ListFooter } from "@/components/ui/info-row";
@@ -85,12 +84,11 @@ export function RegistrationList({
   onDeleteRegistration,
   onAddRegistration,
   onRenewRegistration,
-  onViewStudentProfile,
   onPrintReceipt
 }: RegistrationListProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "cancelled" | "completed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "suspended" | "cancelled" | "completed">("active");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [profileModal, setProfileModal] = useState<{ isOpen: boolean; registrationId: number | null }>({
@@ -114,20 +112,24 @@ export function RegistrationList({
   const stats = {
     total: registrations.length,
     active: registrations.filter(r => r.status === 'active').length,
+    pending: registrations.filter(r => r.status === 'pending').length,
     suspended: registrations.filter(r => r.status === 'suspended').length,
+    cancelled: registrations.filter(r => r.status === 'cancelled').length,
     completed: registrations.filter(r => r.status === 'completed').length,
-    overdue: registrations.filter(r => r.paymentStatus === 'overdue').length
+    overdue: registrations.filter(r => r.paymentStatus === 'overdue').length,
+    paid: registrations.filter(r => r.paymentStatus === 'paid').length,
   };
 
   // Helper functions
   const getStatusInfo = (status: Registration['status']) => {
     const statusMap = {
-      active: { label: 'Matriculado', color: 'bg-green-500', textColor: 'text-green-700', bgColor: 'bg-green-50', icon: CheckCircle },
-      suspended: { label: 'Trancado', color: 'bg-yellow-500', textColor: 'text-yellow-700', bgColor: 'bg-yellow-50', icon: Pause },
-      cancelled: { label: 'Cancelado', color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50', icon: XCircle },
-      completed: { label: 'Concluído', color: 'bg-blue-500', textColor: 'text-blue-700', bgColor: 'bg-blue-50', icon: Trophy }
+      active:    { label: 'Matriculado', color: 'bg-green-500',  textColor: 'text-green-700',  bgColor: 'bg-green-50',  icon: CheckCircle },
+      pending:   { label: 'Pendente',    color: 'bg-orange-400', textColor: 'text-orange-700', bgColor: 'bg-orange-50', icon: Clock },
+      suspended: { label: 'Trancado',    color: 'bg-yellow-500', textColor: 'text-yellow-700', bgColor: 'bg-yellow-50', icon: Pause },
+      cancelled: { label: 'Cancelado',   color: 'bg-red-500',    textColor: 'text-red-700',    bgColor: 'bg-red-50',    icon: XCircle },
+      completed: { label: 'Concluído',   color: 'bg-blue-500',   textColor: 'text-blue-700',   bgColor: 'bg-blue-50',   icon: Trophy }
     };
-    return statusMap[status];
+    return statusMap[status] ?? statusMap.cancelled;
   };
 
   const getPaymentStatusInfo = (status: Registration['paymentStatus']) => {
@@ -259,39 +261,14 @@ export function RegistrationList({
         </div>
       </div>
 
-      {/* Barra de Pesquisa e Filtros */}
-      <div className="flex flex-col md:flex-row gap-3">
+      {/* Barra de Pesquisa + Toggle */}
+      <div className="flex gap-3">
         <SearchBar
           placeholder="Buscar por estudante, código ou curso..."
           value={searchTerm}
           onChange={setSearchTerm}
+          className="flex-1"
         />
-
-        <FilterSelect
-          value={statusFilter}
-          onChange={(v) => setStatusFilter(v as any)}
-          options={[
-            { value: "all", label: "Todos os Status" },
-            { value: "active", label: "Matriculados" },
-            { value: "suspended", label: "Trancados" },
-            { value: "cancelled", label: "Cancelados" },
-            { value: "completed", label: "Concluídos" },
-          ]}
-          minWidth="160px"
-        />
-
-        <FilterSelect
-          value={paymentFilter}
-          onChange={(v) => setPaymentFilter(v as any)}
-          options={[
-            { value: "all", label: "Todos Pagamentos" },
-            { value: "paid", label: "Pagos" },
-            { value: "pending", label: "Pendentes" },
-            { value: "overdue", label: "Atrasados" },
-          ]}
-          minWidth="160px"
-        />
-
         <ViewToggle
           view={viewMode}
           onChange={setViewMode}
@@ -300,24 +277,42 @@ export function RegistrationList({
         />
       </div>
 
+      {/* Filtros por Botões — Status */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "all" as const,       label: "Todos",       count: stats.total,     activeClass: "bg-[#004B87] text-white border-[#004B87]" },
+          { value: "active" as const,    label: "Matriculados", count: stats.active,   activeClass: "bg-emerald-500 text-white border-emerald-500" },
+          { value: "pending" as const,   label: "Pendentes",   count: stats.pending,   activeClass: "bg-orange-400 text-white border-orange-400" },
+          { value: "suspended" as const, label: "Trancados",   count: stats.suspended, activeClass: "bg-yellow-500 text-white border-yellow-500" },
+          { value: "cancelled" as const, label: "Cancelados",  count: stats.cancelled, activeClass: "bg-red-500 text-white border-red-500" },
+          { value: "completed" as const, label: "Concluídos",  count: stats.completed, activeClass: "bg-blue-500 text-white border-blue-500" },
+        ].map(btn => (
+          <button
+            key={btn.value}
+            onClick={() => setStatusFilter(btn.value)}
+            className={`h-9 px-4 rounded-lg text-sm font-medium border-2 transition-all flex items-center gap-2 ${
+              statusFilter === btn.value
+                ? `${btn.activeClass} shadow-md`
+                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            {btn.label}
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+              statusFilter === btn.value ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"
+            }`}>
+              {btn.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+
       {/* Estado Vazio */}
       {filteredRegistrations.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Nenhuma matrícula encontrada"
-          description={searchTerm ? "Tente ajustar os filtros de busca" : "Não há matrículas cadastradas"}
-          action={
-            permissions.canAdd && onAddRegistration && !searchTerm ? (
-              <Button
-                onClick={onAddRegistration}
-                variant="outline"
-                className="border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Primeira Matrícula
-              </Button>
-            ) : undefined
-          }
+          description={searchTerm ? "Tente ajustar os filtros de busca" : "Não há matrículas para este filtro"}
         />
       ) : (
         <>
@@ -361,15 +356,6 @@ export function RegistrationList({
 
                         {/* Botões de acção - canto superior direito */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full bg-[#004B87]/10 text-[#004B87] hover:bg-[#004B87]/20 border-2 border-[#004B87]/20 hover:border-[#004B87]/40 transition-all duration-200"
-                            onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
-                            title="Perfil da Matrícula"
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                          </Button>
                           {permissions.canDelete && onDeleteRegistration && (
                             <Button
                               variant="ghost"
@@ -387,8 +373,8 @@ export function RegistrationList({
                       {/* Informações da Matrícula */}
                       <div className="space-y-2.5 mb-4">
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="h-7 w-7 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="h-3.5 w-3.5 text-purple-600" />
+                          <div className="h-7 w-7 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <BookOpen className="h-3.5 w-3.5 text-[#004B87]" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-slate-700 truncate" title={registration.courseName}>
@@ -399,8 +385,8 @@ export function RegistrationList({
 
                         {registration.className && (
                           <div className="flex items-center gap-2 text-xs">
-                            <div className="h-7 w-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
+                            <div className="h-7 w-7 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <GraduationCap className="h-3.5 w-3.5 text-[#004B87]" />
                             </div>
                             <span className="text-slate-600 truncate" title={registration.className}>
                               {registration.className}
@@ -409,8 +395,8 @@ export function RegistrationList({
                         )}
 
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="h-7 w-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Calendar className="h-3.5 w-3.5 text-[#F5821F]" />
+                          <div className="h-7 w-7 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-3.5 w-3.5 text-[#004B87]" />
                           </div>
                           <div className="flex-1">
                             <span className="text-slate-600">Período: </span>
@@ -419,7 +405,7 @@ export function RegistrationList({
                         </div>
 
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="h-7 w-7 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="h-7 w-7 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
                             <DollarSign className="h-3.5 w-3.5 text-green-600" />
                           </div>
                           <div className="flex-1">
@@ -443,23 +429,21 @@ export function RegistrationList({
                       <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
                         {/* Linha 1: Ver Perfil e Baixar Recibo */}
                         <div className="flex gap-2">
-                          {onViewStudentProfile && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 h-9 text-xs border-2 border-purple-300 text-purple-600 hover:bg-purple-600 hover:text-white transition-all"
-                              onClick={() => onViewStudentProfile(registration.studentId)}
-                              title="Ver Perfil do Estudante"
-                            >
-                              <UserCircle className="h-3.5 w-3.5 mr-1.5" />
-                              Perfil
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 text-xs border-2 border-[#004B87] text-[#004B87] hover:bg-[#004B87] hover:text-white transition-all"
+                            onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
+                            title="Ver Perfil da Matrícula"
+                          >
+                            <UserCircle className="h-3.5 w-3.5 mr-1.5" />
+                            Perfil
+                          </Button>
 
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 h-9 text-xs border-2 border-green-300 text-green-600 hover:bg-green-600 hover:text-white transition-all"
+                            className="flex-1 h-9 text-xs border-2 border-slate-300 text-slate-600 hover:bg-slate-600 hover:text-white transition-all"
                             onClick={() => handlePrintReceipt(registration)}
                             title="Baixar Recibo de Matrícula"
                           >
@@ -574,22 +558,20 @@ export function RegistrationList({
 
                       {/* Ações */}
                       <div className="col-span-1 flex justify-end gap-1">
-                        {onViewStudentProfile && (
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 border-purple-300 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg"
-                            onClick={() => onViewStudentProfile(registration.studentId)}
-                            title="Ver Perfil"
-                          >
-                            <UserCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 border-[#004B87] text-[#004B87] hover:bg-[#004B87] hover:text-white rounded-lg"
+                          onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
+                          title="Ver Perfil da Matrícula"
+                        >
+                          <UserCircle className="h-4 w-4" />
+                        </Button>
 
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 border-green-300 text-green-600 hover:bg-green-600 hover:text-white rounded-lg"
+                          className="h-8 w-8 border-slate-300 text-slate-600 hover:bg-slate-600 hover:text-white rounded-lg"
                           onClick={() => handlePrintReceipt(registration)}
                           title="Baixar Recibo"
                         >
@@ -606,16 +588,6 @@ export function RegistrationList({
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
-
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 border-[#004B87]/30 text-[#004B87] hover:bg-[#004B87] hover:text-white rounded-lg"
-                          onClick={() => setProfileModal({ isOpen: true, registrationId: registration.id })}
-                          title="Perfil da Matrícula"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
 
                         {permissions.canDelete && onDeleteRegistration && (
                           <Button

@@ -302,16 +302,25 @@ export function RegistrationProfileModal({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Header badge style (translucent, for blue bg)
+  const headerBadgeClass =
+    statusInfo.bg === 'bg-green-100'  ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/30" :
+    statusInfo.bg === 'bg-yellow-100' ? "bg-amber-500/20 text-amber-200 border border-amber-400/30" :
+    statusInfo.bg === 'bg-red-100'    ? "bg-red-500/20 text-red-200 border border-red-400/30" :
+    statusInfo.bg === 'bg-blue-100'   ? "bg-blue-500/20 text-blue-200 border border-blue-400/30" :
+    statusInfo.bg === 'bg-indigo-100' ? "bg-indigo-500/20 text-indigo-200 border border-indigo-400/30" :
+    "bg-slate-500/20 text-slate-300 border border-slate-400/30";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[900px] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[90vh]">
+      <DialogContent
+        className="max-w-[900px] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[90vh]"
+      >
         <DialogTitle className="sr-only">Perfil da Matrícula</DialogTitle>
 
         <div className="flex h-[80vh]">
-
-          {/* ══════════════ SIDEBAR ══════════════ */}
+          {/* ====== SIDEBAR ====== */}
           <div className="w-[240px] bg-gradient-to-b from-[#004B87] to-[#003366] flex flex-col flex-shrink-0">
-
             {/* Header */}
             <div className="px-6 pt-6 pb-5 border-b border-white/10">
               <div className="flex items-center gap-3 mb-2">
@@ -323,33 +332,10 @@ export function RegistrationProfileModal({
                   <p className="text-blue-200 text-[10px] uppercase tracking-widest">Matrícula</p>
                 </div>
               </div>
-
-              <div className="bg-white/10 rounded-lg px-3 py-2 mt-3">
-                {isLoading ? (
-                  <div className="space-y-1.5">
-                    <div className="h-3 bg-white/20 rounded animate-pulse w-3/4" />
-                    <div className="h-2.5 bg-white/15 rounded animate-pulse w-1/2" />
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-white text-xs font-bold truncate">
-                      {regDetails?.student_name ?? '—'}
-                    </p>
-                    <p className="text-blue-200 text-[10px] font-mono truncate">
-                      {regDetails?.course_id ?? '—'}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Status badge */}
-              {!isLoading && regDetails && (
-                <div className={cn(
-                  "inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[10px] font-bold",
-                  statusInfo.bg, statusInfo.color
-                )}>
-                  <StatusIcon className="h-3 w-3" />
-                  {statusInfo.label}
+              {regDetails && (
+                <div className="bg-white/10 rounded-lg px-3 py-2 mt-3">
+                  <p className="text-white text-xs font-bold truncate">{regDetails.student_name}</p>
+                  <p className="text-blue-200 text-[10px] truncate">{regDetails.course_name}</p>
                 </div>
               )}
             </div>
@@ -357,7 +343,7 @@ export function RegistrationProfileModal({
             {/* Nav */}
             <nav className="flex-1 py-4 px-3 space-y-1.5">
               {TABS.map(tab => {
-                const Icon     = tab.icon;
+                const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
@@ -382,69 +368,37 @@ export function RegistrationProfileModal({
               })}
             </nav>
 
-            {/* Registration ID */}
-            <div className="px-4 pb-4">
-              <div className="bg-white/10 rounded-lg px-3 py-2 text-center">
-                <p className="text-blue-300 text-[10px] uppercase tracking-wider">ID</p>
-                <p className="text-white text-xs font-bold font-mono">
-                  #{regDetails?.id ?? '—'}
-                </p>
+            {/* Status indicator */}
+            {regDetails && (
+              <div className="px-4 pb-4">
+                <div className={cn(
+                  "rounded-lg px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wider",
+                  headerBadgeClass
+                )}>
+                  {statusInfo.label}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* ══════════════ CONTENT ══════════════ */}
+          {/* ====== CONTENT ====== */}
           <div className="flex-1 flex flex-col overflow-hidden">
-
             {/* Top bar */}
             <div className="flex items-center justify-between px-8 py-4 border-b border-slate-100 bg-white">
               <div>
-                <h2 className="text-xl font-bold text-[#004B87]">{activeTabMeta.label}</h2>
-                <p className="text-xs text-slate-500">{activeTabMeta.sub}</p>
+                <h2 className="text-xl font-bold text-[#004B87]">
+                  {activeTabMeta.label}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {activeTabMeta.sub}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Edit / Save buttons — only on Info tab */}
-                {activeTab === 'info' && !isLoading && regDetails && (
-                  isEditing ? (
-                    <>
-                      <button
-                        onClick={() => { setIsEditing(false); setEditObs(regDetails.observations ?? ''); }}
-                        className="h-8 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={handleSaveObs}
-                        disabled={isSavingObs}
-                        className="h-8 px-4 rounded-lg bg-[#F5821F] hover:bg-[#E07318] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
-                      >
-                        {isSavingObs
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Save className="h-3.5 w-3.5" />
-                        }
-                        Guardar Alterações
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="h-8 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-600 flex items-center gap-1.5 transition-colors"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Editar
-                    </button>
-                  )
-                )}
-                <button
-                  onClick={onClose}
-                  className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors"
-                >
-                  <X className="h-4 w-4 text-slate-400" />
-                </button>
-              </div>
+              <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+                <X className="h-4 w-4 text-slate-400" />
+              </button>
             </div>
 
-            {/* Scrollable content area */}
+            {/* Content area */}
             <div className="flex-1 overflow-y-auto px-8 py-6">
 
               {/* Global loading */}
@@ -751,6 +705,50 @@ export function RegistrationProfileModal({
                   )}
                 </>
               )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex-shrink-0 bg-white border-t border-slate-100 px-5 py-3 flex items-center justify-between">
+              <div className="text-xs text-slate-400">
+                {activeTabMeta.sub}
+              </div>
+              <div className="flex items-center gap-2">
+                {activeTab === 'info' && !isLoading && regDetails && (
+                  isEditing ? (
+                    <>
+                      <button
+                        onClick={() => { setIsEditing(false); setEditObs(regDetails.observations ?? ''); }}
+                        className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveObs}
+                        disabled={isSavingObs}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#F5821F] to-[#FF9933] text-white text-sm font-bold hover:from-[#E07318] hover:to-[#F58820] transition-colors shadow-sm disabled:opacity-50"
+                      >
+                        {isSavingObs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Guardar
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#004B87] to-[#0066B3] text-white text-sm font-bold hover:from-[#003A6B] hover:to-[#004B87] transition-colors shadow-sm"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </button>
+                  )
+                )}
+                {(!isEditing || activeTab !== 'info') && (
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

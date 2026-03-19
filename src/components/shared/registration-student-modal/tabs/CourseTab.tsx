@@ -335,15 +335,15 @@ export function CourseTab({
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {niveis.map(nivel => {
-                const isLocked = isFirstEnrollment && nivel.nivel > minNivelOrdinal;
+                // Na primeira matrícula todos os níveis estão acessíveis — o admin escolhe o nível de início
+                const isLocked = false;
                 const isSelected = selectedNivel?.id === nivel.id;
                 return (
                   <button
                     key={nivel.id}
                     type="button"
-                    disabled={isLocked}
-                    onClick={() => !isLocked && onSelectNivel?.(nivel)}
-                    title={isLocked ? "O estudante deve completar o Nível 1 primeiro" : undefined}
+                    disabled={false}
+                    onClick={() => onSelectNivel?.(nivel)}
                     className={cn(
                       "relative p-3 rounded-xl border-2 text-left transition-all",
                       isLocked
