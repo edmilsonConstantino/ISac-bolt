@@ -11,7 +11,6 @@ import {
   Sparkles,
   User,
   Printer,
-  MessageCircle,
   CheckCircle2,
   ClipboardCheck,
   X,
@@ -127,7 +126,6 @@ export function RegistrationStudentModal({
   const [isLoadingNiveis, setIsLoadingNiveis] = useState(false);
 
   const [studentSearch, setStudentSearch] = useState("");
-  const [showChatPrompt, setShowChatPrompt] = useState(false);
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -642,8 +640,8 @@ export function RegistrationStudentModal({
 
         <div className="flex h-[650px]">
           {/* SIDEBAR */}
-          <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
-            <div className="flex items-center gap-3 mb-12">
+          <div className="w-64 bg-[#004B87] p-5 flex flex-col text-white">
+            <div className="flex items-center gap-3 mb-6">
               <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
                 <FileText className="text-white h-6 w-6" />
               </div>
@@ -698,7 +696,7 @@ export function RegistrationStudentModal({
 
           {/* CONTENT */}
           <div className="flex-1 flex flex-col">
-            <header className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+            <header className="px-8 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
                   {isEditing ? "Editar Matrícula" : "Nova Matrícula"}
@@ -718,7 +716,7 @@ export function RegistrationStudentModal({
               </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar bg-slate-50/30">
               {activeTab === "student" && (
                 <StudentTab
                   formData={formData}
@@ -792,7 +790,7 @@ export function RegistrationStudentModal({
             </div>
 
             {/* FOOTER */}
-            <footer className="px-10 py-6 border-t border-slate-100 bg-white flex justify-between items-center">
+            <footer className="px-8 py-3 border-t border-slate-100 bg-white flex justify-between items-center">
               <Button
                 variant="ghost"
                 onClick={() => setShowCancelConfirm(true)}
@@ -843,15 +841,6 @@ export function RegistrationStudentModal({
               </div>
             </footer>
 
-            {/* FLOATING CHAT BUTTON */}
-            <button
-              onClick={() => setShowChatPrompt(true)}
-              className="fixed bottom-6 right-6 h-14 w-14 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-50"
-              title="Enviar mensagem"
-            >
-              <MessageCircle className="h-6 w-6" />
-            </button>
-
             {/* RECEIPT PROMPT MODAL */}
             {showReceiptPrompt && (
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
@@ -893,34 +882,6 @@ export function RegistrationStudentModal({
                         Imprimir Recibo
                       </Button>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* CHAT PROMPT MODAL */}
-            {showChatPrompt && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-                  <h3 className="text-xl font-bold text-[#004B87] mb-4">Enviar Mensagem</h3>
-                  <p className="text-slate-600 mb-6">
-                    Deseja enviar uma mensagem de boas-vindas ao estudante <strong>{formData.studentName}</strong>?
-                  </p>
-                  <textarea
-                    className="w-full h-32 p-3 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:outline-none resize-none mb-4"
-                    placeholder="Digite sua mensagem aqui..."
-                    defaultValue={`Olá ${formData.studentName},\n\nSeja bem-vindo(a) ao ISAC!\n\nSua matrícula foi realizada com sucesso no curso ${formData.courseName}.\n\nEstamos muito felizes em tê-lo(a) conosco!`}
-                  />
-                  <div className="flex gap-3">
-                    <Button variant="ghost" onClick={() => setShowChatPrompt(false)} className="flex-1">
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={() => { toast.success("Mensagem enviada com sucesso!"); setShowChatPrompt(false); }}
-                      className="flex-1 bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white"
-                    >
-                      Enviar
-                    </Button>
                   </div>
                 </div>
               </div>

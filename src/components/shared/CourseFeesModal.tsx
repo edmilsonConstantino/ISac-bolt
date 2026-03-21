@@ -115,12 +115,7 @@ export function CourseFeesModal({ isOpen, onClose }: CourseFeesModalProps) {
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-          {isLoading ? (
-            <div className="py-12 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#004B87] mb-4" />
-              <p className="text-slate-600">A carregar taxas...</p>
-            </div>
-          ) : fees.length === 0 ? (
+          {fees.length === 0 ? (
             <div className="py-12 text-center">
               <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="h-8 w-8 text-slate-400" />

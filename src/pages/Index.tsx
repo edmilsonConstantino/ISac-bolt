@@ -34,27 +34,8 @@ const Index = () => {
 
   // ✅ Mostra loading apenas se estiver carregando E não autenticado
   // Se estiver autenticado, o redirecionamento acima já aconteceu
-  if (isLoading && !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Se estiver autenticado, não mostra nada (já redirecionou)
   if (isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Redirecionando...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // ✅ Se não estiver autenticado e não estiver carregando, mostra o formulário de login

@@ -817,12 +817,7 @@ export function ClassModal({
 
                   {/* Lista de estudantes */}
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden max-h-[320px] overflow-y-auto">
-                    {isLoadingStudents ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <Loader2 className="h-10 w-10 text-[#004B87] animate-spin mb-3" />
-                        <p className="text-slate-600">Carregando estudantes...</p>
-                      </div>
-                    ) : filteredAvailableStudents.length === 0 ? (
+                    {filteredAvailableStudents.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 px-4">
                         <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                           <Users className="h-8 w-8 text-slate-400" />

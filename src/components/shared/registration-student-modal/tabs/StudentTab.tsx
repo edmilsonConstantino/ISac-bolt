@@ -103,12 +103,7 @@ export function StudentTab({
             )}
 
             {/* Lista */}
-            {isLoadingStudents ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-8 w-8 border-4 border-[#F5821F] border-t-transparent rounded-full mx-auto mb-3"></div>
-                <p className="text-slate-500">Carregando estudantes...</p>
-              </div>
-            ) : filteredStudents.length > 0 ? (
+            {filteredStudents.length > 0 ? (
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                 {filteredStudents.slice(0, 10).map((student) => (
                   <button

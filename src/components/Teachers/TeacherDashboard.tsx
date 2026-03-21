@@ -570,12 +570,7 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
               <p className="text-blue-200 text-sm">{dashboardStats.totalClasses} turma(s) atribuída(s)</p>
             </div>
 
-            {isLoadingClasses ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
-                <p className="text-slate-500">Carregando turmas...</p>
-              </div>
-            ) : teacherClasses.length === 0 ? (
+            {teacherClasses.length === 0 ? (
               <Card className="shadow-elegant">
                 <CardContent className="flex flex-col items-center justify-center py-16">
                   <BookOpen className="h-12 w-12 text-slate-300 mb-4" />

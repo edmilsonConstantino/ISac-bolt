@@ -126,15 +126,8 @@ export function GradesList({ classId }: GradesListProps) {
         />
       </div>
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-7 w-7 text-[#004B87] animate-spin" />
-        </div>
-      )}
-
       {/* Empty */}
-      {!isLoading && filtered.length === 0 && (
+      {filtered.length === 0 && (
         <EmptyState
           icon={Award}
           title="Sem notas registadas"

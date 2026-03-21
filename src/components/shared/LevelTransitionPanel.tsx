@@ -435,11 +435,7 @@ export function LevelTransitionPanel() {
       )}
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : !selectedLevelId ? (
+      {!selectedLevelId ? (
         <Card>
           <CardContent className="py-14 text-center text-slate-400">
             <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />

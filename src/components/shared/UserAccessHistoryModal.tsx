@@ -215,12 +215,7 @@ export function UserAccessHistoryModal({
 
         {/* Logs list */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-          {isLoading ? (
-            <div className="text-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">Carregando registros...</p>
-            </div>
-          ) : filteredLogs.length === 0 ? (
+          {filteredLogs.length === 0 ? (
             <div className="text-center py-16">
               <div className="h-16 w-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Clock className="h-8 w-8 text-slate-300" />

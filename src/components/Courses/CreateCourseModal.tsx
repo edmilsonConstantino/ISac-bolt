@@ -304,8 +304,8 @@ export default function CreateCourseModal({
         <div className="flex h-[650px]">
           
           {/* SIDEBAR DE NAVEGAÇÃO */}
-          <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
-            <div className="flex items-center gap-3 mb-12">
+          <div className="w-64 bg-[#004B87] p-5 flex flex-col text-white">
+            <div className="flex items-center gap-3 mb-6">
               <BookOpen className="h-6 w-6 text-[#F5821F]" />
               <div>
                 <h2 className="font-bold text-lg leading-none">Course Manager</h2>
@@ -358,9 +358,9 @@ export default function CreateCourseModal({
 
           {/* ÁREA DE CONTEÚDO */}
           <div className="flex-1 flex flex-col">
-            <header className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+            <header className="px-8 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
+                <DialogTitle className="text-xl font-black text-slate-800 tracking-tight">
                   {viewMode ? 'Detalhes do Curso' : isEditing ? 'Editar Curso' : 'Criar Novo Curso'}
                 </DialogTitle>
                 <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
@@ -391,7 +391,7 @@ export default function CreateCourseModal({
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar bg-slate-50/30">
               <div className={viewMode ? 'pointer-events-none opacity-90' : ''}>
               {activeTab === 'info' && (
                 <CourseInfoTab
@@ -446,7 +446,7 @@ export default function CreateCourseModal({
             </div>
 
             {/* FOOTER COM BOTÕES */}
-            <footer className="px-10 py-6 border-t border-slate-100 bg-white flex justify-between items-center">
+            <footer className="px-8 py-3 border-t border-slate-100 bg-white flex justify-between items-center">
               <Button variant="ghost" onClick={onClose} disabled={isLoading} className="text-slate-400 hover:text-slate-600 font-bold uppercase text-[11px] tracking-widest">
                 {viewMode ? 'Fechar' : 'Cancelar'}
               </Button>

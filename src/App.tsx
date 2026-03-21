@@ -42,18 +42,6 @@ function ProtectedRoute({
     verifyAuth();
   }, [checkAuth]);
 
-  // ✅ Mostra loading enquanto verifica autenticação
-  if (isLoading || isChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground font-medium">Verificando acesso...</p>
-        </div>
-      </div>
-    );
-  }
-  
   // ✅ Redireciona para login se não autenticado
   if (!isAuthenticated || !user) {
     console.warn('🚫 Acesso negado: Usuário não autenticado');
@@ -104,14 +92,7 @@ function ProfileRedirect() {
     }
   }, [isAuthenticated, user, navigate, isLoading]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground font-medium">Redirecionando...</p>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 // ✅ Página de não autorizado - MELHORADA

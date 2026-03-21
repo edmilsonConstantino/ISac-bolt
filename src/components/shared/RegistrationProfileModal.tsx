@@ -396,15 +396,7 @@ export function RegistrationProfileModal({
             {/* Content area */}
             <div className="flex-1 overflow-y-auto px-8 py-6">
 
-              {/* Global loading */}
-              {isLoading && (
-                <div className="flex items-center justify-center h-48">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#004B87]" />
-                </div>
-              )}
-
-              {!isLoading && (
-                <>
+              <>
                   {/* ══ ABA: INFORMAÇÕES ══ */}
                   {activeTab === 'info' && regDetails && (
                     <div className="space-y-6">
@@ -496,8 +488,7 @@ export function RegistrationProfileModal({
                   {/* ══ ABA: FINANCEIRO ══ */}
                   {activeTab === 'finance' && (
                     <>
-                      {tabLoading && <TabLoader />}
-                      {!tabLoading && financeData && (
+                      {financeData && (
                         <div className="space-y-6">
                           {/* Summary */}
                           <div className="grid grid-cols-4 gap-4">
@@ -601,21 +592,20 @@ export function RegistrationProfileModal({
                           )}
                         </div>
                       )}
-                      {!tabLoading && !financeData && <Empty message="Dados financeiros não disponíveis" />}
+                      {!financeData && <Empty message="Dados financeiros não disponíveis" />}
                     </>
                   )}
 
                   {/* ══ ABA: NOTAS ══ */}
                   {activeTab === 'grades' && (
                     <>
-                      {tabLoading && <TabLoader />}
-                      {!tabLoading && !regDetails?.class_id && (
+                      {!regDetails?.class_id && (
                         <Empty message="Esta matrícula não está associada a uma turma" />
                       )}
-                      {!tabLoading && regDetails?.class_id && gradesData.length === 0 && (
+                      {regDetails?.class_id && gradesData.length === 0 && (
                         <Empty message="Sem notas registadas para esta matrícula" />
                       )}
-                      {!tabLoading && gradesData.length > 0 && (
+                      {gradesData.length > 0 && (
                         <div>
                           <SectionTitle icon={GraduationCap} label="Avaliações por Nível" />
                           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -698,8 +688,7 @@ export function RegistrationProfileModal({
                       )}
                     </>
                   )}
-                </>
-              )}
+              </>
             </div>
 
             {/* Footer */}
@@ -708,7 +697,7 @@ export function RegistrationProfileModal({
                 {activeTabMeta.sub}
               </div>
               <div className="flex items-center gap-2">
-                {activeTab === 'info' && !isLoading && regDetails && (
+                {activeTab === 'info' && regDetails && (
                   isEditing ? (
                     <>
                       <button

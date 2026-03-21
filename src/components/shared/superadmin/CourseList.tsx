@@ -1,7 +1,7 @@
 // src/components/shared/CourseList.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
@@ -11,7 +11,6 @@ import {
   DollarSign,
   Calendar,
   GraduationCap,
-  Loader2,
   Download,
   Eye
 } from "lucide-react";
@@ -233,16 +232,7 @@ export function CourseList({
       </div>
 
       {/* Loading State */}
-      {isLoading ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <Loader2 className="h-12 w-12 animate-spin text-[#F5821F] mb-4" />
-              <p className="text-[#004B87] font-medium">Carregando cursos...</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : filteredCourses.length === 0 ? (
+      {filteredCourses.length === 0 ? (
         <EmptyState
           icon={BookOpen}
           title={hasActiveFilters ? "Nenhum curso encontrado" : "Nenhum curso cadastrado"}

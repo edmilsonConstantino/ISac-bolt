@@ -380,12 +380,7 @@ export function PaymentsDashboard() {
           </div>
 
           {/* Content */}
-          {loadingStudents ? (
-            <div className="py-16 text-center">
-              <Loader2 className="h-7 w-7 animate-spin mx-auto text-[#004B87]" />
-              <p className="mt-3 text-sm text-slate-500">A carregar estudantes...</p>
-            </div>
-          ) : filteredStudents.length === 0 ? (
+          {filteredStudents.length === 0 ? (
             <div className="py-16 text-center">
               <Users className="h-10 w-10 mx-auto mb-3 text-slate-200" />
               <p className="text-sm font-medium text-slate-500">
@@ -558,13 +553,7 @@ export function PaymentsDashboard() {
 
           {/* ── Body (scrollable) ── */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {loadingFinance ? (
-              <div className="py-16 text-center">
-                <Loader2 className="h-7 w-7 animate-spin mx-auto text-[#004B87]" />
-                <p className="mt-3 text-sm text-slate-500">A carregar dados financeiros...</p>
-              </div>
-
-            ) : !studentFinance ? (
+            {!studentFinance ? (
               <div className="py-12 text-center px-6">
                 <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-yellow-500" />
                 <p className="font-medium text-slate-600 mb-3">Erro ao carregar dados</p>

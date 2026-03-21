@@ -238,15 +238,7 @@ export function SelectStudentModal({
 
         {/* ── STUDENT LIST ── */}
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-2">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full py-16">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-3">
-                <Loader2 className="h-7 w-7 text-[#004B87] animate-spin" />
-              </div>
-              <p className="text-sm font-medium text-slate-600">Carregando estudantes...</p>
-              <p className="text-xs text-slate-400 mt-1">Aguarde um momento</p>
-            </div>
-          ) : filteredStudents.length === 0 ? (
+          {filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-sm">
                 <AlertCircle className="h-7 w-7 text-slate-300" />

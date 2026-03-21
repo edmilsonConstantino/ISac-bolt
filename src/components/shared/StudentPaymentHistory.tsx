@@ -135,15 +135,6 @@ function PaymentHistoryContent({
     link.click();
   };
 
-  if (isLoading) {
-    return (
-      <div className="py-12 text-center">
-        <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[#004B87] mb-4" />
-        <p className="text-slate-600">A carregar histórico...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header com nome do estudante */}

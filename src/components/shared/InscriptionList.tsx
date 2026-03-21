@@ -396,16 +396,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
       </div>
 
       {/* Students Display */}
-      {initialLoading ? (
-        <Card className="shadow-lg border-0">
-          <CardContent className="pt-12 pb-12">
-            <div className="flex flex-col items-center justify-center">
-              <RefreshCw className="h-12 w-12 text-[#F5821F] animate-spin mb-4" />
-              <p className="text-slate-500">Carregando estudantes inscritos...</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : filteredStudents.length === 0 ? (
+      {filteredStudents.length === 0 ? (
         <EmptyState
           icon={UserPlus}
           title="Nenhum estudante encontrado"

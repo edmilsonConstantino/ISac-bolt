@@ -943,7 +943,7 @@ const validateForm = () => {
           <div className="flex h-[650px]">
 
             {/* SIDEBAR */}
-            <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
+            <div className="w-64 bg-[#004B87] p-5 flex flex-col text-white">
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
                   {isEditing ? <Edit2 className="text-white h-6 w-6" /> : <UserPlus className="text-white h-6 w-6" />}
@@ -1015,7 +1015,7 @@ const validateForm = () => {
                 </div>
               </header>
 
-              <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar bg-slate-50/30">
+              <div className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar bg-slate-50/30">
 
                 {/* TAB: PERSONAL */}
                 {activeTab === 'personal' && (
@@ -1389,7 +1389,7 @@ const validateForm = () => {
               </div>
 
               {/* Footer navigation */}
-              <div className="px-10 py-5 border-t border-slate-100 flex items-center justify-between bg-white">
+              <div className="px-8 py-3 border-t border-slate-100 flex items-center justify-between bg-white">
                 <button
                   onClick={handleClose}
                   className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"

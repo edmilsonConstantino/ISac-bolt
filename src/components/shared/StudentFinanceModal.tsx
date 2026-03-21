@@ -168,12 +168,7 @@ export function StudentFinanceModal({
             </DialogTitle>
           </DialogHeader>
 
-          {loading ? (
-            <div className="py-12 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#004B87]" />
-              <p className="mt-2 text-slate-600">A carregar...</p>
-            </div>
-          ) : !data ? (
+          {!data ? (
             <div className="py-12 text-center text-slate-500">
               Nenhum dado disponível
             </div>
