@@ -940,11 +940,11 @@ const validateForm = () => {
 
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
-          <div className="flex h-[700px]">
+          <div className="flex h-[580px]">
 
             {/* SIDEBAR */}
             <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
-              <div className="flex items-center gap-3 mb-12">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
                   {isEditing ? <Edit2 className="text-white h-6 w-6" /> : <UserPlus className="text-white h-6 w-6" />}
                 </div>
@@ -1000,7 +1000,7 @@ const validateForm = () => {
 
             {/* CONTENT AREA */}
             <div className="flex-1 flex flex-col">
-              <header className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+              <header className="px-8 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
                     {isEditing ? 'Editar Inscrição' : 'Inscrição de Estudante'}
