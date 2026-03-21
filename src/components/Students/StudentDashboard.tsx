@@ -706,12 +706,6 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
               </div>
             )}
 
-            {/* Loading */}
-            {studentClass && gradesLoading && (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-7 w-7 text-amber-500 animate-spin" />
-              </div>
-            )}
 
             {/* No grades yet — show single placeholder for current nivel */}
             {studentClass && !gradesLoading && studentGrades.length === 0 && (
@@ -1022,13 +1016,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
         {activeTab === "finance" && (
           <div className="space-y-4 p-4">
 
-            {financeLoading ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-[#004B87] mb-3" />
-                <p className="text-sm text-slate-500">A carregar dados financeiros...</p>
-              </div>
-            ) : (
-              <>
+            <>
                 {/* ── Header: saldo / situação ─────────────────────────── */}
                 <div className={`rounded-2xl p-5 text-white shadow-lg ${
                   hasOverdue
@@ -1150,8 +1138,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
                     })}
                   </div>
                 </div>
-              </>
-            )}
+            </>
           </div>
         )}
 

@@ -163,14 +163,7 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
           </DialogDescription>
         </DialogHeader>
 
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Carregando estudantes...</span>
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {/* Header com Stats */}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
@@ -300,7 +293,6 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
               </div>
             )}
           </div>
-        )}
       </DialogContent>
     </Dialog>
 

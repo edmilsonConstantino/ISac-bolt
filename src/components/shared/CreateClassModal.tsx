@@ -506,13 +506,7 @@ export function ClassModal({
                         Selecione o Nível da Turma
                       </Label>
 
-                      {isLoadingNiveis ? (
-                        <div className="flex items-center justify-center py-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                          <Loader2 className="h-6 w-6 text-[#004B87] animate-spin mr-2" />
-                          <span className="text-sm text-slate-500">Carregando níveis...</span>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
                           {niveisDisponiveis.map((nivel) => (
                             <button
                               key={nivel.id}

@@ -156,7 +156,7 @@ export function PaymentsDashboard() {
         if (overdueData.success) setOverdueMap(overdueData.data || {});
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o servidor');
+      console.error('Erro ao carregar estudantes:', error);
     } finally {
       setLoadingStudents(false);
     }

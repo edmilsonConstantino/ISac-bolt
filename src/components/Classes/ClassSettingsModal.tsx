@@ -880,13 +880,7 @@ export function ClassSettingsModal({
                         </Button>
                       ) : (
                         <div className="space-y-4">
-                          {isLoadingTeachers ? (
-                            <div className="flex items-center justify-center py-8">
-                              <Loader2 className="h-6 w-6 animate-spin text-[#004B87]" />
-                            </div>
-                          ) : (
-                            <>
-                              <div className="max-h-[200px] overflow-y-auto space-y-2 border rounded-xl p-2">
+                          <div className="max-h-[200px] overflow-y-auto space-y-2 border rounded-xl p-2">
                                 {teachers.map(teacher => (
                                   <button
                                     key={teacher.id}
@@ -944,8 +938,6 @@ export function ClassSettingsModal({
                                   Confirmar Troca
                                 </Button>
                               </div>
-                            </>
-                          )}
                         </div>
                       )}
                     </div>
@@ -1076,7 +1068,6 @@ export function ClassSettingsModal({
                           Período de lançamento de notas por componente
                         </p>
                       </div>
-                      {isLoadingPeriods && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
                     </div>
 
                     {/* One card per assessment component */}
@@ -1219,12 +1210,7 @@ export function ClassSettingsModal({
                   </div>
 
                   {/* Tabela de resultados */}
-                  {isLoadingResults ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                      <Loader2 className="h-10 w-10 text-[#004B87] animate-spin mb-3" />
-                      <p className="text-sm text-slate-500">A carregar resultados...</p>
-                    </div>
-                  ) : studentsWithGrades.length === 0 ? (
+                  {studentsWithGrades.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                         <Users className="h-8 w-8 text-slate-400" />
