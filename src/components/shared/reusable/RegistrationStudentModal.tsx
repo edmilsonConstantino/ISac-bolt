@@ -710,7 +710,7 @@ export function RegistrationStudentModal({
                 </div>
               </div>
               <button
-                onClick={handleClose}
+                onClick={onClose}
                 className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 aria-label="Fechar"
               >
