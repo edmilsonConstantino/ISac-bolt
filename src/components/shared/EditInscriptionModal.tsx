@@ -47,7 +47,7 @@ const SECTIONS: { id: Section; label: string; desc: string; icon: typeof User }[
   { id: 'credentials',  label: 'Credenciais',     desc: 'Acesso ao Portal',             icon: Key },
 ];
 
-const API_URL = 'http://localhost/API-LOGIN/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
 
 export function EditInscriptionModal({ isOpen, onClose, student, onSuccess }: EditInscriptionModalProps) {
   const [activeSection, setActiveSection] = useState<Section>('personal');

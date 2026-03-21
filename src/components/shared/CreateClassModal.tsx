@@ -199,7 +199,7 @@ export function ClassModal({
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
-        `http://localhost/API-LOGIN/api/turmas.php?action=get_available_students_for_new_class&curso_id=${formData.curso}&turno=${formData.schedule}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost/api-login/api'}/turmas.php?action=get_available_students_for_new_class&curso_id=${formData.curso}&turno=${formData.schedule}`,
         {
           method: 'GET',
           credentials: 'include',

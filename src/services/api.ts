@@ -1,7 +1,7 @@
 // src/services/api.ts - Com refresh token silencioso e protecção contra race conditions
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = 'http://localhost/api-login';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost/api-login/api').replace(/\/api$/, '');
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

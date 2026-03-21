@@ -101,7 +101,7 @@ export interface RegistrationProfileModalProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const API_URL = 'http://localhost/API-LOGIN/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
 
 const TABS: { id: ActiveTab; label: string; sub: string; icon: any }[] = [
   { id: 'info',    label: 'Informações', sub: 'Dados da Matrícula',    icon: BookOpen    },

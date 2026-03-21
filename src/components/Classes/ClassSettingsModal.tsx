@@ -92,6 +92,8 @@ interface ClassSettingsModalProps {
   onClassUpdated: () => void;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
+
 // ============ COMPONENT ============
 
 export function ClassSettingsModal({
@@ -131,7 +133,6 @@ export function ClassSettingsModal({
   const [isFinalizing, setIsFinalizing] = useState<number | null>(null);
 
   const isAdmin = currentUserRole === 'admin';
-  const API_URL = 'http://localhost/API-LOGIN/api';
 
   // ============ DATA LOADING ============
 

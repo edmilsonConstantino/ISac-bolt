@@ -36,7 +36,7 @@ export interface RegistrationStatusActionsProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const API_URL = 'http://localhost/API-LOGIN/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
 
 const ALL_ACTIONS: StatusAction[] = [
   {

@@ -322,7 +322,7 @@ const validateForm = () => {
       // ── MODO EDIÇÃO: PUT para actualizar dados do estudante ──────────────────
       if (isEditing && editStudentData?.id) {
         const token = localStorage.getItem('access_token');
-        const response = await fetch(`http://localhost/API-LOGIN/api/students.php?id=${editStudentData.id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost/api-login/api'}/students.php?id=${editStudentData.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

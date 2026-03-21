@@ -160,12 +160,6 @@ export function StudentList({
             Exportar CSV
           </Button>
 
-          {permissions.canAdd && onAddStudent && (
-            <GradientButton onClick={onAddStudent}>
-              <UserPlus className="h-5 w-5 mr-2" />
-              Novo Estudante
-            </GradientButton>
-          )}
         </PageHeaderActions>
       </PageHeader>
 
@@ -254,18 +248,6 @@ export function StudentList({
           icon={Users}
           title="Nenhum estudante encontrado"
           description={searchTerm ? "Tente ajustar os filtros de busca" : "Não há estudantes cadastrados"}
-          action={
-            permissions.canAdd && onAddStudent && !searchTerm ? (
-              <Button
-                onClick={onAddStudent}
-                variant="outline"
-                className="border-2 border-[#F5821F] text-[#F5821F] hover:bg-[#F5821F] hover:text-white"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Estudante
-              </Button>
-            ) : undefined
-          }
         />
       ) : (
         <>

@@ -69,7 +69,8 @@ export function SelectStudentModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      let url = `http://localhost/API-LOGIN/api/turmas.php?action=get_available_students&turma_id=${turmaId}&curso_id=${cursoId}`;
+      const _API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
+      let url = `${_API_URL}/turmas.php?action=get_available_students&turma_id=${turmaId}&curso_id=${cursoId}`;
       if (turno) url += `&turno=${turno}`;
       const response = await fetch(url, {
         method: 'GET',

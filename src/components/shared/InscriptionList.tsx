@@ -65,7 +65,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
   const [editInscriptionModal, setEditInscriptionModal] = useState<{ isOpen: boolean; student: InscribedStudent | null }>({ isOpen: false, student: null });
   const [regModal, setRegModal] = useState<{ isOpen: boolean; studentId: number | null }>({ isOpen: false, studentId: null });
 
-  const API_URL = 'http://localhost/API-LOGIN/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
 
   const getAuthHeaders = (): HeadersInit => {
     const token = localStorage.getItem('access_token');
