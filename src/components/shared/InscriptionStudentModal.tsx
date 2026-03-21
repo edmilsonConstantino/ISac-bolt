@@ -940,7 +940,7 @@ const validateForm = () => {
 
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
-          <div className="flex h-[580px]">
+          <div className="flex h-[650px]">
 
             {/* SIDEBAR */}
             <div className="w-72 bg-[#004B87] p-8 flex flex-col text-white">
