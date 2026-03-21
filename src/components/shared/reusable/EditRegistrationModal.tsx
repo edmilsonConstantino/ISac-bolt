@@ -49,7 +49,7 @@ const PAYMENT_STATUS_OPTIONS: { value: PaymentStatusVal; label: string }[] = [
 ];
 
 const formatCurrency = (v?: number) =>
-  v == null ? '—' : v.toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' });
+  v == null ? '—' : 'MT ' + new Intl.NumberFormat('pt-MZ').format(v);
 
 const formatDate = (d?: string) => {
   if (!d) return '—';

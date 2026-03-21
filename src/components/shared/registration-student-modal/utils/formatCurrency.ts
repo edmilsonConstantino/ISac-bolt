@@ -3,9 +3,7 @@
 export function formatCurrency(value: number): string {
   const safeValue = Number.isFinite(value) ? value : 0;
 
-  return new Intl.NumberFormat("pt-MZ", {
-    style: "currency",
-    currency: "MZN",
+  return 'MT ' + new Intl.NumberFormat("pt-MZ", {
     minimumFractionDigits: 0,
   }).format(safeValue);
 }

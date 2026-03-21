@@ -105,9 +105,7 @@ export function InscriptionSettingsModal({
   // FORMATAÇÃO DE MOEDA
   // ============================================================================
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-MZ", {
-      style: "currency",
-      currency: "MZN",
+    return 'MT ' + new Intl.NumberFormat("pt-MZ", {
     }).format(value);
   };
 
@@ -209,9 +207,9 @@ export function InscriptionSettingsModal({
                       : "border-orange-200 focus:border-[#F5821F]"
                   }`}
                 />
-                {/* Prefixo "MZN" fixo à esquerda */}
+                {/* Prefixo "MT" fixo à esquerda */}
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#F5821F] font-bold text-base">
-                  MZN
+                  MT
                 </span>
                 {/* Ícone de check quando valor é válido */}
                 {fee > 0 && (

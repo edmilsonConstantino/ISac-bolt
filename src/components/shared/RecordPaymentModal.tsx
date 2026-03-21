@@ -40,9 +40,7 @@ interface RecordPaymentModalProps {
 
 // Formatar moeda
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('pt-MZ', {
-    style: 'currency',
-    currency: 'MZN',
+  return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     minimumFractionDigits: 2
   }).format(amount);
 };
@@ -205,7 +203,7 @@ export function RecordPaymentModal({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Valor Pago (MZN)</Label>
+                  <Label>Valor Pago (MT)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input

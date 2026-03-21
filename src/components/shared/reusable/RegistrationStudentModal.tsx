@@ -230,7 +230,6 @@ export function RegistrationStudentModal({
         setClasses(mappedClasses);
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
-        toast.error("Erro ao carregar dados");
       } finally {
         setIsLoadingStudents(false);
         setIsLoadingCourses(false);

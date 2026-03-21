@@ -613,7 +613,7 @@ export function LevelTransitionPanel() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Taxa de Inscrição (MZN)</label>
+                      <label className="text-sm font-medium">Taxa de Inscrição (MT)</label>
                       <Input
                         type="number"
                         min="0"
@@ -622,7 +622,7 @@ export function LevelTransitionPanel() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Mensalidade (MZN)</label>
+                      <label className="text-sm font-medium">Mensalidade (MT)</label>
                       <Input
                         type="number"
                         min="0"

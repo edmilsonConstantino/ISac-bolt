@@ -375,15 +375,15 @@ export function CourseTab({
                 <p className="text-xs font-semibold text-blue-700 mb-2">Resumo — {selectedNivel.nome}</p>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Taxa de Matrícula</span>
-                  <span className="font-medium">{formatCurrency(effectiveFee)} MZN</span>
+                  <span className="font-medium">{formatCurrency(effectiveFee)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Mensalidade × {selectedNivel.duracao_meses} meses</span>
-                  <span className="font-medium">{formatCurrency(effectiveMens * selectedNivel.duracao_meses)} MZN</span>
+                  <span className="font-medium">{formatCurrency(effectiveMens * selectedNivel.duracao_meses)}</span>
                 </div>
                 <div className="border-t border-blue-100 mt-2 pt-2 flex justify-between text-sm font-semibold text-blue-800">
                   <span>Total do Nível</span>
-                  <span>{formatCurrency(effectiveFee + effectiveMens * selectedNivel.duracao_meses)} MZN</span>
+                  <span>{formatCurrency(effectiveFee + effectiveMens * selectedNivel.duracao_meses)}</span>
                 </div>
               </div>
             );

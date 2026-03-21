@@ -81,8 +81,6 @@ export function SelectStudentModal({
       if (result.success) {
         setStudents(result.data || []);
         setFilteredStudents(result.data || []);
-      } else {
-        toast.error(result.message || "Erro ao carregar estudantes");
       }
     } catch (error) {
       console.error("Erro ao buscar estudantes:", error);
@@ -144,7 +142,7 @@ export function SelectStudentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-2xl h-[80vh] p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+      <DialogContent className="w-[95vw] max-w-2xl h-[80vh] p-0 overflow-hidden rounded-2xl flex flex-col gap-0 border-0 shadow-2xl">
 
         {/* ── HEADER ── */}
         <div className="bg-gradient-to-r from-[#004B87] to-[#003868] px-5 pt-4 pb-4 flex-shrink-0">

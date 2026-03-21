@@ -296,7 +296,7 @@ export function GradeManagementModal({
     <>
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-5xl h-[88vh] overflow-hidden p-0 rounded-2xl
-        border-0 shadow-2xl [&>button:first-child]:hidden flex flex-col">
+        border-0 shadow-2xl flex flex-col">
 
         {/* ── Header ── */}
         <div className="bg-gradient-to-r from-[#004B87] to-[#003868] text-white flex-shrink-0">
@@ -741,7 +741,7 @@ export function GradeManagementModal({
 
     {/* ── Success Modal ── */}
     <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-      <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+      <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 border-0 shadow-2xl">
         {/* Green header */}
         <div className="bg-gradient-to-r from-[#059669] to-[#047857] px-5 py-5 flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mb-3">

@@ -338,8 +338,6 @@ export function useSettingsData() {
   // Obter formatador de moeda baseado nas configurações
   const getCurrencyFormatter = () => {
     return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
     });
   };
 

@@ -88,7 +88,7 @@ export function StudentFinanceModal({
       const response = await financeService.getStudentFinance(studentId);
       setData(response);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar dados');
+      // silently ignore load errors
     } finally {
       setLoading(false);
     }
@@ -425,7 +425,7 @@ export function StudentFinanceModal({
               {/* Formulário */}
               <div className="space-y-3">
                 <div>
-                  <Label>Valor a Pagar (MZN)</Label>
+                  <Label>Valor a Pagar (MT)</Label>
                   <Input
                     type="number"
                     step="0.01"

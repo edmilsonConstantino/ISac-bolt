@@ -176,7 +176,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   const fmt = (n: number) =>
-    new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(n);
+    'MT ' + new Intl.NumberFormat("pt-MZ", {}).format(n);
 
   const gradeColor = (v: number) =>
     v >= 10 ? "text-emerald-600" : v >= 8 ? "text-blue-600" : "text-red-600";

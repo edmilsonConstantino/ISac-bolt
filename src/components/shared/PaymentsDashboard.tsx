@@ -150,8 +150,6 @@ export function PaymentsDashboard() {
       const data = await studentsResp.json();
       if (data.success) {
         setStudents(data.data || []);
-      } else {
-        toast.error(data.message || 'Erro ao carregar estudantes');
       }
       if (overdueResp.ok) {
         const overdueData = await overdueResp.json();
@@ -173,8 +171,7 @@ export function PaymentsDashboard() {
         ...prev,
         [studentId]: (data.summary?.overdue_count ?? 0) > 0
       }));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar dados financeiros');
+    } catch {
       setStudentFinance(null);
     } finally {
       setLoadingFinance(false);
@@ -835,7 +832,7 @@ export function PaymentsDashboard() {
               {/* Form */}
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs font-medium text-slate-600">Valor Recebido (MZN)</Label>
+                  <Label className="text-xs font-medium text-slate-600">Valor Recebido (MT)</Label>
                   <Input
                     type="number"
                     step="0.01"

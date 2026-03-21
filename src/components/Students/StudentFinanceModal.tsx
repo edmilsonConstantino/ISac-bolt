@@ -69,7 +69,7 @@ interface StudentFinanceModalProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(n);
+  'MT ' + new Intl.NumberFormat('pt-MZ', {}).format(n);
 
 const fmtDate = (d?: string) => {
   if (!d) return '—';
@@ -181,8 +181,7 @@ export function StudentFinanceModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* [&>button:first-child]:hidden hides the default shadcn close button */}
-      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[92vh] flex flex-col gap-0 [&>button:first-child]:hidden">
+      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl border-0 shadow-2xl max-h-[92vh] flex flex-col gap-0">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-r from-[#004B87] via-[#003868] to-[#004B87] px-5 pt-5 pb-4 flex-shrink-0">

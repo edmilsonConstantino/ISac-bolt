@@ -115,9 +115,7 @@ export default function CourseInfoTab({
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN',
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
       minimumFractionDigits: 0
     }).format(value);
   };
@@ -137,7 +135,7 @@ export default function CourseInfoTab({
               Nome do Curso <span className="text-red-500">*</span>
             </Label>
             <Input
-              placeholder="Ex: Técnico em Informática"
+              placeholder=""
               value={formData.nome}
               onChange={(e) => {
                 const newNome = e.target.value;
@@ -231,7 +229,7 @@ export default function CourseInfoTab({
                 <SelectContent>
                   {categorias.map(cat => (
                     <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name} {cat.has_levels && '📊 (com níveis)'}
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -558,8 +556,8 @@ export default function CourseInfoTab({
             <div className="space-y-2">
               <Label className={cn("font-semibold ml-1", formData.preco_por_nivel ? "text-slate-400" : "text-slate-600")}>
                 {formData.preco_por_nivel
-                  ? 'Mensalidade Padrão (fallback, MZN)'
-                  : 'Mensalidade (MZN)'}
+                  ? 'Mensalidade Padrão (fallback, MT)'
+                  : 'Mensalidade (MT)'}
               </Label>
               <Input
                 type="number"
@@ -586,7 +584,7 @@ export default function CourseInfoTab({
           {/* PREÇO TOTAL — oculto quando preco_por_nivel=true */}
           {formData.tipo_cobranca === 'preco_unico' && !formData.preco_por_nivel && (
             <div className="space-y-2">
-              <Label className="text-slate-600 font-semibold ml-1">Preço Total do Curso (MZN)</Label>
+              <Label className="text-slate-600 font-semibold ml-1">Preço Total do Curso (MT)</Label>
               <Input
                 type="number"
                 min="0"
@@ -605,7 +603,7 @@ export default function CourseInfoTab({
 
           <div className="space-y-2">
             <Label className={cn("font-semibold ml-1", formData.tem_niveis ? "text-slate-400" : "text-slate-600")}>
-              {formData.tem_niveis ? 'Taxa de Matrícula Padrão (Fallback, MZN)' : 'Taxa de Matrícula (MZN)'}
+              {formData.tem_niveis ? 'Taxa de Matrícula Padrão (Fallback, MT)' : 'Taxa de Matrícula (MT)'}
             </Label>
             <Input
               type="number"

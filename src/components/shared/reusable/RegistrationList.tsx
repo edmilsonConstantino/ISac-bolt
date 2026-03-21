@@ -142,9 +142,7 @@ export function RegistrationList({
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN',
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
       minimumFractionDigits: 0
     }).format(value);
   };

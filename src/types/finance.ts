@@ -151,9 +151,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 
 // Helpers
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('pt-MZ', {
-    style: 'currency',
-    currency: 'MZN',
+  return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     minimumFractionDigits: 2
   }).format(amount);
 };

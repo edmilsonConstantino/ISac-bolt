@@ -264,7 +264,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
 
       } catch (error: any) {
         console.error("Erro ao carregar dados:", error);
-        toast.error("Erro ao carregar dados");
       } finally {
         setIsLoadingTeachers(false);
         setIsLoadingStudents(false);
@@ -303,7 +302,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
       setClasses(data as any);
     } catch (error: any) {
       console.error('Erro ao carregar turmas:', error);
-      toast.error('Erro ao carregar turmas');
     } finally {
       setIsLoadingClasses(false);
     }
@@ -317,7 +315,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
       setCourses(data);
     } catch (error: any) {
       console.error('Erro ao carregar cursos:', error);
-      toast.error('Erro ao carregar cursos');
     } finally {
       setIsLoadingCourses(false);
     }
@@ -361,7 +358,6 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
       setRegistrations(mappedRegistrations);
     } catch (error: any) {
       console.error('Erro ao carregar matrículas:', error);
-      toast.error('Erro ao carregar matrículas');
     } finally {
       setIsLoadingRegistrations(false);
     }
@@ -654,7 +650,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
         students: mappedStudents
       });
     } catch {
-      toast.error('Erro ao carregar estudantes da turma');
+      // silently ignore load errors
     }
   };
 
@@ -846,9 +842,7 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     }).format(amount);
   };
 

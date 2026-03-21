@@ -50,7 +50,6 @@ export function useRegistrationData({ isOpen, courseId }: Params) {
         setClasses(classesData || []);
       } catch (error) {
         console.error("Erro ao carregar dados da matrícula:", error);
-        toast.error("Erro ao carregar dados da matrícula");
       } finally {
         setIsLoadingStudents(false);
         setIsLoadingCourses(false);

@@ -185,8 +185,6 @@ export function RegistrationProfileModal({
       if (data.success) {
         setRegDetails(data.data);
         setEditObs(data.data.observations ?? '');
-      } else {
-        toast.error(data.message || 'Erro ao carregar matrícula');
       }
     } catch {
       toast.error('Erro ao conectar com o servidor');
@@ -205,11 +203,9 @@ export function RegistrationProfileModal({
       const data = await res.json();
       if (data.success) {
         setFinanceData({ summary: data.summary, plans: data.plans ?? [], suspended_plans: data.suspended_plans ?? [] });
-      } else {
-        toast.error(data.message || 'Erro ao carregar dados financeiros');
       }
     } catch {
-      toast.error('Erro ao carregar dados financeiros');
+      // silently ignore load errors
     } finally {
       setTabLoading(false);
     }
@@ -225,9 +221,8 @@ export function RegistrationProfileModal({
       );
       const data = await res.json();
       if (data.success) setGradesData(data.data ?? []);
-      else toast.error(data.message || 'Erro ao carregar notas');
     } catch {
-      toast.error('Erro ao carregar notas');
+      // silently ignore load errors
     } finally {
       setTabLoading(false);
     }

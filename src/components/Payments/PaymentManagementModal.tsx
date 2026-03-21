@@ -64,9 +64,7 @@ export function PaymentManagementModal({
   const [currentStep, setCurrentStep] = useState<"overview" | "record" | "history">("overview");
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("pt-MZ", {
-      style: "currency",
-      currency: "MZN",
+    'MT ' + new Intl.NumberFormat("pt-MZ", {
     }).format(amount);
 
   const getStatusColor = (status: PaymentStatus) => {

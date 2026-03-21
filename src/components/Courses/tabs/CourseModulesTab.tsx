@@ -133,7 +133,7 @@ export default function CourseModulesTab({
   };
 
   const formatCurrencyShort = (n: number) =>
-    new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN', maximumFractionDigits: 0 }).format(n);
+    'MT ' + new Intl.NumberFormat('pt-MZ', { maximumFractionDigits: 0 }).format(n);
 
   const toggleNivelModulos = (nivelNum: number) => {
     const isOpening = expandedNivelId !== nivelNum;

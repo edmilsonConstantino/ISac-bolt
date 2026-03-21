@@ -130,7 +130,7 @@ export function InscriptionPaymentTab({
               {/* Valor (somente leitura) */}
               <div className="relative flex-1">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
-                  MZN
+                  MT
                 </span>
                 <div className="h-14 pl-14 pr-4 text-xl font-bold border-2 border-slate-200 rounded-lg bg-slate-50 flex items-center text-slate-700">
                   {inscriptionFee.toLocaleString("pt-MZ")}

@@ -104,7 +104,6 @@ export function StudentListModal({ isOpen, onClose, className, classId }: Studen
 
     } catch (error) {
       console.error('❌ Erro ao carregar estudantes:', error);
-      toast.error('Erro ao carregar estudantes da turma');
       setStudents([]);
     } finally {
       setIsLoading(false);

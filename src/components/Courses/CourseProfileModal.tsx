@@ -157,9 +157,7 @@ export default function CourseProfileModal({
   if (!course) return null;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN',
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
       minimumFractionDigits: 0
     }).format(amount);
   };

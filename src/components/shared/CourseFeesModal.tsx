@@ -32,9 +32,7 @@ interface CourseFeesModalProps {
 
 // Formatar moeda
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('pt-MZ', {
-    style: 'currency',
-    currency: 'MZN',
+  return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     minimumFractionDigits: 2
   }).format(amount);
 };
@@ -171,7 +169,7 @@ export function CourseFeesModal({ isOpen, onClose }: CourseFeesModalProps) {
 
                         <div className="grid grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-xs">Taxa de Matrícula (MZN)</Label>
+                            <Label className="text-xs">Taxa de Matrícula (MT)</Label>
                             <div className="relative">
                               <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                               <Input
@@ -189,7 +187,7 @@ export function CourseFeesModal({ isOpen, onClose }: CourseFeesModalProps) {
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-xs">Mensalidade (MZN)</Label>
+                            <Label className="text-xs">Mensalidade (MT)</Label>
                             <div className="relative">
                               <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                               <Input

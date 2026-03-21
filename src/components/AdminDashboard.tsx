@@ -305,7 +305,6 @@ console.log('✅ Estudantes mapeados:', mappedStudents.length);
     
   } catch (error: any) {
     console.error("❌ Erro ao carregar dados:", error);
-    toast.error("Erro ao carregar dados");
   } finally {
     setIsLoadingStudents(false);
   }
@@ -476,7 +475,6 @@ loadAllData();
       setClasses(data);
     } catch (error: any) {
       console.error('❌ Erro ao carregar turmas:', error);
-      toast.error('Erro ao carregar turmas');
     } finally {
       setIsLoadingClasses(false);
     }
@@ -492,7 +490,6 @@ loadAllData();
       setCourses(data);
     } catch (error: any) {
       console.error('❌ Erro ao carregar cursos:', error);
-      toast.error('Erro ao carregar cursos');
     } finally {
       setIsLoadingCourses(false);
     }
@@ -546,7 +543,6 @@ const loadRegistrations = async () => {
 
   } catch (error: any) {
     console.error('❌ Erro ao carregar matrículas:', error);
-    toast.error('Erro ao carregar matrículas');
   } finally {
     setIsLoadingRegistrations(false);
   }
@@ -806,7 +802,7 @@ const handleDeleteRegistration = (registrationId: number) => {
         students: mappedStudents
       });
     } catch {
-      toast.error('Erro ao carregar estudantes da turma');
+      // silently ignore load errors
     }
   };
 
@@ -1032,9 +1028,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     }).format(amount);
   };
 

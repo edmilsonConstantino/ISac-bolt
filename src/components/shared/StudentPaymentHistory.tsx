@@ -36,9 +36,7 @@ interface StudentPaymentHistoryProps {
 
 // Formatar moeda
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('pt-MZ', {
-    style: 'currency',
-    currency: 'MZN',
+  return 'MT ' + new Intl.NumberFormat('pt-MZ', {
     minimumFractionDigits: 2
   }).format(amount);
 };

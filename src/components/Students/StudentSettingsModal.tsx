@@ -88,7 +88,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(value);
+  return 'MT ' + new Intl.NumberFormat('pt-MZ', {}).format(value);
 }
 
 // ── Componente principal ───────────────────────────────────────────────────────

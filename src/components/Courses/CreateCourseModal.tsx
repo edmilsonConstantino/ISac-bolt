@@ -179,7 +179,6 @@ export default function CreateCourseModal({
       setCategorias(result);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
-      toast.error('Erro ao carregar categorias');
     }
   };
 
@@ -285,7 +284,6 @@ export default function CreateCourseModal({
         taxa_matricula: formData.taxa_matricula
       };
       await onSave(courseWithModules);
-      toast.success(isEditing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!');
       onClose();
     } catch (error) {
       console.error('Erro ao salvar curso:', error);
@@ -302,7 +300,7 @@ export default function CreateCourseModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={cn("p-0 overflow-hidden border-none shadow-2xl bg-white transition-all duration-300", activeTab === 'modulos' ? "max-w-7xl" : "max-w-5xl")}>
+      <DialogContent hideCloseButton className={cn("p-0 overflow-hidden border-none shadow-2xl bg-white transition-all duration-300", activeTab === 'modulos' ? "max-w-7xl" : "max-w-5xl")}>
         <div className="flex h-[650px]">
           
           {/* SIDEBAR DE NAVEGAÇÃO */}
@@ -373,8 +371,8 @@ export default function CreateCourseModal({
                   </span>
                 </div>
               </div>
-              {viewMode && (
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                {viewMode && (
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
                     formData.status === 'ativo'
                       ? 'bg-emerald-100 text-emerald-700'
@@ -382,8 +380,15 @@ export default function CreateCourseModal({
                   }`}>
                     {formData.status === 'ativo' ? '✓ Activo' : 'Inactivo'}
                   </span>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  aria-label="Fechar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar bg-slate-50/30">

@@ -74,9 +74,7 @@ export function CourseList({
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN',
+    return 'MT ' + new Intl.NumberFormat('pt-MZ', {
       minimumFractionDigits: 0
     }).format(amount);
   };

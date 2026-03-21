@@ -452,8 +452,8 @@ export function ClassSettingsModal({
           setNextLevelClasses(promoData.next_level_classes || []);
         }
       }
-    } catch (err) {
-      toast.error('Erro ao carregar resultados');
+    } catch {
+      // silently ignore load errors
     } finally {
       setIsLoadingResults(false);
     }

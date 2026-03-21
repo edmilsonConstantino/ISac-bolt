@@ -211,12 +211,12 @@ export function GeneralSettingsModal({
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(amount);
+    'MT ' + new Intl.NumberFormat("pt-MZ", {}).format(amount);
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-4xl h-[92vh] p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-4xl h-[92vh] p-0 overflow-hidden rounded-2xl flex flex-col gap-0 border-0 shadow-2xl">
 
           {/* ── HEADER ── */}
           <div className="bg-gradient-to-r from-[#004B87] to-[#003868] px-5 pt-4 pb-4 flex-shrink-0">
@@ -466,7 +466,7 @@ export function GeneralSettingsModal({
                   <div className="p-5 space-y-5">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <FieldLabel>Mensalidade Padrão (MZN)</FieldLabel>
+                        <FieldLabel>Mensalidade Padrão (MT)</FieldLabel>
                         <StyledInput
                           type="number"
                           value={settings.defaultMonthlyFee}
@@ -920,7 +920,7 @@ export function GeneralSettingsModal({
 
       {/* Mini-modal — taxa global de matrícula */}
       <Dialog open={showGlobalFeeModal} onOpenChange={setShowGlobalFeeModal}>
-        <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 [&>button]:hidden border-0 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl flex flex-col gap-0 border-0 shadow-2xl">
           <div className="bg-gradient-to-r from-[#004B87] to-[#003868] px-5 py-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#F5821F] flex items-center justify-center">
@@ -942,7 +942,7 @@ export function GeneralSettingsModal({
 
           <div className="bg-slate-50 p-5 space-y-4">
             <div>
-              <FieldLabel>Valor da Taxa (MZN)</FieldLabel>
+              <FieldLabel>Valor da Taxa (MT)</FieldLabel>
               <Input
                 type="number"
                 value={tempGlobalFee || ""}

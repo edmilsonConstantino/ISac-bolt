@@ -89,7 +89,6 @@ export function ClassModal({
         setCursosDisponiveis(cursosFormatados);
       } catch (error) {
         console.error('Erro ao carregar cursos:', error);
-        toast.error('Erro ao carregar lista de cursos');
       }
     };
 
@@ -212,8 +211,6 @@ export function ClassModal({
       const result = await response.json();
       if (result.success) {
         setAvailableStudents(result.data || []);
-      } else {
-        toast.error(result.message || 'Erro ao carregar estudantes');
       }
     } catch (error) {
       console.error('Erro ao carregar estudantes:', error);

@@ -498,9 +498,7 @@ const validateForm = () => {
 
   // Formatter de moeda
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-MZ", {
-      style: "currency",
-      currency: "MZN",
+    return 'MT ' + new Intl.NumberFormat("pt-MZ", {
     }).format(value);
   };
 

@@ -179,10 +179,9 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         students: mappedStudents
       });
     } catch {
-      toast.error('Erro ao carregar estudantes da turma');
     }
   };
-  
+
   const handleManageClass = (classItem: Class) => {
     setClassModal({
       isOpen: true,
@@ -226,10 +225,9 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         students: mapped
       });
     } catch {
-      toast.error('Erro ao carregar estudantes');
     }
   };
-  
+
   const handleSaveGrades = (gradeData: any) => {
     console.log("Notas salvas:", gradeData);
   };

@@ -155,7 +155,7 @@ export function PaymentTab({
               <CreditCard className="h-5 w-5" />
             </div>
             <Label className="font-bold text-slate-700 leading-none">
-              Taxa de Matrícula (MZN)
+              Taxa de Matrícula (MT)
             </Label>
           </div>
 
@@ -185,7 +185,7 @@ export function PaymentTab({
               <DollarSign className="h-5 w-5" />
             </div>
             <Label className="font-bold text-slate-700 leading-none">
-              Mensalidade (MZN)
+              Mensalidade (MT)
             </Label>
           </div>
 

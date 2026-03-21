@@ -212,7 +212,7 @@ export function StudentProfileModal({
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(amount);
+    'MT ' + new Intl.NumberFormat('pt-MZ', {}).format(amount);
 
   // ============================================================
   // DEFINIÇÃO DAS TABS
