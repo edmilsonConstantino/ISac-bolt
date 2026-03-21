@@ -539,7 +539,6 @@ export function ClassModal({
                             </button>
                           ))}
                         </div>
-                      )}
 
                       {formErrors.nivel_id && (
                         <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
