@@ -140,37 +140,10 @@ export default function CreateCourseModal({
       if (courseData.categoria) {
         setCategoriaSelecionada(courseData.categoria);
       }
-    } else {
-      setFormData({
-        nome: '',
-        codigo: '',
-        categoria_id: undefined,
-        tipo_curso: undefined,
-        duracao_valor: 0,
-        regime: 'laboral',
-        modalidade: 'presencial',
-        tipo_cobranca: 'mensal',
-        mensalidade: 0,
-        preco_total: 0,
-        taxa_matricula: 0,
-        propina_fixa: true,
-        permite_bolsa: true,
-        status: 'ativo',
-        observacoes: '',
-        modulos: [],
-        niveis: [],
-        preco_por_nivel: false,
-      });
-      setModules([]);
-      setNiveis([]);
-      setQtdNiveis(0);
-      setBulkDuracao(4);
-      setCategoriaSelecionada(null);
-      setViewMode(false);
     }
+    // Modo criação sem courseData: não resetar — preservar dados preenchidos
     setErrors({});
-    setActiveTab('info');
-  }, [isEditing, courseData, isOpen]);
+  }, [isEditing, courseData]);
 
   // Carregar categorias
   const carregarCategorias = async () => {
@@ -284,6 +257,9 @@ export default function CreateCourseModal({
         taxa_matricula: formData.taxa_matricula
       };
       await onSave(courseWithModules);
+      // Reset após save bem-sucedido
+      setFormData({ nome: '', codigo: '', categoria_id: undefined, tipo_curso: undefined, duracao_valor: 0, regime: 'laboral', modalidade: 'presencial', tipo_cobranca: 'mensal', mensalidade: 0, preco_total: 0, taxa_matricula: 0, propina_fixa: true, permite_bolsa: true, status: 'ativo', observacoes: '', modulos: [], niveis: [], preco_por_nivel: false });
+      setModules([]); setNiveis([]); setQtdNiveis(0); setBulkDuracao(4); setCategoriaSelecionada(null); setViewMode(false); setActiveTab('info');
       onClose();
     } catch (error) {
       console.error('Erro ao salvar curso:', error);

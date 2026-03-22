@@ -435,7 +435,7 @@ const validateForm = () => {
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setFormData({
       name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
       birth_date: '',
@@ -448,25 +448,24 @@ const validateForm = () => {
     setActiveTab('personal');
     setShowSuccess(false);
     setSavedCredentials(null);
+  };
+
+  const handleClose = () => {
+    if (showSuccess) {
+      // Submissão bem-sucedida — reset completo
+      resetForm();
+    } else {
+      // Fechou sem submeter — limpar apenas erros, preservar dados
+      setErrors({});
+      setErrorToast(null);
+    }
     onClose();
   };
 
   const handleProceedToRegistration = () => {
     if (savedCredentials && onProceedToRegistration) {
       const studentId = savedCredentials.studentId;
-      // Fechar este modal primeiro
-      setFormData({
-        name: '', email: '', phone: '', bi_number: '', address: '', gender: '',
-        birth_date: '',
-        emergency_contact_1: '', emergency_contact_2: '', notes: '',
-        isBolsista: false,
-        paymentMethod: 'cash', paymentStatus: 'pending', paymentReference: ''
-      });
-      setErrors({});
-      setErrorToast(null);
-      setActiveTab('personal');
-      setShowSuccess(false);
-      setSavedCredentials(null);
+      resetForm();
       onClose();
       // Depois abrir o modal de matrícula com o studentId
       setTimeout(() => {

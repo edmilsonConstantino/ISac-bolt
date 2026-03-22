@@ -251,17 +251,14 @@ export function RegistrationStudentModal({
     setSelectedNivel(null);
 
     if (registrationData && isEditing) {
-      // se vier do backend com campos em snake_case, ideal: mapear antes.
-      // aqui estamos assumindo que registrationData já vem no formato esperado do formulário.
       setFormData(registrationData as any);
-    } else {
-      // Se veio da inscrição, pré-selecionar "new" como tipo
+    } else if (preSelectedStudentId) {
+      // Vem da inscrição com estudante pré-selecionado — iniciar formulário limpo
       const initialData = buildInitialFormData();
-      if (preSelectedStudentId) {
-        initialData.registrationType = "new"; // Novo Estudante - Primeira Matrícula
-      }
+      initialData.registrationType = "new";
       setFormData(initialData);
     }
+    // Modo criação sem pré-seleção: preservar dados preenchidos anteriormente
   }, [isOpen, registrationData, isEditing, preSelectedStudentId]);
 
   // -----------------------------
@@ -542,6 +539,12 @@ export function RegistrationStudentModal({
     setIsSaving(true);
     try {
       await onSave(mappedData as any);
+      // Reset do formulário após save bem-sucedido
+      setFormData(buildInitialFormData());
+      setNiveis([]);
+      setSelectedNivel(null);
+      setFormErrors({});
+      setActiveTab("student");
       // Mostrar modal de sucesso após salvar (sem toast duplicado)
       setShowReceiptPrompt(true);
     } catch (error: any) {

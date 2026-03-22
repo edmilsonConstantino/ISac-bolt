@@ -357,7 +357,7 @@ export function ClassModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+      <DialogContent className="max-w-5xl p-0 overflow-hidden border-none shadow-2xl bg-white" hideCloseButton>
         <div className="flex h-[650px]">
           
           {/* SIDEBAR DE NAVEGAÇÃO */}
@@ -416,7 +416,7 @@ export function ClassModal({
 
           {/* ÁREA DE CONTEÚDO */}
           <div className="flex-1 flex flex-col">
-            <header className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+            <header className="px-8 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
                   {isCreating ? 'Criar Nova Turma' : 'Editar Turma'}
@@ -427,18 +427,27 @@ export function ClassModal({
                   <span className="text-[#F5821F] font-medium">{activeTab.toUpperCase()}</span>
                 </div>
               </div>
-              {!isCreating && permissions.canDelete && currentUserRole === 'admin' && (
-                <Button variant="ghost" size="icon" onClick={handleDelete} className="rounded-full text-red-400 hover:bg-red-50">
-                  <Trash2 className="h-5 w-5" />
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {!isCreating && permissions.canDelete && currentUserRole === 'admin' && (
+                  <Button variant="ghost" size="icon" onClick={handleDelete} className="rounded-full text-red-400 hover:bg-red-50">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  aria-label="Fechar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto px-8 py-5 custom-scrollbar bg-slate-50/30">
               
               {/* ABA: DADOS PRINCIPAIS */}
               {activeTab === 'basic' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-400">
                   <section>
                     <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 block">
                       Selecione o Curso Base
@@ -604,9 +613,9 @@ export function ClassModal({
 
                   {/* Nome Gerado */}
                   {formData.name && (
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#F5821F]/30 rounded-2xl p-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <Label className="text-[#F5821F] font-bold text-sm">
+                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#F5821F]/30 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Label className="text-[#F5821F] font-bold text-xs">
                           Nome da Turma {!nomeEditavel && '(Gerado Automaticamente)'}
                         </Label>
                         <button
@@ -628,7 +637,7 @@ export function ClassModal({
                           disabled={!permissions.canEdit}
                         />
                       ) : (
-                        <p className="text-lg font-bold text-[#004B87]">{formData.name}</p>
+                        <p className="text-sm font-bold text-[#004B87]">{formData.name}</p>
                       )}
                     </div>
                   )}
@@ -637,7 +646,7 @@ export function ClassModal({
 
               {/* ABA: DATAS E VAGAS */}
               {activeTab === 'schedule' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-400">
                   <div className="grid grid-cols-2 gap-6">
                     <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4">
                       <div className="flex items-center gap-3 mb-2">
@@ -1019,7 +1028,7 @@ export function ClassModal({
             </div>
 
             {/* BARRA DE BOTÕES INFERIOR */}
-            <footer className="px-10 py-6 border-t border-slate-100 bg-white flex justify-between items-center">
+            <footer className="px-8 py-4 border-t border-slate-100 bg-white flex justify-between items-center">
               <Button variant="ghost" onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold uppercase text-[11px] tracking-widest">
                 Descartar
               </Button>

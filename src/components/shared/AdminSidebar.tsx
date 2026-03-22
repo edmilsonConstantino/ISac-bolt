@@ -28,7 +28,7 @@ export const menuItems: MenuItem[] = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "students", label: "Estudantes", icon: GraduationCap },
   {
-    id: "registrations", label: "Matrículas", icon: ClipboardList, badge: 5, hasDropdown: true,
+    id: "registrations", label: "Matrículas", icon: ClipboardList, hasDropdown: true,
     dropdownItems: [
       { id: "inscriptions", label: "Inscrição", icon: PenLine },
       { id: "registrations", label: "Matrícula", icon: FileText },
@@ -36,7 +36,7 @@ export const menuItems: MenuItem[] = [
   },{ id: "teachers", label: "Docentes", icon: Users },
   { id: "classes", label: "Turmas", icon: BookOpen },
   { id: "courses", label: "Cursos", icon: BookOpen },
-  { id: "payments", label: "Pagamentos", icon: DollarSign, badge: 12 },
+  { id: "payments", label: "Pagamentos", icon: DollarSign },
   { id: "users", label: "Usuários", icon: Shield },
 ];
 

@@ -251,48 +251,6 @@ export function LoginForm() {
             </p>
           </div>
 
-          {/* Card de Teste - Mobile */}
-          <div className="mt-4 p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 border-2 border-dashed border-slate-200 rounded-xl">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#F5821F]"></div>
-              <p className="text-xs text-center text-slate-600 font-bold tracking-wide">
-                CREDENCIAIS DE TESTE
-              </p>
-              <div className="h-1.5 w-1.5 rounded-full bg-[#F5821F]"></div>
-            </div>
-            
-            {/* Super Admin */}
-            <div className="text-xs font-mono bg-white p-3 rounded-lg border-2 border-blue-100 space-y-1.5 mb-2.5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                <p className="text-[10px] text-blue-700 font-bold tracking-wide">SUPER ADMIN</p>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Email:</span>
-                <span className="font-bold text-[#004B87]">admin@example.com</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Senha:</span>
-                <span className="font-bold text-[#004B87]">8456@</span>
-              </div>
-            </div>
-
-            {/* Academic Admin */}
-            <div className="text-xs font-mono bg-white p-3 rounded-lg border-2 border-emerald-100 space-y-1.5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                <p className="text-[10px] text-emerald-700 font-bold tracking-wide">ACADEMIC ADMIN</p>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Email:</span>
-                <span className="font-bold text-emerald-700">academic@isac.ac.mz</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Senha:</span>
-                <span className="font-bold text-emerald-700">8456@</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -474,38 +432,6 @@ export function LoginForm() {
                   </p>
                 </div>
 
-                {/* Card de Teste - Desktop */}
-                <div className="mt-3 p-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-lg">
-                  <p className="text-[10px] text-center text-slate-600 mb-2 font-semibold">
-                    🧪 Credenciais de Teste
-                  </p>
-                  
-                  {/* Super Admin */}
-                  <div className="text-[10px] font-mono bg-white p-2 rounded border border-slate-200 space-y-0.5 mb-2">
-                    <p className="text-[9px] text-blue-600 font-bold mb-1">SUPER ADMIN</p>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Email:</span>
-                      <span className="font-semibold text-[#004B87]">admin@example.com</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Senha:</span>
-                      <span className="font-semibold text-[#004B87]">8456@</span>
-                    </div>
-                  </div>
-
-                  {/* Academic Admin */}
-                  <div className="text-[10px] font-mono bg-white p-2 rounded border border-emerald-200 space-y-0.5">
-                    <p className="text-[9px] text-emerald-600 font-bold mb-1">ACADEMIC ADMIN</p>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Email:</span>
-                      <span className="font-semibold text-emerald-700">academic@isac.ac.mz</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Senha:</span>
-                      <span className="font-semibold text-emerald-700">8456@</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
