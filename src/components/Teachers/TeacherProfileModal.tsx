@@ -384,8 +384,9 @@ export function TeacherProfileModal({
                 {isEditing ? (
                   <div className="space-y-1">
                     <Label htmlFor="phone" className="text-xs text-slate-700 font-medium">Telefone</Label>
-                    <Input id="phone" name="phone" value={formData.phone || ""} onChange={handleInputChange}
-                      placeholder="+258 84 000 0000" className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.orange)} />
+                    <Input id="phone" name="phone" value={formData.phone || ""} maxLength={9}
+                      onChange={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9); handleInputChange(e); }}
+                      placeholder="9 dígitos (ex: 841234567)" className={cn("h-9 text-sm", PROFILE_MODAL_STYLES.input.orange)} />
                     {errors.phone && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.phone}</p>}
                   </div>
                 ) : <InfoDisplay label="Telefone" value={formData.phone} />}

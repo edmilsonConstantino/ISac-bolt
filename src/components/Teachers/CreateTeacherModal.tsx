@@ -134,8 +134,13 @@ export function CreateTeacherModal({
   };
 
   const handleSave = async () => {
-    if (validateForm()) {
-      try {
+    if (!validateForm()) {
+      toast.error("Preencha todos os campos obrigatórios antes de cadastrar o docente.");
+      if (!formData.name.trim() || !formData.email.trim()) setActiveTab('personal');
+      else if (!formData.qualifications.trim() || !formData.experience.trim() || !formData.startDate) setActiveTab('academic');
+      return;
+    }
+    try {
         const teacherData: CreateTeacherData = {
           nome: formData.name,
           email: formData.email,
@@ -165,14 +170,13 @@ export function CreateTeacherModal({
           username: response.username || getUsernamePreview(),
         });
 
-      } catch (error: any) {
-        console.error("Erro ao criar docente:", error);
-        if (error.field === 'email') {
-          setErrors({ email: error.message });
-          setActiveTab('personal');
-        } else {
-          toast.error(error.message || "Erro ao cadastrar docente");
-        }
+    } catch (error: any) {
+      console.error("Erro ao criar docente:", error);
+      if (error.field === 'email') {
+        setErrors({ email: error.message });
+        setActiveTab('personal');
+      } else {
+        toast.error(error.message || "Erro ao cadastrar docente");
       }
     }
   };
@@ -347,19 +351,6 @@ export function CreateTeacherModal({
             </nav>
 
             <div className="mt-auto space-y-3">
-              {/* Username preview em tempo real */}
-              <div className="p-4 bg-white/10 border border-white/20 rounded-2xl">
-                <div className="flex items-center gap-2 mb-2 text-blue-200">
-                  <Key className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Username Previsto</span>
-                </div>
-                <p className="font-mono text-white text-sm font-bold tracking-wide break-all">
-                  {getUsernamePreview()}
-                </p>
-                {!formData.name.trim() && (
-                  <p className="text-[10px] text-blue-300 mt-1">← Preencha o nome</p>
-                )}
-              </div>
               {/* Dica primeiro acesso */}
               <div className="p-3 bg-[#F5821F]/10 border border-[#F5821F]/20 rounded-2xl">
                 <div className="flex items-center gap-2 mb-1 text-[#F5821F]">
@@ -455,9 +446,10 @@ export function CreateTeacherModal({
                           <div className="relative">
                             <Phone className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                             <Input
-                              placeholder="+258 84 123 4567"
+                              placeholder="9 dígitos (ex: 841234567)"
                               value={formData.phone}
-                              onChange={(e) => handleInputChange('phone', e.target.value)}
+                              maxLength={9}
+                              onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
                               className="h-12 pl-11 rounded-xl"
                             />
                           </div>

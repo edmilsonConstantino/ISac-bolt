@@ -18,6 +18,11 @@ function SearchBar({ placeholder = "Buscar...", value, onChange, className }: Se
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        name="search-field"
         className="pl-12 h-12 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] text-base"
       />
     </div>

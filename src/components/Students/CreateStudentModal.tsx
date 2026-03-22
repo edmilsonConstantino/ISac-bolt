@@ -416,9 +416,10 @@ export function CreateStudentModal({
                           <div className="relative">
                             <Phone className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                             <Input
-                              placeholder="+258 84 123 4567"
+                              placeholder="9 dígitos (ex: 841234567)"
                               value={formData.phone}
-                              onChange={(e) => handleInputChange('phone', e.target.value)}
+                              maxLength={9}
+                              onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
                               className="h-12 pl-11 rounded-xl"
                             />
                           </div>

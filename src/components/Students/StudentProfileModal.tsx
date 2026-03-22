@@ -308,8 +308,9 @@ export function StudentProfileModal({
                   <Label htmlFor="phone" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Telefone</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange}
-                      placeholder="+258 84 000 0000" disabled={!isEditing}
+                    <Input id="phone" name="phone" value={formData.phone}
+                      onChange={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9); handleInputChange(e); }}
+                      placeholder="9 dígitos (ex: 841234567)" disabled={!isEditing} maxLength={9}
                       className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
                     />
                   </div>
