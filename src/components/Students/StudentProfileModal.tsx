@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ProfileModalBase, ProfileTab, PROFILE_MODAL_STYLES } from "@/components/shared/ProfileModalBase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -317,9 +318,12 @@ export function StudentProfileModal({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="birthDate" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nascimento</Label>
-                  <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleInputChange}
+                  <DateInput
+                    id="birthDate"
+                    value={formData.birthDate}
+                    onChange={(val) => { setFormData(prev => ({ ...prev, birthDate: val })); }}
                     disabled={!isEditing}
-                    className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
+                    hasError={!!errors.birthDate}
                   />
                 </div>
               </div>
@@ -463,9 +467,10 @@ export function StudentProfileModal({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="enrollmentDate" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Data de Matrícula</Label>
-                <Input id="enrollmentDate" name="enrollmentDate" type="date" value={formData.enrollmentDate}
-                  onChange={handleInputChange} disabled={!isEditing}
-                  className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#004B87]/50 focus:border-[#004B87]")}
+                <DateInput
+                  value={formData.enrollmentDate || ""}
+                  onChange={(val) => setFormData(prev => ({ ...prev, enrollmentDate: val }))}
+                  disabled={!isEditing}
                 />
               </div>
             </div>

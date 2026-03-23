@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -263,11 +264,9 @@ export function EditInscriptionModal({ isOpen, onClose, student, onSuccess }: Ed
                     </div>
 
                     <Field label="Data de Nascimento">
-                      <Input
-                        type="date"
+                      <DateInput
                         value={form.birth_date}
-                        onChange={e => set('birth_date', e.target.value)}
-                        className="h-11 rounded-xl"
+                        onChange={(val) => set('birth_date', val)}
                       />
                     </Field>
                   </div>

@@ -3,6 +3,7 @@
 
 import { useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
@@ -703,15 +704,14 @@ export function CourseTab({
             </Label>
           </div>
 
-          <Input
-            type="date"
-            value={formData.enrollmentDate || ""}
-            onChange={(e) => onChangeField("enrollmentDate", e.target.value)}
-            className={cn(
-              "h-12 rounded-xl",
-              formErrors.enrollmentDate && "border-red-500"
-            )}
-          />
+          <div className="relative">
+            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
+            <DateInput
+              value={formData.enrollmentDate || ""}
+              onChange={(val) => onChangeField("enrollmentDate", val)}
+              hasError={!!formErrors.enrollmentDate}
+            />
+          </div>
 
           {formErrors.enrollmentDate && (
             <p className="text-xs text-red-600 flex items-center gap-1">

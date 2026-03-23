@@ -142,20 +142,16 @@ export function LoginForm() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
                 <Input
                   id="senha-mobile"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  type="password"
+                  placeholder="Introduza a sua senha"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   required
-                  className="h-14 pl-12 pr-12 text-base bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-[#F5821F] focus:ring-4 focus:ring-[#F5821F]/10 transition-all"
+                  className="h-14 pl-12 pr-4 text-base bg-white border-2 border-slate-200 rounded-2xl focus:border-[#F5821F] focus:ring-4 focus:ring-[#F5821F]/10 transition-all"
                   disabled={isLoading}
                   autoComplete="current-password"
                   minLength={5}
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#F5821F] transition-colors">
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
               </div>
             </div>
 
@@ -272,23 +268,16 @@ export function LoginForm() {
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
                       <Input
                         id="senha"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        type="password"
+                        placeholder="Introduza a sua senha"
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
                         required
-                        className="h-14 pl-12 pr-12 text-base border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all duration-300"
+                        className="h-14 pl-12 pr-4 text-base bg-white border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all duration-300"
                         disabled={isLoading}
                         autoComplete="current-password"
                         minLength={5}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
                     </div>
                   </div>
 

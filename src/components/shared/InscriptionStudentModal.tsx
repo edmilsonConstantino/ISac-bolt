@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -226,59 +227,37 @@ export function InscriptionStudentModal({
 const validateForm = () => {
   const newErrors: Record<string, string> = {};
 
-  // Campos obrigatórios
-  if (!formData.name.trim()) {
-    newErrors.name = "Nome é obrigatório";
-    showError("Por favor, preencha o nome completo do estudante.");
-  }
-
+  if (!formData.name.trim()) newErrors.name = "Campo obrigatório";
   if (!formData.email.trim()) {
-    newErrors.email = "Email é obrigatório";
-    showError("Por favor, forneça um endereço de email válido.");
+    newErrors.email = "Campo obrigatório";
   } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
     newErrors.email = "Formato de email inválido";
-    showError("O email fornecido não está num formato válido. Exemplo: nome@dominio.com");
   }
-
-  // Validação do BI
   if (!formData.bi_number.trim()) {
-    newErrors.bi_number = "Número do BI é obrigatório";
-    showError("Por favor, insira o número do Bilhete de Identidade.");
+    newErrors.bi_number = "Campo obrigatório";
   } else if (!/^\d{12}[A-Z]$/i.test(formData.bi_number.trim())) {
-    newErrors.bi_number = "Formato inválido";
-    showError("O BI deve ter 12 números seguidos de 1 letra. Exemplo: 110100123456P");
+    newErrors.bi_number = "Formato inválido (ex: 110100123456P)";
   }
+  if (!formData.gender) newErrors.gender = "Campo obrigatório";
 
-  if (!formData.gender) {
-    newErrors.gender = "Selecione o sexo";
-    showError("Por favor, selecione o sexo do estudante.");
-  }
-
-  // Pagamento (se inscrição for paga) — apenas para nova inscrição
   if (!isEditing && inscriptionIsPaid && inscriptionFee > 0) {
     if (formData.paymentStatus !== 'paid') {
       newErrors.payment = "Pagamento não confirmado";
-      showError(`Clique em 'Marcar como Pago' para confirmar o pagamento da taxa de inscrição (${formatCurrency(inscriptionFee)}).`);
     }
   }
 
-  // Telefone (se preenchido) — exactamente 9 dígitos
   if (formData.phone && !/^\d{9}$/.test(formData.phone)) {
-    newErrors.phone = "Telefone deve ter exactamente 9 dígitos";
-    showError("O número de telefone deve ter exactamente 9 dígitos (ex: 841234567).");
+    newErrors.phone = "Deve ter exactamente 9 dígitos";
   }
 
-  // Data de nascimento (se preenchida)
   if (formData.birth_date) {
     const birthYear = new Date(formData.birth_date).getFullYear();
     const currentYear = new Date().getFullYear();
     if (birthYear < 1900 || birthYear > currentYear) {
-      newErrors.birth_date = "Data de nascimento inválida";
-      showError("A data de nascimento inserida não é válida.");
+      newErrors.birth_date = "Data inválida";
     }
   }
 
-  // ✅ aqui é o ponto-chave
   setErrors(newErrors);
   return Object.keys(newErrors).length > 0 ? newErrors : null;
 };
@@ -288,27 +267,33 @@ const validateForm = () => {
   const validationErrors = validateForm();
 
   if (validationErrors) {
-    // Aba "Dados Pessoais"
-    if (
-      validationErrors.name ||
-      validationErrors.email ||
-      validationErrors.bi_number ||
-      validationErrors.gender ||
-      validationErrors.birthDate
-    ) {
+    const fieldLabels: Record<string, string> = {
+      name: "Nome Completo",
+      email: "Email",
+      bi_number: "Número do BI",
+      gender: "Sexo",
+      phone: "Telefone",
+      birth_date: "Data de Nascimento",
+      payment: "Pagamento da Inscrição",
+    };
+    const missing = Object.keys(validationErrors)
+      .filter((k) => validationErrors[k] === "Campo obrigatório" || validationErrors[k] === "Pagamento não confirmado")
+      .map((k) => fieldLabels[k] ?? k);
+    const invalid = Object.keys(validationErrors)
+      .filter((k) => validationErrors[k] !== "Campo obrigatório" && validationErrors[k] !== "Pagamento não confirmado")
+      .map((k) => `${fieldLabels[k] ?? k}: ${validationErrors[k]}`);
+
+    if (missing.length > 0) {
+      showError(`Preencha os campos obrigatórios: ${missing.join(", ")}.`);
+    } else if (invalid.length > 0) {
+      showError(`Corrija os campos: ${invalid.join("; ")}.`);
+    }
+
+    if (validationErrors.name || validationErrors.email || validationErrors.bi_number || validationErrors.gender || validationErrors.birth_date) {
       setActiveTab("personal");
-    }
-    // Aba "Pagamento" (se inscrição for paga)
-    else if (
-      inscriptionIsPaid && (
-        validationErrors.payment ||
-        validationErrors.paymentReference
-      )
-    ) {
+    } else if (inscriptionIsPaid && (validationErrors.payment || validationErrors.paymentReference)) {
       setActiveTab("payment");
-    }
-    // Aba "Credenciais"
-    else if (validationErrors.username) {
+    } else if (validationErrors.username) {
       setActiveTab("credentials");
     }
 
@@ -961,7 +946,11 @@ const validateForm = () => {
                   { id: 'contacts', label: 'Contatos', icon: Phone, desc: 'Emergência e Observações' },
                   ...(!isEditing && inscriptionIsPaid ? [{ id: 'payment', label: 'Pagamento', icon: DollarSign, desc: `Taxa: ${formatCurrency(inscriptionFee)}` }] : []),
                   { id: 'credentials', label: 'Credenciais', icon: Key, desc: 'Acesso ao Portal' },
-                ].map((tab) => (
+                ].map((tab) => {
+                  const tabHasError =
+                    (tab.id === 'personal' && (errors.name || errors.email || errors.bi_number || errors.gender || errors.birth_date)) ||
+                    (tab.id === 'payment' && errors.payment);
+                  return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as 'personal' | 'contacts' | 'payment' | 'credentials')}
@@ -973,17 +962,21 @@ const validateForm = () => {
                     )}
                   >
                     <div className={cn(
-                      "p-2 rounded-lg transition-colors",
+                      "p-2 rounded-lg transition-colors relative",
                       activeTab === tab.id ? "bg-[#F5821F] text-white" : "bg-[#003A6B] text-blue-300 group-hover:bg-[#003A6B]/80"
                     )}>
                       <tab.icon className="h-5 w-5" />
+                      {tabHasError && (
+                        <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-[#003868]" />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-bold">{tab.label}</p>
                       <p className="text-[11px] opacity-60">{tab.desc}</p>
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </nav>
 
               <div className="mt-auto p-4 bg-[#F5821F]/10 border border-[#F5821F]/20 rounded-2xl">
@@ -1147,18 +1140,11 @@ const validateForm = () => {
                           <div className="space-y-2">
                           <Label className="text-slate-600 font-semibold ml-1">Data de Nascimento</Label>
                           <div className="relative">
-                            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
-                            <input
-                              type="date"
+                            <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 pointer-events-none z-10" />
+                            <DateInput
                               value={formData.birth_date}
-                              max={new Date().toISOString().split('T')[0]}
-                              min="1900-01-01"
-                              onChange={(e) => handleInputChange('birth_date', e.target.value)}
-                              className={cn(
-                                "w-full h-12 pl-11 pr-4 border-2 rounded-xl outline-none font-semibold text-slate-800",
-                                "focus:ring-2 focus:ring-[#F5821F]/20 focus:border-[#F5821F] transition-all",
-                                errors.birth_date ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
-                              )}
+                              onChange={(val) => handleInputChange('birth_date', val)}
+                              hasError={!!errors.birth_date}
                             />
                           </div>
                           {formData.birth_date && (() => {

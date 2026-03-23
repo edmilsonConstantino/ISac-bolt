@@ -359,7 +359,7 @@ export default function CreateCourseModal({
                 )}
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="p-2 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 shadow-sm transition-all"
                   aria-label="Fechar"
                 >
                   <X className="h-5 w-5" />

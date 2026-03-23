@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +10,7 @@ import {
   UserPlus, User, Mail, Phone, Calendar, MapPin,
   GraduationCap, Award, Briefcase, BookOpen, Users,
   Shield, Key, Lock, X, AlertCircle, Sparkles,
-  ChevronRight, CheckCircle2, Sun, Sunset, Moon
+  ChevronRight, ChevronLeft, CheckCircle2, Sun, Sunset, Moon
 } from "lucide-react";
 import teacherService, { CreateTeacherData } from "@/services/teacherService";
 import courseService from "@/services/courseService";
@@ -111,21 +112,21 @@ export function CreateTeacherModal({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
+    if (!formData.name.trim()) newErrors.name = 'Campo obrigatório';
     if (!formData.email.trim()) {
-      newErrors.email = 'Email é obrigatório';
+      newErrors.email = 'Campo obrigatório';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email inválido';
     }
-    if (!formData.qualifications.trim()) newErrors.qualifications = 'Qualificações são obrigatórias';
-    if (!formData.experience.trim()) newErrors.experience = 'Experiência é obrigatória';
-    if (!formData.startDate) newErrors.startDate = 'Data de início é obrigatória';
+    if (!formData.qualifications.trim()) newErrors.qualifications = 'Campo obrigatório';
+    if (!formData.experience.trim()) newErrors.experience = 'Campo obrigatório';
+    if (!formData.startDate) newErrors.startDate = 'Campo obrigatório';
 
     if (formData.birth_date) {
       const year = new Date(formData.birth_date).getFullYear();
       const currentYear = new Date().getFullYear();
       if (year < 1900 || year > currentYear) {
-        newErrors.birth_date = 'Data de nascimento inválida';
+        newErrors.birth_date = 'Data inválida';
       }
     }
 
@@ -135,7 +136,21 @@ export function CreateTeacherModal({
 
   const handleSave = async () => {
     if (!validateForm()) {
-      toast.error("Preencha todos os campos obrigatórios antes de cadastrar o docente.");
+      const fieldLabels: Record<string, string> = {
+        name: "Nome",
+        email: "Email",
+        qualifications: "Qualificações",
+        experience: "Experiência",
+        startDate: "Data de Início",
+        birth_date: "Data de Nascimento",
+      };
+      const currentErrors = (() => { const e: Record<string, string> = {}; if (!formData.name.trim()) e.name = ''; if (!formData.email.trim()) e.email = ''; if (!formData.qualifications.trim()) e.qualifications = ''; if (!formData.experience.trim()) e.experience = ''; if (!formData.startDate) e.startDate = ''; return e; })();
+      const missing = Object.keys(currentErrors).map((k) => fieldLabels[k] ?? k);
+      if (missing.length > 0) {
+        toast.error(`Preencha os campos obrigatórios: ${missing.join(", ")}.`);
+      } else {
+        toast.error("Corrija os campos inválidos antes de continuar.");
+      }
       if (!formData.name.trim() || !formData.email.trim()) setActiveTab('personal');
       else if (!formData.qualifications.trim() || !formData.experience.trim() || !formData.startDate) setActiveTab('academic');
       return;
@@ -195,12 +210,18 @@ export function CreateTeacherModal({
     onClose();
   };
 
+  const TEACHER_TABS: ('personal' | 'academic' | 'contract' | 'turmas' | 'credentials')[] = [
+    'personal', 'academic', 'contract', 'turmas', 'credentials'
+  ];
+
   const validateAndNext = () => {
-    const tabs: ('personal' | 'academic' | 'contract' | 'turmas' | 'credentials')[] = [
-      'personal', 'academic', 'contract', 'turmas', 'credentials'
-    ];
-    const nextIndex = tabs.indexOf(activeTab) + 1;
-    if (nextIndex < tabs.length) setActiveTab(tabs[nextIndex]);
+    const nextIndex = TEACHER_TABS.indexOf(activeTab) + 1;
+    if (nextIndex < TEACHER_TABS.length) setActiveTab(TEACHER_TABS[nextIndex]);
+  };
+
+  const handleBack = () => {
+    const prevIndex = TEACHER_TABS.indexOf(activeTab) - 1;
+    if (prevIndex >= 0) setActiveTab(TEACHER_TABS[prevIndex]);
   };
 
   // Filtrar turmas disponíveis com base nos cursos e turno selecionados
@@ -325,7 +346,11 @@ export function CreateTeacherModal({
                 { id: 'contract', label: 'Contratual', icon: Briefcase, desc: 'Contrato e Curso' },
                 { id: 'turmas', label: 'Turmas', icon: Users, desc: 'Atribuir Turmas' },
                 { id: 'credentials', label: 'Credenciais', icon: Shield, desc: 'Acesso ao Sistema' },
-              ].map((tab) => (
+              ].map((tab) => {
+                const tabHasError =
+                  (tab.id === 'personal' && (errors.name || errors.email)) ||
+                  (tab.id === 'academic' && (errors.qualifications || errors.experience || errors.startDate || errors.birth_date));
+                return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
@@ -337,17 +362,21 @@ export function CreateTeacherModal({
                   )}
                 >
                   <div className={cn(
-                    "p-2 rounded-lg transition-colors",
+                    "p-2 rounded-lg transition-colors relative",
                     activeTab === tab.id ? "bg-[#F5821F] text-white" : "bg-[#003A6B] text-blue-300 group-hover:bg-[#003A6B]/80"
                   )}>
                     <tab.icon className="h-5 w-5" />
+                    {tabHasError && (
+                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-[#003868]" />
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-bold">{tab.label}</p>
                     <p className="text-[11px] opacity-60">{tab.desc}</p>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </nav>
 
             <div className="mt-auto space-y-3">
@@ -379,7 +408,7 @@ export function CreateTeacherModal({
               </div>
               <button
                 onClick={handleClose}
-                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                className="p-2 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 shadow-sm transition-all"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
@@ -493,17 +522,10 @@ export function CreateTeacherModal({
                           <Label className="text-slate-600 font-semibold ml-1">Data de Nascimento</Label>
                           <div className="relative">
                             <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
-                            <input
-                              type="date"
+                            <DateInput
                               value={formData.birth_date}
-                              max={new Date().toISOString().split('T')[0]}
-                              min="1900-01-01"
-                              onChange={(e) => handleInputChange('birth_date', e.target.value)}
-                              className={cn(
-                                "w-full h-12 pl-11 pr-4 border-2 rounded-xl outline-none font-semibold text-slate-800",
-                                "focus:ring-2 focus:ring-[#F5821F]/20 focus:border-[#F5821F] transition-all",
-                                errors.birth_date ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
-                              )}
+                              onChange={(val) => handleInputChange('birth_date', val)}
+                              hasError={!!errors.birth_date}
                             />
                           </div>
                           {errors.birth_date && (
@@ -681,12 +703,14 @@ export function CreateTeacherModal({
                         <Label className="text-slate-600 font-semibold ml-1">
                           Data de Início <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          type="date"
-                          value={formData.startDate}
-                          onChange={(e) => handleInputChange('startDate', e.target.value)}
-                          className={cn("h-12 rounded-xl", errors.startDate && "border-red-500")}
-                        />
+                        <div className="relative">
+                          <Calendar className="absolute left-4 top-3 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
+                          <DateInput
+                            value={formData.startDate}
+                            onChange={(val) => handleInputChange('startDate', val)}
+                            hasError={!!errors.startDate}
+                          />
+                        </div>
                         {errors.startDate && (
                           <p className="text-xs text-red-600 flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
@@ -1018,30 +1042,37 @@ export function CreateTeacherModal({
 
             {/* FOOTER */}
             <footer className="px-8 py-4 border-t border-slate-100 bg-white flex justify-between items-center">
-              <Button
-                variant="ghost"
+              <button
                 onClick={handleClose}
-                className="text-slate-400 hover:text-slate-600 font-bold uppercase text-[11px] tracking-widest"
+                className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
               >
                 Cancelar
-              </Button>
+              </button>
 
-              <div className="flex gap-3">
+              <div className="flex items-center gap-3">
+                {TEACHER_TABS.indexOf(activeTab) > 0 && (
+                  <button
+                    onClick={handleBack}
+                    className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Anterior
+                  </button>
+                )}
                 {activeTab !== 'credentials' ? (
-                <Button
-  onClick={validateAndNext}
-  className="bg-[#F5821F] text-white hover:bg-[#E07318] px-8 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-lg shadow-orange-200"
->
-  Próximo Passo <ChevronRight className="h-4 w-4" />
-</Button>
+                  <button
+                    onClick={validateAndNext}
+                    className="px-6 py-2.5 rounded-xl bg-[#004B87] hover:bg-[#003A6B] text-white font-bold text-sm transition-colors flex items-center gap-2"
+                  >
+                    Próximo <ChevronRight className="h-4 w-4" />
+                  </button>
                 ) : (
-                  <Button
+                  <button
                     onClick={handleSave}
-                    className="bg-[#F5821F] text-white hover:bg-[#E07318] px-10 h-12 rounded-xl flex gap-2 font-bold transition-all active:scale-95 shadow-xl shadow-orange-500/30"
+                    className="px-6 py-2.5 rounded-xl bg-[#004B87] hover:bg-[#003A6B] text-white font-bold text-sm transition-colors flex items-center gap-2"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     Cadastrar Docente
-                  </Button>
+                  </button>
                 )}
               </div>
             </footer>

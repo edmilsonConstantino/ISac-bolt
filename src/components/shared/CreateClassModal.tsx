@@ -1,6 +1,7 @@
 // src/components/shared/CreateClassModal.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { 
   Dialog,
   DialogContent,
@@ -435,7 +436,7 @@ export function ClassModal({
                 )}
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="p-2 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 shadow-sm transition-all"
                   aria-label="Fechar"
                 >
                   <X className="h-5 w-5" />
@@ -655,11 +656,9 @@ export function ClassModal({
                         </div>
                         <Label className="font-bold text-slate-700 leading-none">Início das Aulas</Label>
                       </div>
-                      <Input 
-                        type="date" 
-                        value={formData.start_date || ''} 
-                        onChange={(e) => handleInputChange('start_date', e.target.value)}
-                        className="border-slate-100 bg-slate-50/50 h-12 rounded-xl focus:ring-[#F5821F] focus:border-[#F5821F]"
+                      <DateInput
+                        value={formData.start_date || ''}
+                        onChange={(val) => handleInputChange('start_date', val)}
                         disabled={!permissions.canEdit}
                       />
                       {formErrors.start_date && (
@@ -677,11 +676,9 @@ export function ClassModal({
                         </div>
                         <Label className="font-bold text-slate-700 leading-none">Término (Opcional)</Label>
                       </div>
-                      <Input 
-                        type="date" 
-                        value={formData.end_date || ''} 
-                        onChange={(e) => handleInputChange('end_date', e.target.value)}
-                        className="border-slate-100 bg-slate-50/50 h-12 rounded-xl focus:ring-[#004B87] focus:border-[#004B87]"
+                      <DateInput
+                        value={formData.end_date || ''}
+                        onChange={(val) => handleInputChange('end_date', val)}
                         disabled={!permissions.canEdit}
                       />
                     </div>

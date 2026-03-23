@@ -53,6 +53,7 @@ import { LevelTransitionPanel } from "./shared/LevelTransitionPanel";
 import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
 import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
+import { InscriptionStudentModal } from "./shared/InscriptionStudentModal";
 import { PaymentsDashboard } from "./shared/PaymentsDashboard";
 import { ClassSettingsModal } from "./Classes/ClassSettingsModal";
 import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
@@ -128,6 +129,8 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     preSelectedClassId: 0,
     preSelectedClassName: ""
   });
+
+  const [quickInscriptionModal, setQuickInscriptionModal] = useState(false);
 
   const [selectStudentModal, setSelectStudentModal] = useState({
     isOpen: false,
@@ -1000,7 +1003,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
   };
 
   const handleOpenCreateStudentModal = () => {
-    setCreateStudentModal({ isOpen: true, preSelectedClassId: 0, preSelectedClassName: "" });
+    setQuickInscriptionModal(true);
   };
 
   const handleOpenPaymentModal = (studentId: number) => {
@@ -1258,6 +1261,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                 {/* Left: Metrics */}
                 <div className="lg:col-span-3 p-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Receita Total — azul (positivo) */}
                     <div className="flex items-center gap-3 p-4 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
                       <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center flex-shrink-0">
                         <DollarSign className="h-5 w-5 text-white" />
@@ -1268,16 +1272,18 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
-                      <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center flex-shrink-0">
+                    {/* Pendente — cinza (neutro) */}
+                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="h-10 w-10 bg-slate-400 rounded-xl flex items-center justify-center flex-shrink-0">
                         <AlertTriangle className="h-5 w-5 text-white" />
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Pendente</p>
-                        <p className="font-bold text-[#004B87]">{formatCurrency(paymentSummary.totalPending)}</p>
+                        <p className="font-bold text-slate-600">{formatCurrency(paymentSummary.totalPending)}</p>
                       </div>
                     </div>
 
+                    {/* Em Atraso — laranja (alerta) */}
                     <div className="flex items-center gap-3 p-4 bg-[#F5821F]/8 rounded-xl border border-[#F5821F]/20">
                       <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center flex-shrink-0">
                         <AlertTriangle className="h-5 w-5 text-white" />
@@ -1288,13 +1294,14 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-[#F5821F]/8 rounded-xl border border-[#F5821F]/20">
-                      <div className="h-10 w-10 bg-[#F5821F] rounded-xl flex items-center justify-center flex-shrink-0">
+                    {/* Antecipado — azul (positivo) */}
+                    <div className="flex items-center gap-3 p-4 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
+                      <div className="h-10 w-10 bg-[#004B87] rounded-xl flex items-center justify-center flex-shrink-0">
                         <TrendingUp className="h-5 w-5 text-white" />
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Antecipado</p>
-                        <p className="font-bold text-[#F5821F]">{formatCurrency(paymentSummary.totalAdvance)}</p>
+                        <p className="font-bold text-[#004B87]">{formatCurrency(paymentSummary.totalAdvance)}</p>
                       </div>
                     </div>
                   </div>
@@ -1310,7 +1317,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                       <p className="text-xs text-slate-500 mt-0.5">Em Débito</p>
                     </div>
                     <div className="text-center p-3 bg-[#004B87]/5 rounded-xl border border-[#004B87]/15">
-                      <p className="text-lg font-bold text-[#004B87] text-sm leading-tight">{formatCurrency(paymentSummary.averageMonthlyRevenue)}</p>
+                      <p className="text-sm font-bold text-[#004B87] leading-tight">{formatCurrency(paymentSummary.averageMonthlyRevenue)}</p>
                       <p className="text-xs text-slate-500 mt-0.5">Média/Mês</p>
                     </div>
                   </div>
@@ -1338,9 +1345,9 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                         strokeWidth={0}
                       >
                         <Cell fill="#004B87" />
+                        <Cell fill="#94A3B8" />
                         <Cell fill="#F5821F" />
-                        <Cell fill="#FF9933" />
-                        <Cell fill="#003868" />
+                        <Cell fill="#004B87" opacity={0.5} />
                       </Pie>
                       <RechartsTooltip
                         formatter={(value: number) => value <= 0.01 ? 'Sem dados' : formatCurrency(value)}
@@ -1351,12 +1358,12 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2">
                     {[
                       { color: '#004B87', label: 'Receita' },
-                      { color: '#F5821F', label: 'Pendente' },
-                      { color: '#FF9933', label: 'Em Atraso' },
-                      { color: '#003868', label: 'Antecipado' },
+                      { color: '#94A3B8', label: 'Pendente' },
+                      { color: '#F5821F', label: 'Em Atraso' },
+                      { color: '#004B87', label: 'Antecipado', opacity: 0.5 },
                     ].map(item => (
                       <div key={item.label} className="flex items-center gap-1.5">
-                        <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                        <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color, opacity: 'opacity' in item ? (item.opacity as number) : 1 }} />
                         <span className="text-xs text-slate-500">{item.label}</span>
                       </div>
                     ))}
@@ -1609,6 +1616,12 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       availableClasses={classes}
       preSelectedClassId={createStudentModal.preSelectedClassId}
       preSelectedClassName={createStudentModal.preSelectedClassName}
+    />
+
+    <InscriptionStudentModal
+      isOpen={quickInscriptionModal}
+      onClose={() => setQuickInscriptionModal(false)}
+      onSuccess={() => setQuickInscriptionModal(false)}
     />
 
     <CreateTeacherModal

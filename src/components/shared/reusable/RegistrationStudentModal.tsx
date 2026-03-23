@@ -501,8 +501,29 @@ export function RegistrationStudentModal({
     }
 
     if (!validateForm()) {
-      toast.error("Preencha todos os campos obrigatórios");
-      setActiveTab("student");
+      const fieldLabels: Record<string, string> = {
+        registrationType: "Tipo de Inscrição",
+        studentId: "Estudante",
+        courseId: "Curso",
+        period: "Período",
+        enrollmentDate: "Data de Matrícula",
+        payment: "Pagamento da Taxa",
+      };
+      const missing: string[] = [];
+      if (!formData.studentId || formData.studentId === 0) missing.push(fieldLabels.studentId);
+      if (!formData.courseId) missing.push(fieldLabels.courseId);
+      if (!formData.registrationType) missing.push(fieldLabels.registrationType);
+      if (!formData.period) missing.push(fieldLabels.period);
+      if (!formData.enrollmentDate) missing.push(fieldLabels.enrollmentDate);
+      if (!isEnrollmentPaid) missing.push(fieldLabels.payment);
+      toast.error(missing.length > 0
+        ? `Preencha os campos obrigatórios: ${missing.join(", ")}.`
+        : "Preencha todos os campos obrigatórios."
+      );
+      // Navegar para a aba do primeiro campo em falta
+      if (!formData.studentId || formData.studentId === 0) setActiveTab("student");
+      else if (!formData.courseId || !formData.registrationType || !formData.period) setActiveTab("course");
+      else if (!formData.enrollmentDate || !isEnrollmentPaid) setActiveTab("confirmation");
       return;
     }
 
@@ -712,7 +733,7 @@ export function RegistrationStudentModal({
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                className="p-2 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 shadow-sm transition-all"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
