@@ -156,4 +156,11 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Quando o browser perde rede → limpar access_token imediatamente.
+// Ao reconectar, o próximo API call retorna 401, o interceptor tenta refresh,
+// e o backend verifica last_activity — se > 15 min, nega e redireciona para /login.
+window.addEventListener('offline', () => {
+  localStorage.removeItem('access_token');
+});
+
 export default apiClient;
