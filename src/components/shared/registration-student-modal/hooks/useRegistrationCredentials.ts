@@ -24,11 +24,11 @@ export function useRegistrationCredentials({ formData, setFormData }: Params) {
       if (!formData.studentId || !formData.courseId || !formData.courseName) return;
 
       try {
-        // 1) Sempre gerar o studentCode (é do registro de matrícula)
-        const studentCode = await generateStudentCode(formData.courseId, formData.courseName);
-
-        // 2) Buscar estudante para ver se já tem credenciais
-        const student = await studentService.getById(formData.studentId);
+        // Ambos independentes — correm em paralelo
+        const [studentCode, student] = await Promise.all([
+          generateStudentCode(formData.courseId, formData.courseName),
+          studentService.getById(formData.studentId),
+        ]);
 
         const hasUsername = !!student?.username;
 

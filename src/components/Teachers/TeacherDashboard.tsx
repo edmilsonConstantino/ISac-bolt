@@ -82,33 +82,34 @@ export function TeacherDashboard({ onLogout }: TeacherDashboardProps) {
         const classes = await classService.getByTeacher(teacherId);
         setTeacherClasses(classes);
 
-        // Carregar estudantes de todas as turmas
+        // Carregar estudantes de todas as turmas em paralelo (Promise.all)
         setIsLoadingStudents(true);
+        const validClasses = classes.filter(cls => cls.id);
+        const results = await Promise.all(
+          validClasses.map(cls =>
+            classService.getClassStudents(cls.id!).catch(() => [])
+          )
+        );
         const studentsMap: Student[] = [];
-        for (const cls of classes) {
-          if (!cls.id) continue;
-          try {
-            const classStudents = await classService.getClassStudents(cls.id);
-            classStudents.forEach((s: Record<string, unknown>) => {
-              if (!studentsMap.find(st => st.id === (s.id as number))) {
-                studentsMap.push({
-                  id: s.id as number,
-                  name: (s.nome || s.name || '') as string,
-                  email: (s.email || '') as string,
-                  phone: (s.telefone || s.phone || '') as string,
-                  classId: cls.id!,
-                  className: cls.name,
-                  grade: Number(s.nota_final) || 0,
-                  attendance: Number(s.frequencia) || 0,
-                  status: ((s.status as string) === 'ativo' ? 'active' : 'inactive') as Student['status'],
-                  enrollmentDate: (s.data_matricula || '') as string
-                });
-              }
-            });
-          } catch {
-            // Silently skip classes with no students
-          }
-        }
+        results.forEach((classStudents, idx) => {
+          const cls = validClasses[idx];
+          classStudents.forEach((s: Record<string, unknown>) => {
+            if (!studentsMap.find(st => st.id === (s.id as number))) {
+              studentsMap.push({
+                id: s.id as number,
+                name: (s.nome || s.name || '') as string,
+                email: (s.email || '') as string,
+                phone: (s.telefone || s.phone || '') as string,
+                classId: cls.id!,
+                className: cls.name,
+                grade: Number(s.nota_final) || 0,
+                attendance: Number(s.frequencia) || 0,
+                status: ((s.status as string) === 'ativo' ? 'active' : 'inactive') as Student['status'],
+                enrollmentDate: (s.data_matricula || '') as string
+              });
+            }
+          });
+        });
         setAllStudents(studentsMap);
       } catch (error) {
         console.error('Erro ao carregar turmas:', error);

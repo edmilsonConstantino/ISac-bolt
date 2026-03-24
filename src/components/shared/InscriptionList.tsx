@@ -79,7 +79,6 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
     if (!silent) setInitialLoading(true);
     setIsLoading(true);
 
-    // Timeout de 10s para evitar spinner infinito
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
@@ -87,53 +86,36 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
       const token = localStorage.getItem('access_token');
       if (!token) {
         toast.error('Sessão expirada. Faça login novamente.');
-        setStudents([]);
-        setFilteredStudents([]);
+        setStudents([]); setFilteredStudents([]);
         return;
       }
 
-      const fetchOpts = { headers: getAuthHeaders(), signal: controller.signal };
-
-      let response = await fetch(`${API_URL}/students.php?status=inscrito&with_credentials=true`, fetchOpts);
+      // Pedido único — o backend filtra directamente na BD (has_username=1)
+      const response = await fetch(
+        `${API_URL}/students.php?has_username=1`,
+        { headers: getAuthHeaders(), signal: controller.signal }
+      );
 
       if (response.status === 401) {
         toast.error('Sessão expirada. Faça login novamente.');
         localStorage.removeItem('access_token');
-        setStudents([]);
-        setFilteredStudents([]);
+        setStudents([]); setFilteredStudents([]);
         return;
       }
 
-      let result = await response.json();
-
-      if (!result.success || !result.data) {
-        response = await fetch(`${API_URL}/students.php?with_credentials=true`, fetchOpts);
-        if (response.status === 401) {
-          toast.error('Sessão expirada. Faça login novamente.');
-          localStorage.removeItem('access_token');
-          setStudents([]);
-          setFilteredStudents([]);
-          return;
-        }
-        result = await response.json();
-      }
+      const result = await response.json();
 
       if (result.success && Array.isArray(result.data)) {
-        const inscribed = result.data.filter((s: any) =>
-          s && s.username && s.username.trim().length > 0
-        );
-        setStudents(inscribed);
-        setFilteredStudents(inscribed);
+        setStudents(result.data);
+        setFilteredStudents(result.data);
       } else {
-        setStudents([]);
-        setFilteredStudents([]);
+        setStudents([]); setFilteredStudents([]);
       }
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
-        console.error('❌ Erro ao buscar estudantes inscritos:', error);
+        console.error('Erro ao buscar inscrições:', error);
       }
-      setStudents([]);
-      setFilteredStudents([]);
+      setStudents([]); setFilteredStudents([]);
     } finally {
       clearTimeout(timeout);
       setIsLoading(false);
@@ -146,7 +128,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
   }, []);
 
   // Auto-refresh silencioso: não mostra spinner, apenas actualiza os dados
-  useAutoRefresh(() => fetchInscribedStudents(true), { interval: 30_000 });
+  useAutoRefresh(() => fetchInscribedStudents(true), { interval: 60_000 });
 
   useEffect(() => {
     let filtered = students;

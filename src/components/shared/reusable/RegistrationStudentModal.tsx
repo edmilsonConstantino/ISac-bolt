@@ -124,6 +124,8 @@ export function RegistrationStudentModal({
   const [niveis,          setNiveis]          = useState<NivelItem[]>([]);
   const [selectedNivel,   setSelectedNivel]   = useState<NivelItem | null>(null);
   const [isLoadingNiveis, setIsLoadingNiveis] = useState(false);
+  // Cache de níveis por curso: { [courseId]: NivelItem[] }
+  const [niveisCache, setNiveisCache] = useState<Record<string | number, NivelItem[]>>({});
 
   const [studentSearch, setStudentSearch] = useState("");
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
@@ -205,6 +207,29 @@ export function RegistrationStudentModal({
 
         setStudents(studentsData);
         setCourses(coursesData);
+
+        // Pré-carregar níveis de todos os cursos com tem_niveis=true em paralelo
+        const cursosComNiveis = coursesData.filter(
+          (c: Record<string, unknown>) => Number(c.tem_niveis) > 0
+        );
+        if (cursosComNiveis.length > 0) {
+          const niveisResults = await Promise.allSettled(
+            cursosComNiveis.map((c: Record<string, unknown>) =>
+              apiClient.get(`/api/niveis.php?curso_id=${c.id ?? c.codigo}`)
+            )
+          );
+          const cache: Record<string | number, NivelItem[]> = {};
+          niveisResults.forEach((result, idx) => {
+            const curso = cursosComNiveis[idx] as Record<string, unknown>;
+            const key = (curso.id ?? curso.codigo) as string | number;
+            if (result.status === 'fulfilled') {
+              const lista: NivelItem[] = ((result.value.data?.data || result.value.data || []) as NivelItem[])
+                .slice().sort((a, b) => a.nivel - b.nivel);
+              cache[key] = lista;
+            }
+          });
+          setNiveisCache(cache);
+        }
 
         // classService returns fields in English (name, schedule, code, schedule_days).
         // CourseTab expects Portuguese field names (nome, turno, codigo, dias_semana).
@@ -328,23 +353,29 @@ export function RegistrationStudentModal({
     setSelectedNivel(null);
     setNiveis([]);
 
-    // Se o curso tem níveis, buscar e auto-seleccionar o Nível 1
-    // Usar Number() porque PHP retorna "0"/"1" (string), não boolean
+    // Se o curso tem níveis, usar cache (já pré-carregado ao abrir o modal)
     if (Number((course as Record<string, unknown>).tem_niveis) > 0) {
-      setIsLoadingNiveis(true);
-      try {
-        // niveis.php filtra por curso_id numérico (cursos.id), não pelo codigo
-        const cursoNumericId = (course as Record<string, unknown>).id ?? course.codigo;
-        const res = await apiClient.get(`/api/niveis.php?curso_id=${cursoNumericId}`);
-        const lista: NivelItem[] = ((res.data?.data || res.data || []) as NivelItem[])
-          .slice()
-          .sort((a, b) => a.nivel - b.nivel);
-        setNiveis(lista);
-        if (lista[0]) setSelectedNivel(lista[0]);
-      } catch (e) {
-        console.error('Erro ao buscar níveis:', e);
-      } finally {
-        setIsLoadingNiveis(false);
+      const cursoKey = ((course as Record<string, unknown>).id ?? course.codigo) as string | number;
+      const cached = niveisCache[cursoKey];
+      if (cached && cached.length > 0) {
+        // Já está em cache — mostra imediatamente, sem loading
+        setNiveis(cached);
+        setSelectedNivel(cached[0]);
+      } else {
+        // Fallback: fetch normal se por algum motivo não estiver em cache
+        setIsLoadingNiveis(true);
+        try {
+          const res = await apiClient.get(`/api/niveis.php?curso_id=${cursoKey}`);
+          const lista: NivelItem[] = ((res.data?.data || res.data || []) as NivelItem[])
+            .slice().sort((a, b) => a.nivel - b.nivel);
+          setNiveis(lista);
+          setNiveisCache(prev => ({ ...prev, [cursoKey]: lista }));
+          if (lista[0]) setSelectedNivel(lista[0]);
+        } catch (e) {
+          console.error('Erro ao buscar níveis:', e);
+        } finally {
+          setIsLoadingNiveis(false);
+        }
       }
     }
   };
