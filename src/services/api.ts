@@ -141,15 +141,17 @@ apiClient.interceptors.response.use(
       // Refresh falhou - processar fila com erro
       processQueue(refreshError, null);
 
-      // Limpar storage e redirecionar para login
+      // Limpar storage e redirecionar para login (silenciosamente — sem toast)
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
       localStorage.removeItem('auth-storage');
 
-      window.location.href = '/login';
+      window.location.replace('/login');
 
-      return Promise.reject(refreshError);
+      // Retornar promise que nunca resolve para que o componente não tente
+      // tratar o erro (evita toasts de "sessão expirada" antes do redirect)
+      return new Promise(() => {});
     } finally {
       isRefreshing = false;
     }

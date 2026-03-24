@@ -240,80 +240,123 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     loadUsers();
   }, [isAuthenticated]);
 
-  // ✅ Carregar dados da API
+  // ✅ Carregar todos os dados em paralelo
   useEffect(() => {
     if (!isAuthenticated) return;
     const loadAllData = async () => {
-  try {
-    // 1. Carregar cursos PRIMEIRO
-    await loadCourses();
-    
-    // 2. Carregar turmas (dependem de cursos)
-    await loadClasses();
-    
-    // 3. Carregar professores
-    await loadTeachers();
+      setIsLoadingStudents(true);
+      setIsLoadingCourses(true);
+      setIsLoadingClasses(true);
+      setIsLoadingTeachers(true);
+      try {
+        // Todos os pedidos independentes em paralelo — muito mais rápido
+        const [coursesData, classesData, teachersData, apiStudents, regsData] = await Promise.all([
+          courseService.getAll(),
+          classService.getAll(),
+          teacherService.getAll(),
+          studentService.getAll(),
+          registrationService.getAll(),
+        ]);
 
+        // Cursos e turmas
+        setCourses(coursesData);
+        setClasses(classesData);
 
-    // 4. Carregar estudantes (dependem de turmas já carregadas)
-// 4. Carregar estudantes (dependem de turmas já carregadas)
-// 4. Carregar estudantes (dependem de turmas já carregadas)
-setIsLoadingStudents(true);
-const apiStudents = await studentService.getAll();
+        // Professores
+        const mappedTeachers = teachersData.map((t: Teacher) => ({
+          id: t.id,
+          name: t.nome,
+          email: t.email,
+          phone: t.telefone || '',
+          genero: t.genero,
+          classes: (t as Teacher & { turmas_count?: string }).turmas_count
+            ? parseInt((t as Teacher & { turmas_count?: string }).turmas_count!)
+            : 0,
+          students: 0,
+          status: t.status === 'ativo' ? 'active' : 'inactive',
+          specialization: t.especialidade || '',
+          contractType: t.tipo_contrato === 'tempo_integral' ? 'full-time' :
+            t.tipo_contrato === 'meio_periodo' ? 'part-time' :
+            t.tipo_contrato === 'freelancer' ? 'freelancer' : 'substitute',
+          cursos: t.cursos || '',
+          turnos: t.turnos || '',
+          experience: t.observacoes || '',
+          qualifications: t.observacoes || ''
+        }));
+        setTeacherStats(mappedTeachers);
 
-console.log('📚 Estudantes carregados da API:', apiStudents);
-console.log('📚 TOTAL DE ESTUDANTES:', apiStudents.length);
-console.log('📚 PRIMEIRO ESTUDANTE (estrutura):', apiStudents[0]);
+        // Estudantes — usa classesData directamente (não o estado que ainda não actualizou)
+        const mappedStudents = apiStudents.map((student: APIStudent) => {
+          const studentClass = classesData.find((c: { curso: string }) => c.curso === student.curso_id);
+          return {
+            id: student.id,
+            name: student.name || '',
+            email: student.email || '',
+            phone: student.phone || '',
+            className: student.curso || 'Sem curso',
+            courseId: student.curso_id || '',
+            classId: studentClass?.id || 0,
+            enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0],
+            status: student.status === 'ativo' ? 'active' : 'inactive',
+            address: student.address || '',
+            birthDate: student.birth_date || '',
+            level: '',
+            parentName: '',
+            parentPhone: '',
+            emergencyContact: student.emergency_contact_1 || '',
+            emergencyPhone: student.emergency_contact_2 || '',
+            notes: student.notes || ''
+          };
+        });
+        setStudents(mappedStudents);
 
-const mappedStudents = apiStudents.map((student: APIStudent) => {
-  const studentClass = classes.find(c => c.curso === student.curso_id);
-  
-  return {
-    id: student.id,
-    name: student.name || '',                    // ✅ API retorna 'name'
-    email: student.email || '',
-    phone: student.phone || '',                  // ✅ API retorna 'phone'
-    className: student.curso || 'Sem curso',
-    courseId: student.curso_id || '',
-    classId: studentClass?.id || 0,
-    enrollmentDate: student.birth_date || new Date().toISOString().split('T')[0], // ✅ API retorna 'birth_date'
-    status: student.status === 'ativo' ? 'active' : 'inactive',
-    address: student.address || '',              // ✅ API retorna 'address'
-    birthDate: student.birth_date || '',         // ✅ API retorna 'birth_date'
-    level: '',
-    parentName: '',
-    parentPhone: '',
-    emergencyContact: student.emergency_contact_1 || '', // ✅ API retorna 'emergency_contact_1'
-    emergencyPhone: student.emergency_contact_2 || '',   // ✅ API retorna 'emergency_contact_2'
-    notes: student.notes || ''                   // ✅ API retorna 'notes'
-  };
-});
+        // Matrículas — usa dados já disponíveis (sem depender do estado)
+        const mappedRegistrations: Registration[] = regsData.map((reg: Record<string, unknown>) => {
+          const regStudentId = reg.student_id as number;
+          const regCourseId  = reg.course_id  as string;
+          const regClassId   = reg.class_id   as number;
+          const stud     = mappedStudents.find((s: { id: number }) => s.id === regStudentId);
+          const course   = coursesData.find((c: { codigo: string }) => c.codigo === regCourseId);
+          const classItem = classesData.find((c: { id: number }) => c.id === regClassId);
+          return {
+            id:             reg.id             as number,
+            studentId:      regStudentId,
+            studentName:    stud?.name || (reg.student_name as string) || 'Estudante não encontrado',
+            studentCode:    reg.username       as string,
+            courseId:       regCourseId,
+            courseName:     course?.nome || (reg.course_name as string) || 'Curso não encontrado',
+            classId:        regClassId,
+            className:      classItem?.nome || (reg.class_name as string) || '',
+            period:         reg.period         as string,
+            enrollmentDate: reg.enrollment_date as string,
+            status:         (reg.status        as string) || 'active',
+            paymentStatus:  (reg.payment_status as string) || 'pending',
+            enrollmentFee:  (reg.enrollment_fee as number) || 0,
+            monthlyFee:     (reg.monthly_fee    as number) || 0,
+            username:       (reg.username       as string) || '',
+            password:       (reg.password       as string) || '',
+            observations:   reg.observations    as string | undefined,
+          };
+        });
+        setRegistrations(mappedRegistrations);
 
-setStudents(mappedStudents);
-console.log('✅ Estudantes mapeados:', mappedStudents.length);
+        // Transições pendentes (não crítico — em background)
+        fetch('/api/level-transitions.php?action=count_pending', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }).then(r => r.json()).then(json => {
+          if (json.success) setPendingTransitionsCount(json.count);
+        }).catch(() => {});
 
-    // 5. 🆕 CARREGAR MATRÍCULAS (dependem de cursos, turmas e estudantes)
-    await loadRegistrations();
-
-    // 6. Contar transições de nível pendentes
-    try {
-      const resp = await fetch('/api/level-transitions.php?action=count_pending', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      const json = await resp.json();
-      if (json.success) setPendingTransitionsCount(json.count);
-    } catch {
-      // não crítico
-    }
-    
-  } catch (error: any) {
-    console.error("❌ Erro ao carregar dados:", error);
-  } finally {
-    setIsLoadingStudents(false);
-  }
-};
-
-loadAllData();
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        setIsLoadingStudents(false);
+        setIsLoadingCourses(false);
+        setIsLoadingClasses(false);
+        setIsLoadingTeachers(false);
+      }
+    };
+    loadAllData();
   }, [isAuthenticated]);
 
   // ✅ Funções auxiliares para manipular dados localmente

@@ -106,7 +106,6 @@ export function EditUserModal({ isOpen, onClose, user, onSave }: EditUserModalPr
     if (form.phone && !/^\d{9}$/.test(form.phone)) e.phone = 'Telefone deve ter exactamente 9 dígitos';
     if (form.bi_number && !/^\d{12}[A-Z]$/i.test(form.bi_number.trim())) e.bi_number = 'Formato inválido (12 dígitos + 1 letra)';
     if (form.password) {
-      if (form.password.length < 6) e.password = 'Mínimo 6 caracteres';
       if (form.password !== form.confirmPassword) e.confirmPassword = 'Senhas não coincidem';
     }
     setErrors(e);
@@ -137,6 +136,9 @@ export function EditUserModal({ isOpen, onClose, user, onSave }: EditUserModalPr
   };
 
   if (!user) return null;
+
+  // Apenas admins podem trocar de role; docentes e estudantes não
+  const canChangeRole = user.role === 'admin' || user.role === 'academic_admin';
 
   const currentRole = ROLES.find(r => r.id === form.role);
   const pwStrength  = passwordStrength(form.password);
@@ -260,51 +262,71 @@ export function EditUserModal({ isOpen, onClose, user, onSave }: EditUserModalPr
                   {/* Tipo de Usuário */}
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Tipo de Usuário <span className="text-red-500">*</span>
+                      Tipo de Usuário {canChangeRole && <span className="text-red-500">*</span>}
                     </Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {ROLES.map(role => {
-                        const Icon = role.icon;
-                        const selected = form.role === role.id;
-                        return (
-                          <button
-                            key={role.id}
-                            type="button"
-                            onClick={() => set('role', role.id)}
-                            className={cn(
-                              "relative p-4 rounded-xl border-2 transition-all text-left",
-                              selected
-                                ? `${role.border} ${role.bg} shadow-md`
-                                : "border-slate-200 bg-white hover:border-slate-300"
-                            )}
-                          >
-                            {selected && (
-                              <div className="absolute -top-2 -right-2">
-                                <div className={cn("h-5 w-5 bg-gradient-to-br rounded-full flex items-center justify-center", role.gradient)}>
-                                  <CheckCircle2 className="h-3 w-3 text-white" />
+
+                    {canChangeRole ? (
+                      /* Admin ↔ Academic Admin: pode trocar */
+                      <div className="grid grid-cols-2 gap-3">
+                        {ROLES.map(role => {
+                          const Icon = role.icon;
+                          const selected = form.role === role.id;
+                          return (
+                            <button
+                              key={role.id}
+                              type="button"
+                              onClick={() => set('role', role.id)}
+                              className={cn(
+                                "relative p-4 rounded-xl border-2 transition-all text-left",
+                                selected
+                                  ? `${role.border} ${role.bg} shadow-md`
+                                  : "border-slate-200 bg-white hover:border-slate-300"
+                              )}
+                            >
+                              {selected && (
+                                <div className="absolute -top-2 -right-2">
+                                  <div className={cn("h-5 w-5 bg-gradient-to-br rounded-full flex items-center justify-center", role.gradient)}>
+                                    <CheckCircle2 className="h-3 w-3 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-start gap-3">
+                                <div className={cn(
+                                  "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
+                                  selected ? `bg-gradient-to-br ${role.gradient}` : "bg-slate-100"
+                                )}>
+                                  <Icon className={cn("h-4 w-4", selected ? "text-white" : "text-slate-500")} />
+                                </div>
+                                <div>
+                                  <p className={cn("font-bold text-sm", selected ? role.text : "text-slate-800")}>
+                                    {role.label}
+                                  </p>
+                                  <p className={cn("text-[11px] mt-0.5", selected ? role.text : "text-slate-500")}>
+                                    {role.description}
+                                  </p>
                                 </div>
                               </div>
-                            )}
-                            <div className="flex items-start gap-3">
-                              <div className={cn(
-                                "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
-                                selected ? `bg-gradient-to-br ${role.gradient}` : "bg-slate-100"
-                              )}>
-                                <Icon className={cn("h-4 w-4", selected ? "text-white" : "text-slate-500")} />
-                              </div>
-                              <div>
-                                <p className={cn("font-bold text-sm", selected ? role.text : "text-slate-800")}>
-                                  {role.label}
-                                </p>
-                                <p className={cn("text-[11px] mt-0.5", selected ? role.text : "text-slate-500")}>
-                                  {role.description}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Docente / Estudante: role bloqueado, só mostra */
+                      <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
+                        {user.role === 'teacher' ? (
+                          <Briefcase className="h-5 w-5 text-blue-500 shrink-0" />
+                        ) : (
+                          <User className="h-5 w-5 text-emerald-500 shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-bold text-sm text-slate-700">
+                            {user.role === 'teacher' ? 'Docente' : 'Estudante'}
+                          </p>
+                          <p className="text-[11px] text-slate-400">O tipo de perfil não pode ser alterado</p>
+                        </div>
+                        <Lock className="h-4 w-4 text-slate-300 ml-auto shrink-0" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Nome + Status */}
@@ -417,7 +439,8 @@ export function EditUserModal({ isOpen, onClose, user, onSave }: EditUserModalPr
                             type={showPw ? 'text' : 'password'}
                             value={form.password}
                             onChange={e => set('password', e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="Nova senha"
+                            autoComplete="new-password"
                             className={cn("h-11 rounded-xl pr-10", errors.password && "border-red-400 bg-red-50")}
                           />
                           <button
@@ -436,7 +459,8 @@ export function EditUserModal({ isOpen, onClose, user, onSave }: EditUserModalPr
                             type={showConf ? 'text' : 'password'}
                             value={form.confirmPassword}
                             onChange={e => set('confirmPassword', e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="Repetir senha"
+                            autoComplete="new-password"
                             className={cn("h-11 rounded-xl pr-10", errors.confirmPassword && "border-red-400 bg-red-50")}
                           />
                           <button

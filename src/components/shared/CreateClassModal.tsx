@@ -368,8 +368,8 @@ export function ClassModal({
                 <GraduationCap className="text-white h-6 w-6" />
               </div>
               <div>
-                <h2 className="font-bold text-lg leading-none">Class Manager</h2>
-                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Setup Turma v1</span>
+                <h2 className="font-bold text-lg leading-none">Gestão de Turmas</h2>
+                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Sistema de Gestão ISAC</span>
               </div>
             </div>
 

@@ -89,16 +89,20 @@ class StudentService {
   }
 
   /**
-   * 🔍 Get student by ID
+   * 🔍 Get student by ID (full detail with registrations)
    */
-  async getById(id: number): Promise<Student> {
+  async getById(id: number): Promise<Student & { registrations?: any[] }> {
     try {
-      const response = await apiClient.get<Student[]>(`/api/students.php?id=${id}`);
-      
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        return response.data[0];
+      const response = await apiClient.get<any>(`/api/students.php?id=${id}`);
+      const data = response.data;
+
+      // API retorna objecto único ou array — normalizar
+      if (Array.isArray(data)) {
+        if (data.length === 0) throw new Error('Student not found');
+        return data[0];
       }
-      
+      if (data && data.id) return data;
+
       throw new Error('Student not found');
     } catch (error: any) {
       console.error('Error fetching student:', error);

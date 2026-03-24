@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Student } from "../../types";
+import studentService from "@/services/studentService";
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -66,12 +67,17 @@ export function StudentProfileModal({
   onResetPassword
 }: StudentProfileModalProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fullStudent, setFullStudent] = useState<Record<string, unknown>>({});
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
     birthDate: '',
+    biNumber: '',
+    gender: '',
+    username: '',
     parentName: '',
     parentPhone: '',
     emergencyContact: '',
@@ -104,26 +110,50 @@ export function StudentProfileModal({
   };
 
   useEffect(() => {
-    if (student && isOpen) {
-      setFormData({
-        name: student.name || '',
-        email: student.email || '',
-        phone: student.phone || '',
-        address: student.address || '',
-        birthDate: student.birthDate || '',
-        parentName: student.parentName || '',
-        parentPhone: student.parentPhone || '',
-        emergencyContact: student.emergencyContact || '',
-        emergencyPhone: student.emergencyPhone || '',
-        notes: student.notes || '',
-        level: student.level || '',
-        enrollmentDate: student.enrollmentDate || '',
-        status: student.status || 'active'
-      });
-      setIsEditing(false);
-      setErrors({});
-      setActiveTab('perfil');
-    }
+    if (!student || !isOpen) return;
+
+    // Preenche imediatamente com dados da lista (evita ecrã em branco)
+    setFormData({
+      name: student.name || '',
+      email: student.email || '',
+      phone: student.phone || '',
+      address: student.address || '',
+      birthDate: student.birthDate || '',
+      biNumber: '',
+      gender: '',
+      username: '',
+      parentName: student.parentName || '',
+      parentPhone: student.parentPhone || '',
+      emergencyContact: student.emergencyContact || '',
+      emergencyPhone: student.emergencyPhone || '',
+      notes: student.notes || '',
+      level: student.level || '',
+      enrollmentDate: student.enrollmentDate || '',
+      status: (student.status as 'active' | 'inactive' | 'suspended') || 'active'
+    });
+    setIsEditing(false);
+    setErrors({});
+    setActiveTab('perfil');
+
+    // Fetch dados completos do servidor
+    setIsLoading(true);
+    studentService.getById(student.id).then((full) => {
+      setFullStudent(full as Record<string, unknown>);
+      setFormData(prev => ({
+        ...prev,
+        name:             (full.name as string)               || prev.name,
+        email:            (full.email as string)              || prev.email,
+        phone:            (full.phone as string)              || prev.phone,
+        address:          (full.address as string)            || prev.address,
+        birthDate:        (full.birth_date as string)         || prev.birthDate,
+        biNumber:         (full.bi_number as string)          || '',
+        gender:           (full.gender as string)             || '',
+        username:         (full.username as string)           || '',
+        parentName:       (full.emergency_contact_1 as string)|| prev.parentName,
+        emergencyContact: (full.emergency_contact_2 as string)|| prev.emergencyContact,
+        notes:            (full.notes as string)              || prev.notes,
+      }));
+    }).catch(() => {/* mantém dados parciais já exibidos */}).finally(() => setIsLoading(false));
   }, [student, isOpen]);
 
   if (!student || !formData) return null;
@@ -259,14 +289,19 @@ export function StudentProfileModal({
                     {formData.status === 'active' ? '✓ Activo' :
                      formData.status === 'suspended' ? '⚠ Suspenso' : 'Inactivo'}
                   </span>
-                  {student.username && (
+                  {formData.username && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-white/10 text-white/80 border border-white/20">
-                      {student.username}
+                      {formData.username}
                     </span>
                   )}
-                  {student.phone && (
+                  {formData.phone && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] bg-white/10 text-white/80 border border-white/20">
-                      <Phone className="h-3 w-3" />{student.phone}
+                      <Phone className="h-3 w-3" />{formData.phone}
+                    </span>
+                  )}
+                  {isLoading && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] bg-white/10 text-white/60 border border-white/20 animate-pulse">
+                      A carregar...
                     </span>
                   )}
                 </div>
@@ -311,7 +346,7 @@ export function StudentProfileModal({
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                     <Input id="phone" name="phone" value={formData.phone}
                       onChange={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9); handleInputChange(e); }}
-                      placeholder="9 dígitos (ex: 841234567)" disabled={!isEditing} maxLength={9}
+                      placeholder="9 dígitos" disabled={!isEditing} maxLength={9}
                       className={cn("h-10 text-sm pl-9 rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}
                     />
                   </div>
@@ -325,6 +360,28 @@ export function StudentProfileModal({
                     disabled={!isEditing}
                     hasError={!!errors.birthDate}
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="biNumber" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nº BI</Label>
+                  <Input id="biNumber" name="biNumber" value={formData.biNumber} onChange={handleInputChange}
+                    disabled={!isEditing} placeholder={isLoading ? "A carregar..." : "—"}
+                    className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]", isLoading && "animate-pulse")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Género</Label>
+                  <Select value={formData.gender} onValueChange={(v) => handleSelectChange('gender', v)} disabled={!isEditing}>
+                    <SelectTrigger className={cn("h-10 text-sm rounded-xl", !isEditing ? "bg-slate-50 border-slate-200" : "border-[#F5821F]/50 focus:border-[#F5821F]")}>
+                      <SelectValue placeholder={isLoading ? "A carregar..." : "Seleccionar"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Masculino</SelectItem>
+                      <SelectItem value="F">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -427,7 +484,7 @@ export function StudentProfileModal({
                 </div>
                 <div>
                   <p className="font-semibold text-sm text-slate-800">Utilizador</p>
-                  <p className="text-xs text-slate-400 font-mono">{student.username || '—'}</p>
+                  <p className={cn("text-xs font-mono", isLoading ? "text-slate-300 animate-pulse" : "text-slate-400")}>{formData.username || (isLoading ? 'A carregar...' : '—')}</p>
                 </div>
               </div>
             </SectionCard>

@@ -50,6 +50,10 @@ export interface Class {
   createdAt?: string;
   updatedAt?: string;
   selectedStudentIds?: number[]; // IDs dos estudantes a adicionar (criação)
+  nivel_id?: number | null;      // ID do nível (quando curso tem_niveis=true)
+  nivel_numero?: number | null;
+  nivel_nome?: string | null;
+  curso_nome?: string;
 }
 
 // ============================
