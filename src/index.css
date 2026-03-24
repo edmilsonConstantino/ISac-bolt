@@ -141,3 +141,27 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Scrollbar subtil e profissional ─────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.28);
+}
