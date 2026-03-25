@@ -90,6 +90,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   // ✅ Estados de dados REAIS
   const [students, setStudents] = useState<Student[]>([]);
+  const [inscribedStudents, setInscribedStudents] = useState<APIStudent[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [teacherStats, setTeacherStats] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -309,6 +310,9 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
           };
         });
         setStudents(mappedStudents);
+
+        // Estudantes com username (Inscrições) — derivado do mesmo fetch, sem pedido extra
+        setInscribedStudents(apiStudents.filter((s: APIStudent) => s.username && s.username.trim() !== ''));
 
         // Matrículas — usa dados já disponíveis (sem depender do estado)
         const mappedRegistrations: Registration[] = regsData.map((reg: Record<string, unknown>) => {
@@ -1488,8 +1492,8 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
           <TabsContent value="inscriptions" className="mt-0">
             <InscriptionList
+              initialStudents={inscribedStudents}
               onProceedToRegistration={(studentId) => {
-                // Abrir modal de matrícula com estudante pré-selecionado
                 setRegistrationModal({
                   isOpen: true,
                   registrationData: null,
@@ -1497,11 +1501,14 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                   preSelectedStudentId: studentId
                 });
               }}
+              onStudentsChange={(updated) => setInscribedStudents(updated)}
             />
           </TabsContent>
 
           <TabsContent value="payments" className="mt-0">
-            <PaymentsDashboard />
+            <PaymentsDashboard
+              initialStudents={students.map(s => ({ id: s.id, name: s.name, email: s.email }))}
+            />
           </TabsContent>
 
           <TabsContent value="users" className="mt-0">

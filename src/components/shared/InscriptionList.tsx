@@ -47,13 +47,15 @@ interface InscribedStudent {
 interface InscriptionListProps {
   onProceedToRegistration?: (studentId: number) => void;
   currentUserRole?: string;
+  initialStudents?: InscribedStudent[];
+  onStudentsChange?: (students: InscribedStudent[]) => void;
 }
 
-export function InscriptionList({ onProceedToRegistration, currentUserRole }: InscriptionListProps) {
-  const [students, setStudents] = useState<InscribedStudent[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<InscribedStudent[]>([]);
+export function InscriptionList({ onProceedToRegistration, currentUserRole, initialStudents, onStudentsChange }: InscriptionListProps) {
+  const [students, setStudents] = useState<InscribedStudent[]>(initialStudents ?? []);
+  const [filteredStudents, setFilteredStudents] = useState<InscribedStudent[]>(initialStudents ?? []);
   const [isLoading, setIsLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(!initialStudents);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ativo' | 'inativo'>('all');
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -108,8 +110,10 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
       if (result.success && Array.isArray(result.data)) {
         setStudents(result.data);
         setFilteredStudents(result.data);
+        onStudentsChange?.(result.data);
       } else {
         setStudents([]); setFilteredStudents([]);
+        onStudentsChange?.([]);
       }
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
@@ -124,8 +128,8 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
   };
 
   useEffect(() => {
-    fetchInscribedStudents(false);
-  }, []);
+    if (!initialStudents) fetchInscribedStudents(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh silencioso: não mostra spinner, apenas actualiza os dados
   useAutoRefresh(() => fetchInscribedStudents(true), { interval: 60_000 });

@@ -97,9 +97,13 @@ function PaymentStatusBadge({ status }: { status: string }) {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function PaymentsDashboard() {
-  const [students, setStudents] = useState<StudentListItem[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(true);
+interface PaymentsDashboardProps {
+  initialStudents?: StudentListItem[];
+}
+
+export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
+  const [students, setStudents] = useState<StudentListItem[]>(initialStudents ?? []);
+  const [loadingStudents, setLoadingStudents] = useState(!initialStudents);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -139,6 +143,19 @@ export function PaymentsDashboard() {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
+  const fetchOverdueMap = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || '';
+      const resp = await fetch(`${API_URL}/student-finance.php?overdue_summary=1`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) setOverdueMap(data.data || {});
+      }
+    } catch { /* silent */ }
+  };
+
   const fetchStudents = async () => {
     setLoadingStudents(true);
     try {
@@ -148,9 +165,7 @@ export function PaymentsDashboard() {
         fetch(`${API_URL}/student-finance.php?overdue_summary=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
       const data = await studentsResp.json();
-      if (data.success) {
-        setStudents(data.data || []);
-      }
+      if (data.success) setStudents(data.data || []);
       if (overdueResp.ok) {
         const overdueData = await overdueResp.json();
         if (overdueData.success) setOverdueMap(overdueData.data || {});
@@ -178,7 +193,13 @@ export function PaymentsDashboard() {
     }
   }, []);
 
-  useEffect(() => { fetchStudents(); }, []);
+  useEffect(() => {
+    if (initialStudents) {
+      fetchOverdueMap(); // estudantes já vieram do pai — só buscar overdue
+    } else {
+      fetchStudents();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Open finance dialog ────────────────────────────────────────────────────
 

@@ -23,6 +23,8 @@ export interface Student {
   emergency_contact_1?: string;
   emergency_contact_2?: string;
   notes?: string;
+  is_bolsista?: number;
+  has_registration?: 0 | 1;
   status: 'ativo' | 'inativo';
   created_at?: string;
   updated_at?: string;
