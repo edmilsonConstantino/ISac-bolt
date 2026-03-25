@@ -321,7 +321,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
               <UserPlus className="h-4 w-4 text-slate-600" />
               <span className="text-xs text-slate-600 font-medium">Total Inscritos</span>
             </div>
-            <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
+            <p className="text-2xl font-bold text-slate-800">{initialLoading ? '—' : stats.total}</p>
           </div>
 
           <div
@@ -334,7 +334,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <span className="text-xs text-green-700 font-medium">Activos</span>
             </div>
-            <p className="text-2xl font-bold text-green-700">{stats.active}</p>
+            <p className="text-2xl font-bold text-green-700">{initialLoading ? '—' : stats.active}</p>
           </div>
 
           <div
@@ -347,7 +347,7 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
               <XCircle className="h-4 w-4 text-slate-600" />
               <span className="text-xs text-slate-700 font-medium">Inactivos</span>
             </div>
-            <p className="text-2xl font-bold text-slate-700">{stats.inactive}</p>
+            <p className="text-2xl font-bold text-slate-700">{initialLoading ? '—' : stats.inactive}</p>
           </div>
         </div>
       </div>
@@ -378,7 +378,30 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole }: In
       </div>
 
       {/* Students Display */}
-      {filteredStudents.length === 0 ? (
+      {initialLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse">
+              <div className="h-1.5 bg-slate-200" />
+              <div className="p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-3/4" />
+                    <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+                  <div className="h-2.5 bg-slate-200 rounded w-full" />
+                  <div className="h-2.5 bg-slate-200 rounded w-4/5" />
+                  <div className="h-2.5 bg-slate-200 rounded w-3/5" />
+                </div>
+                <div className="h-9 bg-slate-100 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredStudents.length === 0 ? (
         <EmptyState
           icon={UserPlus}
           title="Nenhum estudante encontrado"

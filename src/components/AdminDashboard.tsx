@@ -342,7 +342,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
 
         // Transições pendentes (não crítico — em background)
         fetch('/api/level-transitions.php?action=count_pending', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
         }).then(r => r.json()).then(json => {
           if (json.success) setPendingTransitionsCount(json.count);
         }).catch(() => {});

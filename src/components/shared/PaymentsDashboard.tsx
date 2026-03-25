@@ -99,7 +99,7 @@ function PaymentStatusBadge({ status }: { status: string }) {
 
 export function PaymentsDashboard() {
   const [students, setStudents] = useState<StudentListItem[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -380,7 +380,20 @@ export function PaymentsDashboard() {
           </div>
 
           {/* Content */}
-          {filteredStudents.length === 0 ? (
+          {loadingStudents ? (
+            <div className="divide-y divide-slate-50">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="px-4 py-3.5 flex items-center gap-4 animate-pulse">
+                  <div className="h-10 w-10 rounded-full bg-slate-200 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-1/3" />
+                    <div className="h-2.5 bg-slate-100 rounded w-1/4" />
+                  </div>
+                  <div className="h-7 w-28 bg-slate-100 rounded-lg shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : filteredStudents.length === 0 ? (
             <div className="py-16 text-center">
               <Users className="h-10 w-10 mx-auto mb-3 text-slate-200" />
               <p className="text-sm font-medium text-slate-500">
