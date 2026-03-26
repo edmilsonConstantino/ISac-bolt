@@ -114,6 +114,13 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
   // Track overdue status per student (populated on load)
   const [overdueMap, setOverdueMap] = useState<Record<number, boolean>>({});
 
+  const [dashStats, setDashStats] = useState<{
+    overdue_students: number;
+    pending_students: number;
+    up_to_date_students: number;
+    overdue_amount: number;
+  } | null>(null);
+
   // ── Payment modal ──────────────────────────────────────────────────────────
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
@@ -146,12 +153,17 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
   const fetchOverdueMap = async () => {
     try {
       const token = localStorage.getItem('access_token') || '';
-      const resp = await fetch(`${API_URL}/student-finance.php?overdue_summary=1`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
+      const [overdueResp, statsResp] = await Promise.all([
+        fetch(`${API_URL}/student-finance.php?overdue_summary=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/student-finance.php?dashboard_stats=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      if (overdueResp.ok) {
+        const data = await overdueResp.json();
         if (data.success) setOverdueMap(data.data || {});
+      }
+      if (statsResp.ok) {
+        const data = await statsResp.json();
+        if (data.success) setDashStats(data.data);
       }
     } catch { /* silent */ }
   };
@@ -160,15 +172,20 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
     setLoadingStudents(true);
     try {
       const token = localStorage.getItem('access_token') || '';
-      const [studentsResp, overdueResp] = await Promise.all([
+      const [studentsResp, overdueResp, statsResp] = await Promise.all([
         fetch(`${API_URL}/students.php`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/student-finance.php?overdue_summary=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/student-finance.php?dashboard_stats=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
       const data = await studentsResp.json();
       if (data.success) setStudents(data.data || []);
       if (overdueResp.ok) {
         const overdueData = await overdueResp.json();
         if (overdueData.success) setOverdueMap(overdueData.data || {});
+      }
+      if (statsResp.ok) {
+        const statsData = await statsResp.json();
+        if (statsData.success) setDashStats(statsData.data);
       }
     } catch (error) {
       console.error('Erro ao carregar estudantes:', error);
@@ -336,21 +353,71 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
               Pesquise um estudante e clique para gerir os pagamentos
             </PageHeaderSubtitle>
           </div>
-          {/* Quick stats */}
-          <div className="hidden sm:flex items-center gap-3">
-            <div className="text-center px-4 py-2 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-xl font-bold text-[#004B87]">{students.length}</p>
-              <p className="text-xs text-slate-500">Estudantes</p>
-            </div>
-            {overdueCount > 0 && (
-              <div className="text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100">
-                <p className="text-xl font-bold text-red-600">{overdueCount}</p>
-                <p className="text-xs text-slate-500">Em Atraso</p>
-              </div>
-            )}
-          </div>
         </div>
       </PageHeader>
+
+      {/* ── Stats Cards ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Total estudantes */}
+        <div className="bg-white rounded-2xl border-2 border-[#004B87]/20 p-5 flex items-center gap-4 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-[#004B87]/10 flex items-center justify-center shrink-0">
+            <Users className="h-6 w-6 text-[#004B87]" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-[#004B87]">{students.length}</p>
+            <p className="text-xs text-slate-500 font-medium">Total Estudantes</p>
+          </div>
+        </div>
+
+        {/* Em atraso */}
+        <div className="bg-white rounded-2xl border-2 border-red-200 p-5 flex items-center gap-4 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-6 w-6 text-red-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-red-600">
+              {dashStats?.overdue_students ?? Object.values(overdueMap).filter(Boolean).length}
+            </p>
+            <p className="text-xs text-slate-500 font-medium">Em Atraso</p>
+          </div>
+        </div>
+
+        {/* Pagamentos pendentes */}
+        <div className="bg-white rounded-2xl border-2 border-amber-200 p-5 flex items-center gap-4 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <Clock className="h-6 w-6 text-amber-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-amber-600">
+              {dashStats?.pending_students ?? '—'}
+            </p>
+            <p className="text-xs text-slate-500 font-medium">Com Pendências</p>
+          </div>
+        </div>
+
+        {/* Em dia */}
+        <div className="bg-white rounded-2xl border-2 border-green-200 p-5 flex items-center gap-4 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-green-600">
+              {dashStats?.up_to_date_students ?? '—'}
+            </p>
+            <p className="text-xs text-slate-500 font-medium">Em Dia</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Valor em dívida — só mostra se há atraso */}
+      {dashStats && dashStats.overdue_amount > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-3 flex items-center gap-3">
+          <TrendingUp className="h-5 w-5 text-red-500 shrink-0" />
+          <span className="text-sm text-red-700 font-medium">
+            Valor total em atraso: <span className="font-bold">{formatCurrency(dashStats.overdue_amount)}</span>
+          </span>
+        </div>
+      )}
 
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
@@ -753,7 +820,14 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                       ) : (
                         <div className="space-y-2">
                           {studentFinance.recent_payments.map((payment) => (
-                            <PaymentRow key={payment.id} payment={payment} onVoid={openVoidModal} />
+                            <PaymentRow
+                              key={payment.id}
+                              payment={payment}
+                              onVoid={openVoidModal}
+                              studentName={studentFinance.student.name}
+                              courseName={studentFinance.course?.name}
+                              studentUsername={String(studentFinance.student.id)}
+                            />
                           ))}
                         </div>
                       )}
@@ -1100,79 +1174,237 @@ function PlanRow({ plan, onPay }: { plan: PaymentPlanItem; onPay: (p: PaymentPla
   );
 }
 
-function printPaymentReceipt(payment: PaymentTransaction) {
+// ── Número por extenso (PT) ────────────────────────────────────────────────
+function numberToWordsPT(n: number): string {
+  const units = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove',
+    'dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+  const tens = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const hundreds = ['','cem','duzentos','trezentos','quatrocentos','quinhentos',
+    'seiscentos','setecentos','oitocentos','novecentos'];
+  if (n === 0) return 'zero';
+  if (n < 0) return 'menos ' + numberToWordsPT(-n);
+  if (n === 100) return 'cem';
+  if (n < 20) return units[n];
+  if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' e ' + units[n%10] : '');
+  if (n < 1000) return hundreds[Math.floor(n/100)] + (n%100 ? ' e ' + numberToWordsPT(n%100) : '');
+  if (n < 1000000) {
+    const m = Math.floor(n/1000);
+    const r = n%1000;
+    return (m === 1 ? 'mil' : numberToWordsPT(m) + ' mil') + (r ? ' e ' + numberToWordsPT(r) : '');
+  }
+  return n.toLocaleString('pt-MZ');
+}
+
+function amountToExtensoPT(amount: number): string {
+  const intPart = Math.floor(amount);
+  const decPart = Math.round((amount - intPart) * 100);
+  let result = numberToWordsPT(intPart) + (intPart === 1 ? ' metical' : ' meticais');
+  if (decPart > 0) result += ' e ' + numberToWordsPT(decPart) + ' centavo' + (decPart !== 1 ? 's' : '');
+  return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+function printPaymentReceipt(
+  payment: PaymentTransaction,
+  studentName = '—',
+  courseName = '—',
+  studentUsername = '—',
+) {
+  const isVoid = payment.status === 'void' || payment.status === 'reversed';
   const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
-  const mensalidadeMonths = Array.from(new Set(
-    (payment.allocations ?? []).filter(a => a.plan_type === 'mensalidade').map(a => a.month_reference)
-  ));
-  const allocationsHtml = mensalidadeMonths.length > 0
-    ? mensalidadeMonths.map(m => `<span style="display:inline-block;background:#e8f0fb;color:#004B87;padding:2px 8px;border-radius:4px;margin:2px;font-size:12px;font-weight:600">${formatMonthReference(m)}</span>`).join('')
-    : '';
+
+  // Build line items from allocations
+  const allocs = payment.allocations ?? [];
+  const lineItems: { label: string; amount: number }[] = [];
+
+  // Group by plan_type
+  const matricula = allocs.filter(a => a.plan_type === 'taxa_matricula' || a.plan_type === 'enrollment');
+  const inscricao = allocs.filter(a => a.plan_type === 'inscricao' || a.plan_type === 'registration_fee');
+  const mensalidades = allocs.filter(a => a.plan_type === 'mensalidade' || a.plan_type === 'monthly');
+  const outros = allocs.filter(a =>
+    !['taxa_matricula','enrollment','inscricao','registration_fee','mensalidade','monthly'].includes(a.plan_type ?? '')
+  );
+
+  if (matricula.length > 0) {
+    lineItems.push({ label: `Taxa de Matrícula`, amount: matricula.reduce((s,a) => s + a.amount_allocated, 0) });
+  }
+  if (inscricao.length > 0) {
+    lineItems.push({ label: `Taxa de Inscrição`, amount: inscricao.reduce((s,a) => s + a.amount_allocated, 0) });
+  }
+  // Group mensalidades by month
+  const byMonth: Record<string, number> = {};
+  mensalidades.forEach(a => {
+    byMonth[a.month_reference] = (byMonth[a.month_reference] ?? 0) + a.amount_allocated;
+  });
+  Object.entries(byMonth).forEach(([ref, val]) => {
+    lineItems.push({ label: `Propina de ${formatMonthReference(ref)}`, amount: val });
+  });
+  outros.forEach(a => {
+    lineItems.push({ label: a.plan_type ?? 'Outro', amount: a.amount_allocated });
+  });
+
+  // If no allocations, show single line
+  if (lineItems.length === 0) {
+    lineItems.push({
+      label: payment.is_advance ? 'Crédito / Adiantamento' : 'Pagamento',
+      amount: payment.amount_paid
+    });
+  }
+
+  const receiptNum = payment.receipt_number || `REC-${String(payment.id).padStart(6, '0')}`;
+  const printDate = new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
+  const payDate = formatDate(payment.paid_date);
+  const extenso = amountToExtensoPT(payment.amount_paid);
+
+  const lineItemsHtml = lineItems.map((item, i) => `
+    <tr>
+      <td style="padding:7px 10px;border:1px solid #d1d5db;text-align:center;color:#374151;">${i + 1}</td>
+      <td style="padding:7px 10px;border:1px solid #d1d5db;color:#374151;">${item.label}</td>
+      <td style="padding:7px 10px;border:1px solid #d1d5db;text-align:right;font-weight:600;color:#374151;">${item.amount.toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+    </tr>`).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <title>Recibo de Pagamento</title>
+  <meta charset="UTF-8"/>
+  <title>Recibo Nº ${receiptNum}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 32px 0; }
-    .receipt { background: white; width: 420px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
-    .header { background: linear-gradient(135deg, #004B87, #0066B3); padding: 24px; text-align: center; }
-    .logo-circle { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 22px; font-weight: 800; color: white; }
-    .header h1 { color: white; font-size: 18px; font-weight: 700; }
-    .header p { color: rgba(255,255,255,0.75); font-size: 11px; margin-top: 2px; }
-    .amount-block { background: #f0f7ff; border-bottom: 2px dashed #d0e4f7; padding: 20px 24px; text-align: center; }
-    .amount-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
-    .amount-value { font-size: 32px; font-weight: 800; color: #004B87; margin: 4px 0 0; }
-    .body { padding: 20px 24px; }
-    .row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
-    .row:last-child { border-bottom: none; }
-    .row-label { font-size: 12px; color: #94a3b8; font-weight: 500; }
-    .row-value { font-size: 13px; color: #1e293b; font-weight: 600; text-align: right; max-width: 220px; }
-    .months-section { margin: 12px 0 0; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
-    .months-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-    .status-badge { display: inline-flex; align-items: center; gap: 4px; background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid #bbf7d0; }
-    .void-badge { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
-    .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; text-align: center; font-size: 10px; color: #94a3b8; }
-    @media print { body { background: white; padding: 0; } .receipt { box-shadow: none; border-radius: 0; width: 100%; } }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;justify-content:center;padding:30px 0;}
+    .page{background:white;width:720px;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #004B87;padding-bottom:18px;margin-bottom:18px;}
+    .brand{display:flex;align-items:center;gap:14px;}
+    .logo{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#004B87,#F5821F);display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900;flex-shrink:0;}
+    .brand-info h1{font-size:22px;font-weight:900;color:#004B87;letter-spacing:.02em;}
+    .brand-info p{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;}
+    .rec-box{text-align:right;}
+    .rec-box .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
+    .rec-box .number{font-size:24px;font-weight:900;color:#F5821F;letter-spacing:.04em;}
+    .rec-box .date{font-size:11px;color:#6b7280;margin-top:2px;}
+    .student-block{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;gap:40px;}
+    .sfield label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px;}
+    .sfield span{font-size:13px;font-weight:600;color:#111827;}
+    .pay-table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+    .pay-table th{background:#004B87;color:white;font-size:11px;padding:8px 10px;text-align:left;font-weight:600;letter-spacing:.04em;}
+    .pay-table th:last-child{text-align:right;}
+    .pay-table td{font-size:12px;}
+    .extenso{font-size:11px;color:#374151;margin-bottom:16px;font-style:italic;}
+    .extenso strong{font-style:normal;font-weight:700;color:#111827;}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+    .items-table th{background:#f3f4f6;color:#374151;font-size:11px;padding:8px 10px;border:1px solid #d1d5db;text-align:left;font-weight:700;letter-spacing:.04em;}
+    .items-table th:first-child{text-align:center;width:50px;}
+    .items-table th:last-child{text-align:right;}
+    .total-row td{background:#004B87;color:white;padding:9px 10px;font-weight:700;font-size:13px;}
+    .total-row td:last-child{text-align:right;}
+    .balance{margin-top:10px;display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;}
+    .balance .bal-label{font-size:12px;color:#374151;font-weight:600;}
+    .balance .bal-value{font-size:16px;font-weight:900;color:#16a34a;}
+    .void-banner{background:#fef2f2;border:2px solid #fca5a5;border-radius:6px;padding:10px 14px;text-align:center;color:#dc2626;font-weight:700;font-size:13px;margin-bottom:14px;}
+    .bottom{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-end;}
+    .printed{font-size:10px;color:#9ca3af;}
+    .sig-area{text-align:center;}
+    .sig-line{width:180px;border-top:1px solid #374151;margin:28px auto 4px;}
+    .sig-label{font-size:10px;color:#6b7280;}
+    .stamp{width:80px;height:80px;border:2px dashed #d1d5db;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#d1d5db;text-align:center;}
+    @media print{body{background:white;padding:0;}.page{box-shadow:none;width:100%;padding:20px;}}
   </style>
 </head>
 <body>
-  <div class="receipt">
-    <div class="header">
-      <div class="logo-circle">I</div>
-      <h1>ISAC</h1>
-      <p>Instituto Superior de Artes e Cultura</p>
-    </div>
-    <div class="amount-block">
-      <p class="amount-label">Valor Pago</p>
-      <p class="amount-value">${formatCurrency(payment.amount_paid)}</p>
-    </div>
-    <div class="body">
-      <div class="row">
-        <span class="row-label">Estado</span>
-        <span class="row-value">
-          <span class="status-badge ${payment.status === 'void' || payment.status === 'reversed' ? 'void-badge' : ''}">
-            ${payment.status === 'void' || payment.status === 'reversed' ? '✕ Anulado' : '✓ Confirmado'}
-          </span>
-        </span>
+<div class="page">
+
+  ${isVoid ? `<div class="void-banner">⚠ RECIBO ANULADO — Este documento não tem validade financeira</div>` : ''}
+
+  <!-- Header -->
+  <div class="top">
+    <div class="brand">
+      <div class="logo">I</div>
+      <div class="brand-info">
+        <h1>ISAC</h1>
+        <p>Consultoria Linguística e Coaching<br/>Maputo, Moçambique</p>
       </div>
-      ${payment.receipt_number ? `<div class="row"><span class="row-label">Nº Recibo</span><span class="row-value">${payment.receipt_number}</span></div>` : ''}
-      <div class="row"><span class="row-label">Método</span><span class="row-value">${methodLabel}</span></div>
-      <div class="row"><span class="row-label">Data de Pagamento</span><span class="row-value">${formatDate(payment.paid_date)}</span></div>
-      ${payment.payment_type_name ? `<div class="row"><span class="row-label">Tipo</span><span class="row-value">${payment.payment_type_name}</span></div>` : ''}
-      ${payment.observacoes ? `<div class="row"><span class="row-label">Observações</span><span class="row-value">${payment.observacoes}</span></div>` : ''}
-      ${allocationsHtml ? `<div class="months-section"><p class="months-label">Meses Cobertos</p><div>${allocationsHtml}</div></div>` : ''}
     </div>
-    <div class="footer">
-      Emitido em ${new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' })} · Sistema Académico ISAC
+    <div class="rec-box">
+      <div class="label">Recibo Nº</div>
+      <div class="number">${receiptNum}</div>
+      <div class="date">Emitido em: ${payDate}</div>
     </div>
   </div>
+
+  <!-- Student info -->
+  <div class="student-block">
+    <div class="sfield"><label>Recebemos de</label><span>${studentName}</span></div>
+    <div class="sfield"><label>Curso</label><span>${courseName}</span></div>
+    <div class="sfield"><label>Nº de Estudante</label><span>${studentUsername}</span></div>
+  </div>
+
+  <!-- Payment details -->
+  <table class="pay-table" style="margin-bottom:6px;">
+    <thead>
+      <tr>
+        <th>Valor</th>
+        <th>Forma de Pagamento</th>
+        <th>Nº do Documento</th>
+        <th style="text-align:right;">Data de Pagamento</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:8px 10px;border:1px solid #d1d5db;font-weight:700;color:#004B87;font-size:14px;">
+          ${payment.amount_paid.toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2})} MT
+        </td>
+        <td style="padding:8px 10px;border:1px solid #d1d5db;color:#374151;">${methodLabel}</td>
+        <td style="padding:8px 10px;border:1px solid #d1d5db;color:#374151;">${payment.receipt_number || '—'}</td>
+        <td style="padding:8px 10px;border:1px solid #d1d5db;text-align:right;color:#374151;">${payDate}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="extenso">Extenso: <strong>${extenso}</strong></p>
+  ${payment.observacoes ? `<p style="font-size:11px;color:#6b7280;margin-bottom:12px;font-style:italic;">Observações: ${payment.observacoes}</p>` : ''}
+
+  <!-- Line items -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>Ord.</th>
+        <th>Referente a</th>
+        <th style="text-align:right;">Valor (MT)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lineItemsHtml}
+      <tr class="total-row">
+        <td colspan="2">Total</td>
+        <td>${payment.amount_paid.toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Balance note -->
+  <div class="balance">
+    <span class="bal-label">Saldo em dívida do estudante:</span>
+    <span class="bal-value" style="${isVoid ? 'color:#6b7280' : ''}">— MT</span>
+    <span style="font-size:10px;color:#9ca3af;">(consulte o extrato para saldo actualizado)</span>
+  </div>
+
+  <!-- Footer -->
+  <div class="bottom">
+    <div class="printed">
+      Impresso no dia ${printDate}<br/>
+      Sistema Académico ISAC
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-end;">
+      <div class="stamp"><span>Carimbo</span></div>
+      <div class="sig-area">
+        <div class="sig-line"></div>
+        <div class="sig-label">Assinatura / Secretaria</div>
+      </div>
+    </div>
+  </div>
+
+</div>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=520,height=700');
+  const win = window.open('', '_blank', 'width=820,height=900');
   if (win) {
     win.document.write(html);
     win.document.close();
@@ -1183,9 +1415,15 @@ function printPaymentReceipt(payment: PaymentTransaction) {
 function PaymentRow({
   payment,
   onVoid,
+  studentName,
+  courseName,
+  studentUsername,
 }: {
   payment: PaymentTransaction;
   onVoid: (p: PaymentTransaction) => void;
+  studentName?: string;
+  courseName?: string;
+  studentUsername?: string;
 }) {
   const isVoid = payment.status === 'void' || payment.status === 'reversed';
   const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
@@ -1300,7 +1538,7 @@ function PaymentRow({
             variant="outline"
             size="sm"
             className="h-7 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
-            onClick={() => printPaymentReceipt(payment)}
+            onClick={() => printPaymentReceipt(payment, studentName, courseName, studentUsername)}
           >
             <Printer className="h-3.5 w-3.5" />
             Imprimir Recibo
@@ -1352,7 +1590,14 @@ function NoEnrollmentView({
           </h4>
           <div className="space-y-2">
             {studentFinance.recent_payments.map((payment) => (
-              <PaymentRow key={payment.id} payment={payment} onVoid={onVoid} />
+              <PaymentRow
+                key={payment.id}
+                payment={payment}
+                onVoid={onVoid}
+                studentName={studentFinance.student.name}
+                courseName={studentFinance.course?.name}
+                studentUsername={String(studentFinance.student.id)}
+              />
             ))}
           </div>
         </div>

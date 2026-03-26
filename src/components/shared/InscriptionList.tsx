@@ -46,16 +46,18 @@ interface InscribedStudent {
 
 interface InscriptionListProps {
   onProceedToRegistration?: (studentId: number) => void;
-  currentUserRole?: string;
-  initialStudents?: InscribedStudent[];
   onStudentsChange?: (students: InscribedStudent[]) => void;
+  currentUserRole?: string;
+  // undefined = pai ainda a carregar | array = dados prontos
+  initialStudents?: InscribedStudent[] | undefined;
 }
 
-export function InscriptionList({ onProceedToRegistration, currentUserRole, initialStudents, onStudentsChange }: InscriptionListProps) {
+export function InscriptionList({ onProceedToRegistration, onStudentsChange, currentUserRole, initialStudents }: InscriptionListProps) {
   const [students, setStudents] = useState<InscribedStudent[]>(initialStudents ?? []);
   const [filteredStudents, setFilteredStudents] = useState<InscribedStudent[]>(initialStudents ?? []);
   const [isLoading, setIsLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!initialStudents);
+  // loading = true se não há dados do pai (vai buscar sozinho) OU se pai ainda não terminou (undefined)
+  const [initialLoading, setInitialLoading] = useState(initialStudents === undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ativo' | 'inativo'>('all');
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -127,9 +129,19 @@ export function InscriptionList({ onProceedToRegistration, currentUserRole, init
     }
   };
 
+  // Sem dados do pai → buscar autonomamente
   useEffect(() => {
-    if (!initialStudents) fetchInscribedStudents(false);
+    if (initialStudents === undefined) fetchInscribedStudents(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sincronizar quando o pai entregar (ou actualizar) os dados
+  useEffect(() => {
+    if (initialStudents !== undefined) {
+      setStudents(initialStudents as InscribedStudent[]);
+      setFilteredStudents(initialStudents as InscribedStudent[]);
+      setInitialLoading(false);
+    }
+  }, [initialStudents]);
 
   // Auto-refresh silencioso: não mostra spinner, apenas actualiza os dados
   useAutoRefresh(() => fetchInscribedStudents(true), { interval: 60_000 });

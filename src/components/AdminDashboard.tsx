@@ -90,7 +90,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   // ✅ Estados de dados REAIS
   const [students, setStudents] = useState<Student[]>([]);
-  const [inscribedStudents, setInscribedStudents] = useState<APIStudent[]>([]);
+  const [inscribedStudents, setInscribedStudents] = useState<APIStudent[] | undefined>(undefined);
   const [classes, setClasses] = useState<Class[]>([]);
   const [teacherStats, setTeacherStats] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -1492,7 +1492,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
           <TabsContent value="inscriptions" className="mt-0">
             <InscriptionList
-              initialStudents={inscribedStudents}
+              initialStudents={inscribedStudents as Parameters<typeof InscriptionList>[0]['initialStudents']}
               onProceedToRegistration={(studentId) => {
                 setRegistrationModal({
                   isOpen: true,
