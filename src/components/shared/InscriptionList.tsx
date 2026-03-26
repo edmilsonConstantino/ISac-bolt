@@ -237,49 +237,123 @@ export function InscriptionList({ onProceedToRegistration, onStudentsChange, cur
     setEditInscriptionModal({ isOpen: true, student });
   };
 
-  // Baixar recibo de inscrição
+  // Imprimir recibo de inscrição
   const handleDownloadReceipt = (student: InscribedStudent) => {
-    // Criar conteúdo do recibo
-    const receiptContent = `
-╔════════════════════════════════════════════════════════════════╗
-║                    RECIBO DE INSCRIÇÃO                         ║
-║                   OXFORD - Sistema Académico                   ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║  DADOS DO ESTUDANTE                                            ║
-║  ─────────────────────────────────────────────────────────     ║
-║  Nome Completo: ${student.name.padEnd(45)}║
-║  Nº de BI:      ${student.bi_number.padEnd(45)}║
-║  Email:         ${student.email.padEnd(45)}║
-║  Telefone:      ${(student.phone || 'N/A').padEnd(45)}║
-║  Género:        ${(student.gender === 'M' ? 'Masculino' : 'Feminino').padEnd(45)}║
-║                                                                ║
-║  DADOS DA INSCRIÇÃO                                            ║
-║  ─────────────────────────────────────────────────────────     ║
-║  Username:      ${student.username.padEnd(45)}║
-║  Data Inscrição: ${formatDate(student.created_at).padEnd(44)}║
-║  Status:        ${(student.status === 'ativo' ? 'Activo' : 'Inactivo').padEnd(45)}║
-║                                                                ║
-╠════════════════════════════════════════════════════════════════╣
-║  Este documento comprova a inscrição do estudante acima        ║
-║  identificado no sistema académico OXFORD.                     ║
-║                                                                ║
-║  Data de Emissão: ${new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' }).padEnd(43)}║
-╚════════════════════════════════════════════════════════════════╝
-    `.trim();
+    const printDate = new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
+    const inscDate = formatDate(student.created_at);
+    const receiptNum = `INS-${String(student.id).padStart(6, '0')}`;
+    const gender = student.gender === 'M' ? 'Masculino' : 'Feminino';
 
-    // Criar blob e baixar
-    const blob = new Blob([receiptContent], { type: 'text/plain;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `recibo_inscricao_${student.username}_${student.name.replace(/\s+/g, '_')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    const html = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Recibo de Inscrição — ${student.name}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;justify-content:center;padding:30px 0;}
+    .page{background:white;width:700px;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #004B87;padding-bottom:18px;margin-bottom:18px;}
+    .brand{display:flex;align-items:center;gap:14px;}
+    .logo{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#004B87,#F5821F);display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900;flex-shrink:0;}
+    .brand-info h1{font-size:22px;font-weight:900;color:#004B87;}
+    .brand-info p{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;}
+    .rec-box{text-align:right;}
+    .rec-box .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
+    .rec-box .number{font-size:24px;font-weight:900;color:#F5821F;}
+    .rec-box .date{font-size:11px;color:#6b7280;margin-top:2px;}
+    .section-title{font-size:11px;font-weight:700;color:#004B87;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:20px;}
+    .field label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px;}
+    .field span{font-size:13px;font-weight:600;color:#111827;}
+    .field.full{grid-column:1/-1;}
+    .status-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+    .status-ativo{background:#dcfce7;color:#16a34a;}
+    .status-inativo{background:#f1f5f9;color:#64748b;}
+    .note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:12px;color:#1e40af;margin-bottom:20px;line-height:1.6;}
+    .bottom{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-end;}
+    .printed{font-size:10px;color:#9ca3af;}
+    .sig-area{text-align:center;}
+    .sig-line{width:180px;border-top:1px solid #374151;margin:28px auto 4px;}
+    .sig-label{font-size:10px;color:#6b7280;}
+    .stamp{width:80px;height:80px;border:2px dashed #d1d5db;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#d1d5db;text-align:center;}
+    @media print{body{background:white;padding:0;}.page{box-shadow:none;width:100%;padding:20px;}}
+  </style>
+</head>
+<body>
+<div class="page">
 
-    toast.success('Recibo de inscrição baixado com sucesso!');
+  <!-- Header -->
+  <div class="top">
+    <div class="brand">
+      <div class="logo">I</div>
+      <div class="brand-info">
+        <h1>ISAC</h1>
+        <p>Consultoria Linguística e Coaching<br/>Maputo, Moçambique</p>
+      </div>
+    </div>
+    <div class="rec-box">
+      <div class="label">Recibo de Inscrição Nº</div>
+      <div class="number">${receiptNum}</div>
+      <div class="date">Emitido em: ${inscDate}</div>
+    </div>
+  </div>
+
+  <!-- Dados pessoais -->
+  <div class="section-title">Dados do Estudante</div>
+  <div class="fields">
+    <div class="field full"><label>Nome Completo</label><span>${student.name}</span></div>
+    <div class="field"><label>Nº de BI</label><span>${student.bi_number || '—'}</span></div>
+    <div class="field"><label>Género</label><span>${gender}</span></div>
+    <div class="field"><label>Email</label><span>${student.email}</span></div>
+    <div class="field"><label>Telefone</label><span>${student.phone || '—'}</span></div>
+  </div>
+
+  <!-- Dados da inscrição -->
+  <div class="section-title">Dados da Inscrição</div>
+  <div class="fields">
+    <div class="field"><label>Username / Nº de Estudante</label><span>${student.username}</span></div>
+    <div class="field"><label>Data de Inscrição</label><span>${inscDate}</span></div>
+    <div class="field"><label>Estado</label>
+      <span class="status-badge ${student.status === 'ativo' ? 'status-ativo' : 'status-inativo'}">
+        ${student.status === 'ativo' ? '✓ Activo' : '✕ Inactivo'}
+      </span>
+    </div>
+  </div>
+
+  <!-- Nota -->
+  <div class="note">
+    Este documento comprova que o(a) estudante <strong>${student.name}</strong> se encontra
+    devidamente inscrito(a) no sistema académico ISAC com o número de identificação
+    <strong>${student.username}</strong>, sendo válido para os devidos efeitos académicos e administrativos.
+  </div>
+
+  <!-- Footer -->
+  <div class="bottom">
+    <div class="printed">
+      Impresso no dia ${printDate}<br/>
+      Sistema Académico ISAC
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-end;">
+      <div class="stamp"><span>Carimbo</span></div>
+      <div class="sig-area">
+        <div class="sig-line"></div>
+        <div class="sig-label">Assinatura / Secretaria</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=820,height=860');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      win.print();
+    }
+    toast.success('Recibo de inscrição aberto para impressão!');
   };
 
   const stats = {
