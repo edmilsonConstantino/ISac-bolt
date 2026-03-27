@@ -241,8 +241,9 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
       setStudentFinance(null);
       setLoadingFinance(true);
     }
-    // Default tab: overview if student has overdue, otherwise calendar
-    const hasOverdue = overdueMap[student.id] || (cached && (cached.summary?.overdue_count ?? 0) > 0);
+    // Default tab: overview se tiver atrasos E turma já iniciou; senão calendário
+    const classStarted = cached?.summary?.class_started ?? false;
+    const hasOverdue = classStarted && (overdueMap[student.id] || (cached && (cached.summary?.overdue_count ?? 0) > 0));
     setRightTab(hasOverdue ? 'overview' : 'calendar');
     setFinanceDialogOpen(true);
     fetchStudentFinance(student.id);
@@ -758,7 +759,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                     >
                       <FileText className="h-4 w-4" />
                       Conta
-                      {(summary?.overdue_count ?? 0) > 0 && (
+                      {(summary?.overdue_count ?? 0) > 0 && summary?.class_started && (
                         <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
                           rightTab === 'overview' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600'
                         }`}>
@@ -1650,12 +1651,53 @@ function OverviewTab({
   onPay: (p: PaymentPlanItem) => void;
   onGoCalendar: () => void;
 }) {
-  const overduePlans = plans.filter(p => p.status === 'overdue' || p.status === 'partial');
-  const pendingPlans = plans.filter(p => p.status === 'pending');
-  const paidPlans = plans.filter(p => p.status === 'paid');
+  // Dívidas só existem se a turma já iniciou — regra do sistema
+  const classStarted = summary?.class_started ?? false;
 
-  const totalOwed = plans.reduce((s, p) => s + (p.remaining ?? 0), 0);
-  const totalPenalties = plans.reduce((s, p) => s + (p.penalty_amount ?? 0), 0);
+  const overduePlans = classStarted ? plans.filter(p => p.status === 'overdue' || p.status === 'partial') : [];
+  const pendingPlans = classStarted ? plans.filter(p => p.status === 'pending') : [];
+  const paidPlans = plans.filter(p => p.status === 'paid'); // pagas sempre visíveis
+
+  const totalOwed = classStarted ? plans.reduce((s, p) => s + (p.remaining ?? 0), 0) : 0;
+  const totalPenalties = classStarted ? plans.reduce((s, p) => s + (p.penalty_amount ?? 0), 0) : 0;
+
+  // Se turma não iniciou, mostrar aviso neutro
+  if (!classStarted) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
+          <Info className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+          <p className="text-sm font-semibold text-amber-700">Sem dívidas activas</p>
+          <p className="text-xs text-amber-600 mt-1 max-w-xs mx-auto">
+            As propinas e multas só entram em vigor após o início da turma.
+            {!summary?.class_started && plans.length > 0 && ' O calendário de pagamentos está gerado mas ainda não está activo.'}
+          </p>
+        </div>
+        {/* Mostrar pagamentos já efectuados, se houver */}
+        {paidPlans.length > 0 && (
+          <div className="rounded-xl bg-green-50 border border-green-200 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-700">{paidPlans.length} parcela(s) já paga(s)</span>
+            </div>
+            <button onClick={onGoCalendar} className="text-xs text-[#004B87] hover:underline">
+              Ver calendário →
+            </button>
+          </div>
+        )}
+        {/* Saldo/crédito */}
+        {summary && summary.wallet_balance > 0 && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-slate-700">Crédito disponível</span>
+            </div>
+            <span className="font-bold text-sm text-emerald-600">{formatCurrency(summary.wallet_balance)}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
