@@ -174,172 +174,122 @@ class ReceiptService {
       check: 'Cheque',
     };
 
-    const formatCurrency = (value: number) => {
-      return 'MT ' + new Intl.NumberFormat('pt-MZ', {
-      }).format(value);
-    };
+    const fmtCurrency = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
+    const printDate = new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleDateString('pt-MZ', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    };
+    return `<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Recibo ${receipt.receipt_number}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;justify-content:center;padding:30px 0;}
+    .page{background:white;width:700px;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #004B87;padding-bottom:18px;margin-bottom:18px;}
+    .brand{display:flex;align-items:center;gap:14px;}
+    .logo{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#004B87,#F5821F);display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900;flex-shrink:0;}
+    .brand-info h1{font-size:22px;font-weight:900;color:#004B87;}
+    .brand-info p{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;}
+    .rec-box{text-align:right;}
+    .rec-box .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
+    .rec-box .number{font-size:24px;font-weight:900;color:#F5821F;}
+    .rec-box .date{font-size:11px;color:#6b7280;margin-top:2px;}
+    .student-block{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;gap:32px;flex-wrap:wrap;}
+    .sfield label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px;}
+    .sfield span{font-size:13px;font-weight:600;color:#111827;}
+    .pay-table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+    .pay-table th{background:#004B87;color:white;font-size:11px;padding:8px 10px;text-align:left;font-weight:600;}
+    .pay-table th:last-child{text-align:right;}
+    .pay-table td{padding:8px 10px;border:1px solid #d1d5db;font-size:12px;color:#374151;}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+    .items-table th{background:#004B87;color:white;font-size:11px;padding:8px 10px;font-weight:600;letter-spacing:.04em;text-align:left;}
+    .items-table th:first-child{text-align:center;width:50px;}
+    .items-table th:last-child{text-align:right;}
+    .items-table td{padding:7px 10px;border:1px solid #d1d5db;font-size:12px;}
+    .total-row td{background:#004B87;color:white;padding:9px 10px;font-weight:700;font-size:13px;}
+    .total-row td:last-child{text-align:right;}
+    .bottom{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-end;}
+    .printed{font-size:10px;color:#9ca3af;}
+    .sig-area{text-align:center;}
+    .sig-line{width:180px;border-top:1px solid #374151;margin:28px auto 4px;}
+    .sig-label{font-size:10px;color:#6b7280;}
+    .stamp{width:80px;height:80px;border:2px dashed #d1d5db;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#d1d5db;text-align:center;}
+    @media print{body{background:white;padding:0;}.page{box-shadow:none;width:100%;padding:20px;}}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">I</div>
+      <div class="brand-info">
+        <h1>ISAC</h1>
+        <p>Consultoria Linguística e Coaching<br/>Maputo, Moçambique</p>
+      </div>
+    </div>
+    <div class="rec-box">
+      <div class="label">Recibo Nº</div>
+      <div class="number">${receipt.receipt_number}</div>
+      <div class="date">Emitido em: ${fmtDate(receipt.created_at)}</div>
+    </div>
+  </div>
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Recibo ${receipt.receipt_number}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+  <div class="student-block">
+    <div class="sfield"><label>Recebemos de</label><span>${studentName}</span></div>
+    ${additionalInfo?.courseName ? `<div class="sfield"><label>Curso</label><span>${additionalInfo.courseName}</span></div>` : ''}
+    ${additionalInfo?.className ? `<div class="sfield"><label>Turma</label><span>${additionalInfo.className}</span></div>` : ''}
+    ${additionalInfo?.period ? `<div class="sfield"><label>Período</label><span>${additionalInfo.period}</span></div>` : ''}
+  </div>
 
-          .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #004B87; padding-bottom: 20px; }
-          .header h1 { color: #004B87; margin: 0; font-size: 28px; }
-          .header p { color: #666; margin: 5px 0; }
-          .header .receipt-number {
-            background: #F5821F;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-top: 15px;
-            font-weight: bold;
-          }
+  <table class="pay-table" style="margin-bottom:8px;">
+    <thead><tr>
+      <th>Valor</th>
+      <th>Forma de Pagamento</th>
+      <th>Referência</th>
+      <th style="text-align:right;">Data</th>
+    </tr></thead>
+    <tbody><tr>
+      <td style="font-weight:700;color:#004B87;font-size:14px;">${fmtCurrency(receipt.amount)} MT</td>
+      <td>${paymentMethodLabels[receipt.payment_method]}</td>
+      <td>${receipt.payment_reference || '—'}</td>
+      <td style="text-align:right;">${fmtDate(receipt.created_at)}</td>
+    </tr></tbody>
+  </table>
 
-          .section { margin: 25px 0; }
-          .section h2 {
-            color: #004B87;
-            font-size: 16px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #F5821F;
-            padding-bottom: 5px;
-          }
+  <table class="items-table" style="margin-top:14px;">
+    <thead><tr>
+      <th>Ord.</th>
+      <th>Referente a</th>
+      <th style="text-align:right;">Valor (MT)</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td style="text-align:center;color:#374151;">1</td>
+        <td style="color:#374151;">${typeLabels[receipt.type]}${receipt.description ? ' — ' + receipt.description : ''}</td>
+        <td style="text-align:right;font-weight:600;color:#374151;">${fmtCurrency(receipt.amount)}</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2">Total</td>
+        <td>${fmtCurrency(receipt.amount)}</td>
+      </tr>
+    </tbody>
+  </table>
 
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-          }
-          .info-row.full { grid-column: 1 / -1; }
-          .info-row strong { color: #333; }
-          .info-row span { color: #666; }
-
-          .amount-box {
-            background: linear-gradient(135deg, #004B87 0%, #003A6B 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            margin: 30px 0;
-          }
-          .amount-box .label { font-size: 14px; opacity: 0.9; margin-bottom: 5px; }
-          .amount-box .value { font-size: 36px; font-weight: bold; }
-
-          .footer {
-            margin-top: 50px;
-            text-align: center;
-            padding-top: 20px;
-            border-top: 1px dashed #ccc;
-          }
-          .footer p { color: #666; font-size: 12px; margin: 5px 0; }
-          .footer .signature {
-            margin-top: 40px;
-            border-top: 1px solid #333;
-            width: 200px;
-            display: inline-block;
-            padding-top: 10px;
-          }
-
-          @media print {
-            body { padding: 20px; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>ISAC - Instituto Superior de Artes e Cultura</h1>
-          <p>Recibo de Pagamento</p>
-          <div class="receipt-number">${receipt.receipt_number}</div>
-        </div>
-
-        <div class="section">
-          <h2>Dados do Estudante</h2>
-          <div class="info-grid">
-            <div class="info-row">
-              <strong>Nome:</strong>
-              <span>${studentName}</span>
-            </div>
-            <div class="info-row">
-              <strong>Email:</strong>
-              <span>${receipt.student_email || '-'}</span>
-            </div>
-            ${additionalInfo?.courseName ? `
-            <div class="info-row">
-              <strong>Curso:</strong>
-              <span>${additionalInfo.courseName}</span>
-            </div>
-            ` : ''}
-            ${additionalInfo?.className ? `
-            <div class="info-row">
-              <strong>Turma:</strong>
-              <span>${additionalInfo.className}</span>
-            </div>
-            ` : ''}
-          </div>
-        </div>
-
-        <div class="section">
-          <h2>Detalhes do Pagamento</h2>
-          <div class="info-grid">
-            <div class="info-row">
-              <strong>Tipo:</strong>
-              <span>${typeLabels[receipt.type]}</span>
-            </div>
-            <div class="info-row">
-              <strong>Método:</strong>
-              <span>${paymentMethodLabels[receipt.payment_method]}</span>
-            </div>
-            <div class="info-row">
-              <strong>Data:</strong>
-              <span>${formatDate(receipt.created_at)}</span>
-            </div>
-            ${receipt.payment_reference ? `
-            <div class="info-row">
-              <strong>Referência:</strong>
-              <span>${receipt.payment_reference}</span>
-            </div>
-            ` : ''}
-            ${receipt.description ? `
-            <div class="info-row full">
-              <strong>Descrição:</strong>
-              <span>${receipt.description}</span>
-            </div>
-            ` : ''}
-          </div>
-        </div>
-
-        <div class="amount-box">
-          <div class="label">Valor Pago</div>
-          <div class="value">${formatCurrency(receipt.amount)}</div>
-        </div>
-
-        <div class="footer">
-          <p>Este recibo comprova o pagamento acima referido.</p>
-          <p>Gerado em ${new Date().toLocaleString('pt-MZ')}</p>
-          <div class="signature">Assinatura e Carimbo</div>
-        </div>
-      </body>
-      </html>
-    `;
+  <div class="bottom">
+    <div class="printed">Impresso no dia ${printDate}<br/>Sistema Académico ISAC</div>
+    <div style="display:flex;gap:32px;align-items:flex-end;">
+      <div class="stamp"><span>Carimbo</span></div>
+      <div class="sig-area">
+        <div class="sig-line"></div>
+        <div class="sig-label">Assinatura / Secretaria</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
   }
 
   /**

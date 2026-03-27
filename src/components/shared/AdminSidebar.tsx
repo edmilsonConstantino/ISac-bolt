@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Users, BookOpen, DollarSign, Settings, GraduationCap, Shield,
   ChevronLeft, ChevronRight, Home, FileText,
-  LucideIcon, ClipboardList, ChevronDown, PenLine, UserCircle2
+  LucideIcon, ClipboardList, ChevronDown, PenLine
 } from "lucide-react";
 // --- Tipagens ---
 export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "registrations" | "inscriptions" | "users";
@@ -40,7 +40,7 @@ export const menuItems: MenuItem[] = [
   { id: "users", label: "Usuários", icon: Shield },
 ];
 
-export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings, userName, userEmail }: AdminSidebarProps) {
+export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings }: AdminSidebarProps) {
   const [openDropdown, setOpenDropdown] = useState<AdminView | null>(null);
 
   const isDropdownActive = (item: MenuItem) => item.dropdownItems?.some((sub) => sub.id === activeView);
@@ -81,18 +81,6 @@ export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSi
             )}
           </div>
         </div>   
-        {/* SECÇÃO DE PERFIL DO UTILIZADOR */}
-        {isSidebarOpen && (
-          <div className="p-4 mx-4 mb-4 bg-[#003d72] rounded-xl">
-            <p className="text-sm font-bold text-white tracking-wide">Olá, {userName || 'Admin'}!</p>
-            <p className="text-xs text-blue-200/70 font-light">{userEmail || ''}</p>
-          </div>
-        )}
-        {!isSidebarOpen && (
-             <div className="flex justify-center p-4 mb-4">
-                <UserCircle2 size={36} className="text-[#F5821F]" /> 
-             </div>
-        )}
 
         {/* NAVEGACAO */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">

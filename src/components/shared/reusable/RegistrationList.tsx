@@ -155,67 +155,122 @@ export function RegistrationList({
     }
 
     // Fallback - imprimir recibo padrão
-    const receiptContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Recibo de Matrícula - ${registration.studentName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-          .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #004B87; padding-bottom: 20px; }
-          .header h1 { color: #004B87; margin: 0; font-size: 28px; }
-          .header p { color: #666; margin: 5px 0; }
-          .section { margin: 30px 0; }
-          .section h2 { color: #004B87; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #F5821F; padding-bottom: 5px; }
-          .info-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-          .info-row strong { color: #333; }
-          .total { background: #f8f9fa; padding: 15px; margin-top: 20px; border-left: 4px solid #F5821F; }
-          .footer { margin-top: 50px; text-align: center; color: #666; font-size: 12px; }
-          .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-          .badge-active { background: #dcfce7; color: #166534; }
-          .badge-paid { background: #dcfce7; color: #166534; }
-          .badge-pending { background: #fef9c3; color: #854d0e; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>ISAC - Instituto Superior de Artes e Cultura</h1>
-          <p>Recibo de Matrícula</p>
-          <p>Data de Emissão: ${new Date().toLocaleDateString('pt-PT')}</p>
-        </div>
+    const printDate = new Date().toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
+    const enrollDate = new Date(registration.enrollmentDate).toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' });
+    const receiptNum = `MAT-${String(registration.id || 0).padStart(6, '0')}`;
+    const statusLabel = registration.status === 'active' ? 'Matriculado' : registration.status === 'pending' ? 'Pendente' : registration.status === 'suspended' ? 'Trancado' : registration.status === 'completed' ? 'Concluído' : 'Cancelado';
+    const payLabel = registration.paymentStatus === 'paid' ? 'Pago' : registration.paymentStatus === 'pending' ? 'Pendente' : 'Em Atraso';
+    const payColor = registration.paymentStatus === 'paid' ? '#16a34a' : registration.paymentStatus === 'pending' ? '#d97706' : '#dc2626';
+    const payBg   = registration.paymentStatus === 'paid' ? '#dcfce7' : registration.paymentStatus === 'pending' ? '#fef9c3' : '#fee2e2';
 
-        <div class="section">
-          <h2>Dados do Estudante</h2>
-          <div class="info-row"><span><strong>Nome:</strong></span><span>${registration.studentName}</span></div>
-          <div class="info-row"><span><strong>Código de Matrícula:</strong></span><span>${registration.studentCode}</span></div>
-        </div>
+    const lineItems = [
+      registration.enrollmentFee > 0 ? `<tr><td style="padding:7px 10px;border:1px solid #d1d5db;text-align:center;color:#374151;">1</td><td style="padding:7px 10px;border:1px solid #d1d5db;color:#374151;">Taxa de Matrícula</td><td style="padding:7px 10px;border:1px solid #d1d5db;text-align:right;font-weight:600;color:#374151;">${registration.enrollmentFee.toLocaleString('pt-MZ',{minimumFractionDigits:2})}</td></tr>` : '',
+      registration.monthlyFee > 0 ? `<tr><td style="padding:7px 10px;border:1px solid #d1d5db;text-align:center;color:#374151;">${registration.enrollmentFee > 0 ? 2 : 1}</td><td style="padding:7px 10px;border:1px solid #d1d5db;color:#374151;">Mensalidade</td><td style="padding:7px 10px;border:1px solid #d1d5db;text-align:right;font-weight:600;color:#374151;">${registration.monthlyFee.toLocaleString('pt-MZ',{minimumFractionDigits:2})}</td></tr>` : '',
+    ].filter(Boolean).join('');
 
-        <div class="section">
-          <h2>Dados do Curso</h2>
-          <div class="info-row"><span><strong>Curso:</strong></span><span>${registration.courseName}</span></div>
-          <div class="info-row"><span><strong>Turma:</strong></span><span>${registration.className || 'Não atribuída'}</span></div>
-          <div class="info-row"><span><strong>Período:</strong></span><span>${registration.period}</span></div>
-          <div class="info-row"><span><strong>Data de Matrícula:</strong></span><span>${new Date(registration.enrollmentDate).toLocaleDateString('pt-PT')}</span></div>
-          <div class="info-row"><span><strong>Status:</strong></span><span class="badge badge-active">${registration.status === 'active' ? 'Matriculado' : registration.status}</span></div>
-        </div>
+    const total = registration.enrollmentFee + registration.monthlyFee;
 
-        <div class="section">
-          <h2>Dados Financeiros</h2>
-          <div class="info-row"><span><strong>Taxa de Matrícula:</strong></span><span>${formatCurrency(registration.enrollmentFee)}</span></div>
-          <div class="info-row"><span><strong>Mensalidade:</strong></span><span>${formatCurrency(registration.monthlyFee)}</span></div>
-          <div class="info-row"><span><strong>Status de Pagamento:</strong></span><span class="badge ${registration.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending'}">${registration.paymentStatus === 'paid' ? 'Pago' : registration.paymentStatus === 'pending' ? 'Pendente' : 'Atrasado'}</span></div>
-          <div class="total">
-            <strong>Total:</strong> ${formatCurrency(registration.enrollmentFee + registration.monthlyFee)}
-          </div>
-        </div>
+    const receiptContent = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Recibo de Matrícula — ${registration.studentName}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;display:flex;justify-content:center;padding:30px 0;}
+    .page{background:white;width:700px;padding:36px 44px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #004B87;padding-bottom:18px;margin-bottom:18px;}
+    .brand{display:flex;align-items:center;gap:14px;}
+    .logo{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#004B87,#F5821F);display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900;flex-shrink:0;}
+    .brand-info h1{font-size:22px;font-weight:900;color:#004B87;}
+    .brand-info p{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;}
+    .rec-box{text-align:right;}
+    .rec-box .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
+    .rec-box .number{font-size:24px;font-weight:900;color:#F5821F;}
+    .rec-box .date{font-size:11px;color:#6b7280;margin-top:2px;}
+    .student-block{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;gap:32px;flex-wrap:wrap;}
+    .sfield label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px;}
+    .sfield span{font-size:13px;font-weight:600;color:#111827;}
+    .section-title{font-size:11px;font-weight:700;color:#004B87;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+    .items-table th{background:#004B87;color:white;font-size:11px;padding:8px 10px;font-weight:600;letter-spacing:.04em;text-align:left;}
+    .items-table th:first-child{text-align:center;width:50px;}
+    .items-table th:last-child{text-align:right;}
+    .total-row td{background:#004B87;color:white;padding:9px 10px;font-weight:700;font-size:13px;}
+    .total-row td:last-child{text-align:right;}
+    .bottom{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-end;}
+    .printed{font-size:10px;color:#9ca3af;}
+    .sig-area{text-align:center;}
+    .sig-line{width:180px;border-top:1px solid #374151;margin:28px auto 4px;}
+    .sig-label{font-size:10px;color:#6b7280;}
+    .stamp{width:80px;height:80px;border:2px dashed #d1d5db;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#d1d5db;text-align:center;}
+    @media print{body{background:white;padding:0;}.page{box-shadow:none;width:100%;padding:20px;}}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">I</div>
+      <div class="brand-info">
+        <h1>ISAC</h1>
+        <p>Consultoria Linguística e Coaching<br/>Maputo, Moçambique</p>
+      </div>
+    </div>
+    <div class="rec-box">
+      <div class="label">Recibo de Matrícula Nº</div>
+      <div class="number">${receiptNum}</div>
+      <div class="date">Emitido em: ${enrollDate}</div>
+    </div>
+  </div>
 
-        <div class="footer">
-          <p>Este documento comprova a matrícula do estudante no curso indicado.</p>
-          <p>Gerado em ${new Date().toLocaleString('pt-PT')}</p>
-        </div>
-      </body>
-      </html>
-    `;
+  <div class="student-block">
+    <div class="sfield"><label>Estudante</label><span>${registration.studentName}</span></div>
+    <div class="sfield"><label>Nº de Estudante</label><span>${registration.studentCode || '—'}</span></div>
+    <div class="sfield"><label>Curso</label><span>${registration.courseName}</span></div>
+    <div class="sfield"><label>Turma</label><span>${registration.className || 'Não atribuída'}</span></div>
+    <div class="sfield"><label>Período</label><span>${registration.period}</span></div>
+    <div class="sfield"><label>Data de Matrícula</label><span>${enrollDate}</span></div>
+    <div class="sfield"><label>Estado</label><span>${statusLabel}</span></div>
+    <div class="sfield"><label>Pagamento</label>
+      <span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;background:${payBg};color:${payColor};">${payLabel}</span>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-bottom:10px;">Detalhes Financeiros</div>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>Ord.</th>
+        <th>Referente a</th>
+        <th style="text-align:right;">Valor (MT)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lineItems || `<tr><td colspan="3" style="padding:10px;text-align:center;color:#9ca3af;border:1px solid #d1d5db;">Sem itens financeiros registados</td></tr>`}
+      <tr class="total-row">
+        <td colspan="2">Total</td>
+        <td>${total.toLocaleString('pt-MZ',{minimumFractionDigits:2})}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="bottom">
+    <div class="printed">
+      Impresso no dia ${printDate}<br/>
+      Sistema Académico ISAC
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-end;">
+      <div class="stamp"><span>Carimbo</span></div>
+      <div class="sig-area">
+        <div class="sig-line"></div>
+        <div class="sig-label">Assinatura / Secretaria</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {

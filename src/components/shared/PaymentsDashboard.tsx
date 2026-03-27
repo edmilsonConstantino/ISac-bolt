@@ -1,5 +1,5 @@
 // src/components/shared/PaymentsDashboard.tsx
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -146,7 +146,10 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
   const [voidReason, setVoidReason] = useState('');
   const [submittingVoid, setSubmittingVoid] = useState(false);
 
-  const [rightTab, setRightTab] = useState<'calendar' | 'history'>('calendar');
+  const [rightTab, setRightTab] = useState<'overview' | 'calendar' | 'history'>('overview');
+
+  // Finance cache — avoids loading when re-opening same student
+  const financeCache = useRef<Map<number, StudentFinanceResponse>>(new Map());
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -194,10 +197,17 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
     }
   };
 
-  const fetchStudentFinance = useCallback(async (studentId: number) => {
+  const fetchStudentFinance = useCallback(async (studentId: number, forceRefresh = false) => {
+    // Use cached data if available and not forcing refresh
+    if (!forceRefresh && financeCache.current.has(studentId)) {
+      setStudentFinance(financeCache.current.get(studentId)!);
+      setLoadingFinance(false);
+      return;
+    }
     setLoadingFinance(true);
     try {
       const data = await financeService.getStudentFinance(studentId);
+      financeCache.current.set(studentId, data);
       setStudentFinance(data);
       setOverdueMap(prev => ({
         ...prev,
@@ -222,8 +232,18 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
 
   const openStudentFinance = (student: StudentListItem) => {
     setSelectedStudentId(student.id);
-    setStudentFinance(null);
-    setRightTab('calendar');
+    // Show cached data immediately (no blank loading state)
+    const cached = financeCache.current.get(student.id);
+    if (cached) {
+      setStudentFinance(cached);
+      setLoadingFinance(false);
+    } else {
+      setStudentFinance(null);
+      setLoadingFinance(true);
+    }
+    // Default tab: overview if student has overdue, otherwise calendar
+    const hasOverdue = overdueMap[student.id] || (cached && (cached.summary?.overdue_count ?? 0) > 0);
+    setRightTab(hasOverdue ? 'overview' : 'calendar');
     setFinanceDialogOpen(true);
     fetchStudentFinance(student.id);
   };
@@ -299,7 +319,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
 
       toast.success(msg);
       closePaymentModal();
-      if (selectedStudentId) fetchStudentFinance(selectedStudentId);
+      if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao registar pagamento');
     } finally {
@@ -326,7 +346,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
       );
       toast.success('Pagamento anulado com sucesso.');
       closeVoidModal();
-      if (selectedStudentId) fetchStudentFinance(selectedStudentId);
+      if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao anular pagamento');
     } finally {
@@ -586,7 +606,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                     </Button>
                   )}
                   <button
-                    onClick={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                    onClick={() => { if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); } }}
                     disabled={loadingFinance}
                     className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
                     title="Actualizar"
@@ -661,7 +681,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                  onClick={() => { if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); } }}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />Tentar novamente
                 </Button>
@@ -672,7 +692,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                 <NoEnrollmentView
                   studentFinance={studentFinance}
                   onVoid={openVoidModal}
-                  onRefresh={() => selectedStudentId && fetchStudentFinance(selectedStudentId)}
+                  onRefresh={() => { if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); } }}
                 />
               </div>
 
@@ -729,8 +749,26 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                   {/* Tab headers */}
                   <div className="flex bg-slate-50 border-b border-slate-200">
                     <button
+                      onClick={() => setRightTab('overview')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-all border-b-2 ${
+                        rightTab === 'overview'
+                          ? 'border-emerald-600 text-emerald-700 bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Conta
+                      {(summary?.overdue_count ?? 0) > 0 && (
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
+                          rightTab === 'overview' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600'
+                        }`}>
+                          {summary!.overdue_count}
+                        </span>
+                      )}
+                    </button>
+                    <button
                       onClick={() => setRightTab('calendar')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all border-b-2 ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-all border-b-2 ${
                         rightTab === 'calendar'
                           ? 'border-[#004B87] text-[#004B87] bg-white'
                           : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
@@ -748,7 +786,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                     </button>
                     <button
                       onClick={() => setRightTab('history')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all border-b-2 ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-all border-b-2 ${
                         rightTab === 'history'
                           ? 'border-[#F5821F] text-[#F5821F] bg-white'
                           : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'
@@ -765,6 +803,18 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                       )}
                     </button>
                   </div>
+
+                  {/* Overview / Conta tab */}
+                  {rightTab === 'overview' && (
+                    <div className="p-4 bg-white space-y-3">
+                      <OverviewTab
+                        plans={studentFinance.plans}
+                        summary={summary}
+                        onPay={openPaymentModal}
+                        onGoCalendar={() => setRightTab('calendar')}
+                      />
+                    </div>
+                  )}
 
                   {/* Calendar tab */}
                   {rightTab === 'calendar' && (
@@ -827,6 +877,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                               studentName={studentFinance.student.name}
                               courseName={studentFinance.course?.name}
                               studentUsername={String(studentFinance.student.id)}
+                              walletBalance={studentFinance.summary?.wallet_balance}
                             />
                           ))}
                         </div>
@@ -842,24 +893,39 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
           <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between rounded-b-2xl">
             <div className="flex items-center gap-2">
               {!loadingFinance && studentFinance?.course && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
-                  onClick={() => setRightTab(rightTab === 'calendar' ? 'history' : 'calendar')}
-                >
-                  {rightTab === 'calendar'
-                    ? <><Receipt className="h-3.5 w-3.5" />Ver Histórico</>
-                    : <><Calendar className="h-3.5 w-3.5" />Ver Calendário</>
-                  }
-                </Button>
+                <>
+                  {rightTab !== 'overview' && (
+                    <Button variant="outline" size="sm"
+                      className="h-8 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-emerald-700 hover:border-emerald-300"
+                      onClick={() => setRightTab('overview')}
+                    >
+                      <FileText className="h-3.5 w-3.5" />Conta
+                    </Button>
+                  )}
+                  {rightTab !== 'calendar' && (
+                    <Button variant="outline" size="sm"
+                      className="h-8 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
+                      onClick={() => setRightTab('calendar')}
+                    >
+                      <Calendar className="h-3.5 w-3.5" />Calendário
+                    </Button>
+                  )}
+                  {rightTab !== 'history' && (
+                    <Button variant="outline" size="sm"
+                      className="h-8 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#F5821F] hover:border-[#F5821F]/30"
+                      onClick={() => setRightTab('history')}
+                    >
+                      <Receipt className="h-3.5 w-3.5" />Histórico
+                    </Button>
+                  )}
+                </>
               )}
               {!loadingFinance && selectedStudentId && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 px-3 text-xs gap-1.5 text-slate-500 hover:text-[#004B87]"
-                  onClick={() => fetchStudentFinance(selectedStudentId)}
+                  onClick={() => { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); }}
                   disabled={loadingFinance}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -1208,6 +1274,7 @@ function printPaymentReceipt(
   studentName = '—',
   courseName = '—',
   studentUsername = '—',
+  walletBalance?: number,
 ) {
   const isVoid = payment.status === 'void' || payment.status === 'reversed';
   const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
@@ -1381,8 +1448,12 @@ function printPaymentReceipt(
   <!-- Balance note -->
   <div class="balance">
     <span class="bal-label">Saldo em dívida do estudante:</span>
-    <span class="bal-value" style="${isVoid ? 'color:#6b7280' : ''}">— MT</span>
-    <span style="font-size:10px;color:#9ca3af;">(consulte o extrato para saldo actualizado)</span>
+    ${walletBalance !== undefined
+      ? `<span class="bal-value" style="color:${walletBalance <= 0 ? '#16a34a' : '#dc2626'};">
+           ${walletBalance <= 0 ? '0,00 MT' : walletBalance.toLocaleString('pt-MZ', { minimumFractionDigits: 2 }) + ' MT'}
+         </span>`
+      : `<span class="bal-value" style="color:#6b7280;">— MT</span>`
+    }
   </div>
 
   <!-- Footer -->
@@ -1418,12 +1489,14 @@ function PaymentRow({
   studentName,
   courseName,
   studentUsername,
+  walletBalance,
 }: {
   payment: PaymentTransaction;
   onVoid: (p: PaymentTransaction) => void;
   studentName?: string;
   courseName?: string;
   studentUsername?: string;
+  walletBalance?: number;
 }) {
   const isVoid = payment.status === 'void' || payment.status === 'reversed';
   const methodLabel = PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method;
@@ -1538,7 +1611,7 @@ function PaymentRow({
             variant="outline"
             size="sm"
             className="h-7 px-3 text-xs gap-1.5 border-slate-200 text-slate-600 hover:text-[#004B87] hover:border-[#004B87]/30"
-            onClick={() => printPaymentReceipt(payment, studentName, courseName, studentUsername)}
+            onClick={() => printPaymentReceipt(payment, studentName, courseName, studentUsername, walletBalance)}
           >
             <Printer className="h-3.5 w-3.5" />
             Imprimir Recibo
@@ -1563,6 +1636,186 @@ function PaymentRow({
     </div>
   );
 }
+
+// ─── OverviewTab ─────────────────────────────────────────────────────────────
+
+function OverviewTab({
+  plans,
+  summary,
+  onPay,
+  onGoCalendar,
+}: {
+  plans: PaymentPlanItem[];
+  summary: StudentFinanceResponse['summary'] | undefined;
+  onPay: (p: PaymentPlanItem) => void;
+  onGoCalendar: () => void;
+}) {
+  const overduePlans = plans.filter(p => p.status === 'overdue' || p.status === 'partial');
+  const pendingPlans = plans.filter(p => p.status === 'pending');
+  const paidPlans = plans.filter(p => p.status === 'paid');
+
+  const totalOwed = plans.reduce((s, p) => s + (p.remaining ?? 0), 0);
+  const totalPenalties = plans.reduce((s, p) => s + (p.penalty_amount ?? 0), 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary row */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-center">
+          <p className="text-xs text-red-500 font-medium uppercase tracking-wide mb-1">Em Atraso</p>
+          <p className="text-xl font-black text-red-600">{overduePlans.length}</p>
+          <p className="text-[10px] text-red-400 mt-0.5">parcela(s)</p>
+        </div>
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
+          <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-1">Pendentes</p>
+          <p className="text-xl font-black text-amber-600">{pendingPlans.length}</p>
+          <p className="text-[10px] text-amber-400 mt-0.5">parcela(s)</p>
+        </div>
+        <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-center">
+          <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">Pagas</p>
+          <p className="text-xl font-black text-green-600">{paidPlans.length}</p>
+          <p className="text-[10px] text-green-400 mt-0.5">parcela(s)</p>
+        </div>
+      </div>
+
+      {/* Total owed */}
+      {totalOwed > 0 && (
+        <div className="rounded-xl bg-slate-800 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Total em Dívida</p>
+            <p className="text-lg font-black text-white mt-0.5">{formatCurrency(totalOwed)}</p>
+          </div>
+          {totalPenalties > 0 && (
+            <div className="text-right">
+              <p className="text-xs text-orange-400 font-medium uppercase tracking-wide">incl. Multas</p>
+              <p className="text-sm font-bold text-orange-300">{formatCurrency(totalPenalties)}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Wallet balance */}
+      {summary && (
+        <div className={`rounded-xl px-4 py-3 flex items-center justify-between border ${
+          summary.wallet_balance > 0
+            ? 'bg-emerald-50 border-emerald-200'
+            : 'bg-slate-50 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Wallet className={`h-4 w-4 ${summary.wallet_balance > 0 ? 'text-emerald-600' : 'text-slate-400'}`} />
+            <span className="text-sm font-medium text-slate-700">Crédito / Saldo</span>
+          </div>
+          <span className={`font-bold text-sm ${summary.wallet_balance > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {formatCurrency(summary.wallet_balance)}
+          </span>
+        </div>
+      )}
+
+      {/* Overdue detail list */}
+      {overduePlans.length > 0 ? (
+        <div>
+          <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Parcelas em Atraso
+          </p>
+          <div className="space-y-2">
+            {overduePlans.map(plan => (
+              <div key={plan.id} className="rounded-xl border-2 border-red-200 bg-red-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-red-700 text-sm">{formatMonthReference(plan.month_reference)}</span>
+                      {plan.days_overdue > 0 && (
+                        <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-bold">
+                          {plan.days_overdue}d atraso
+                        </span>
+                      )}
+                      <PlanStatusBadge status={plan.status} />
+                    </div>
+                    <div className="text-xs text-red-600 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Mensalidade</span>
+                        <span className="font-medium">{formatCurrency(plan.base_amount)}</span>
+                      </div>
+                      {plan.penalty_amount > 0 && (
+                        <div className="flex justify-between text-orange-600">
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            Multa ({plan.days_overdue > 20 ? '20%' : plan.days_overdue > 10 ? '10%' : 'aplicada'})
+                          </span>
+                          <span className="font-bold">{formatCurrency(plan.penalty_amount)}</span>
+                        </div>
+                      )}
+                      {plan.paid_total > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Já pago</span>
+                          <span className="font-medium">- {formatCurrency(plan.paid_total)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-red-700 border-t border-red-200 pt-1 mt-1">
+                        <span>Em dívida</span>
+                        <span>{formatCurrency(plan.remaining)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => onPay(plan)}
+                    className="bg-[#F5821F] hover:bg-[#E07318] text-white h-8 px-3 text-xs shrink-0"
+                  >
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Pagar
+                  </Button>
+                </div>
+                {plan.due_date && (
+                  <p className="text-[10px] text-red-400 mt-1.5">
+                    Venceu em: {new Date(plan.due_date + 'T00:00:00').toLocaleDateString('pt-MZ', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+          <p className="text-sm font-semibold text-green-700">Situação regularizada</p>
+          <p className="text-xs text-green-600 mt-1">Sem parcelas em atraso.</p>
+        </div>
+      )}
+
+      {pendingPlans.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Próximas a Vencer ({pendingPlans.length})
+          </p>
+          <div className="space-y-1.5">
+            {pendingPlans.slice(0, 3).map(plan => (
+              <div key={plan.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <div>
+                  <span className="text-sm font-medium text-slate-700">{formatMonthReference(plan.month_reference)}</span>
+                  {plan.due_date && (
+                    <span className="text-xs text-slate-400 ml-2">
+                      Vence: {new Date(plan.due_date + 'T00:00:00').toLocaleDateString('pt-MZ', { day: '2-digit', month: 'short' })}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-slate-700">{formatCurrency(plan.remaining)}</span>
+              </div>
+            ))}
+            {pendingPlans.length > 3 && (
+              <button onClick={onGoCalendar} className="w-full text-xs text-[#004B87] hover:underline py-1">
+                Ver mais {pendingPlans.length - 3} parcelas no Calendário →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── NoEnrollmentView ─────────────────────────────────────────────────────────
 
 function NoEnrollmentView({
   studentFinance,

@@ -183,71 +183,68 @@ export function LoginForm() {
 
       {/* ========== DESKTOP: Layout ========== */}
       <div className="hidden md:flex min-h-screen items-center justify-center p-6">
-        <Card className="w-full max-w-5xl overflow-hidden shadow-2xl border-0 bg-white">
-          <div className="grid md:grid-cols-[1fr_1.2fr]">
+        <Card className="w-full max-w-3xl overflow-hidden shadow-2xl border-0 bg-white">
+          <div className="grid md:grid-cols-[0.9fr_1.1fr]">
 
             {/* LADO ESQUERDO - LOGO */}
-            <div className="relative bg-gradient-to-br from-[#0066B3] via-[#004B87] to-[#003868] p-12 flex items-center justify-center overflow-hidden min-h-[560px]">
-              <div className="absolute top-0 right-0 w-72 h-72 bg-[#F5821F]/20 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/3 rounded-full blur-3xl"></div>
+            <div className="relative bg-gradient-to-br from-[#0066B3] via-[#004B87] to-[#003868] p-8 flex items-center justify-center overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[#F5821F]/20 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
 
-              <div className="relative z-10 text-center space-y-8">
+              <div className="relative z-10 text-center space-y-5">
                 <div className="flex justify-center">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-3xl blur-2xl opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
-                    <div className="relative h-48 w-48 bg-white rounded-3xl flex items-center justify-center shadow-2xl transform group-hover:scale-105 transition-all duration-300 p-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-2xl blur-xl opacity-50"></div>
+                    <div className="relative h-28 w-28 bg-white rounded-2xl flex items-center justify-center shadow-xl p-4">
                       <img src="/image.png" alt="ISAC Logo" className="h-full w-full object-contain" />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h1 className="text-6xl font-black text-white tracking-tight">ISAC</h1>
-                  <div className="space-y-2">
-                    <p className="text-[#F5821F] font-bold text-xl tracking-widest uppercase">O Futuro é Agora</p>
-                    <p className="text-white/80 text-base font-light">Instituto Superior de Artes e Cultura</p>
-                  </div>
+                <div className="space-y-1.5">
+                  <h1 className="text-4xl font-black text-white tracking-tight">ISAC</h1>
+                  <p className="text-[#F5821F] font-bold text-sm tracking-widest uppercase">O Futuro é Agora</p>
+                  <p className="text-white/70 text-xs font-light">Instituto Superior de Artes e Cultura</p>
                 </div>
 
-                <div className="flex items-center justify-center gap-3">
-                  <div className="h-px w-16 bg-[#F5821F]/50"></div>
-                  <div className="h-2 w-2 rounded-full bg-[#F5821F]"></div>
-                  <div className="h-px w-16 bg-[#F5821F]/50"></div>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-px w-10 bg-[#F5821F]/50"></div>
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#F5821F]"></div>
+                  <div className="h-px w-10 bg-[#F5821F]/50"></div>
                 </div>
 
-                <p className="text-white/70 text-sm leading-relaxed max-w-xs mx-auto">
+                <p className="text-white/60 text-xs leading-relaxed max-w-[200px] mx-auto">
                   Sistema de gestão académica integrado para uma experiência educacional completa e eficiente.
                 </p>
               </div>
             </div>
 
             {/* LADO DIREITO - FORMULÁRIO */}
-            <div className="p-12 flex flex-col justify-center bg-white">
-              <div className="w-full max-w-md mx-auto space-y-7">
+            <div className="p-8 flex flex-col justify-center bg-white">
+              <div className="w-full space-y-5">
 
-                <div className="space-y-2">
-                  <h2 className="text-4xl font-black text-[#004B87]">Bem-vindo</h2>
-                  <p className="text-slate-500 text-base">Entre com suas credenciais institucionais</p>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-[#004B87]">Bem-vindo</h2>
+                  <p className="text-slate-500 text-sm">Entre com suas credenciais institucionais</p>
                 </div>
 
                 {error && (
-                  <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-xs font-bold">!</span>
+                  <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-[10px] font-bold">!</span>
                       </div>
                       <p className="text-red-700 text-sm font-medium">{error}</p>
                     </div>
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Nome de Utilizador</Label>
                     <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
                       <Input
                         id="email"
                         type="text"
@@ -255,29 +252,37 @@ export function LoginForm() {
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
                         required
-                        className="h-14 pl-12 pr-4 text-base border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all duration-300"
+                        className="h-11 pl-10 pr-4 text-sm border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
                         disabled={isLoading}
                         autoComplete="username"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="senha" className="text-sm font-semibold text-slate-700">Senha</Label>
                     <div className="relative group">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#F5821F] transition-colors" />
                       <Input
                         id="senha"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Introduza a sua senha"
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
                         required
-                        className="h-14 pl-12 pr-4 text-base bg-white border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all duration-300"
+                        className="h-11 pl-10 pr-10 text-sm bg-white border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
                         disabled={isLoading}
                         autoComplete="current-password"
                         minLength={5}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#F5821F] transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -293,18 +298,18 @@ export function LoginForm() {
 
                   <Button
                     type="submit"
-                    className="w-full h-14 text-base bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 group"
+                    className="w-full h-11 text-sm bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all group"
                     disabled={isLoading}
                   >
                     {isLoading ? (
-                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Entrando...</>
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</>
                     ) : (
-                      <>Entrar <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" /></>
+                      <>Entrar <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" /></>
                     )}
                   </Button>
                 </form>
 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2 pt-1">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-slate-200"></div>

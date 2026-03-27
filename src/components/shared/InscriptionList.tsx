@@ -590,9 +590,9 @@ export function InscriptionList({ onProceedToRegistration, onStudentsChange, cur
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
                       <BookOpen className="h-3 w-3 text-[#F5821F]" />
-                      Username
+                      Género
                     </span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700">{student.username}</span>
+                    <span className="font-bold text-[11px] text-slate-700">{student.gender === 'M' ? 'Masculino' : 'Feminino'}</span>
                   </div>
 
                   <div className="flex items-center justify-between">

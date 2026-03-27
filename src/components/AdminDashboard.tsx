@@ -49,7 +49,6 @@ import { UsersList, SystemUser } from "@/components/Users/UsersList";
 import userService from "@/services/userService";
 import { GradesList } from "./shared/GradesList";
 import { GradeManagementModal } from "./shared/GradeManagementModal";
-import { LevelTransitionPanel } from "./shared/LevelTransitionPanel";
 import { StudentPaymentDetailsModal } from "./Payments/StudentPaymentDetailsModal";
 import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
@@ -98,7 +97,6 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [courses, setCourses] = useState<APICourse[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
 const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
-  const [pendingTransitionsCount, setPendingTransitionsCount] = useState<number>(0);
 
   // Estados de loading
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
@@ -344,12 +342,6 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
         });
         setRegistrations(mappedRegistrations);
 
-        // Transições pendentes (não crítico — em background)
-        fetch('/api/level-transitions.php?action=count_pending', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-        }).then(r => r.json()).then(json => {
-          if (json.success) setPendingTransitionsCount(json.count);
-        }).catch(() => {});
 
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -1198,28 +1190,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
                 <p className="text-xs text-slate-400 mt-1">Total no sistema</p>
               </div>
 
-              {/* Transições Pendentes */}
-              <button
-                onClick={() => persistView('transitions')}
-                className={`bg-white rounded-2xl border shadow-sm p-5 hover:shadow-md transition-shadow text-left w-full ${
-                  pendingTransitionsCount > 0
-                    ? 'border-amber-300 hover:border-amber-400'
-                    : 'border-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                    pendingTransitionsCount > 0 ? 'bg-amber-500' : 'bg-slate-400'
-                  }`}>
-                    <ArrowRightLeft className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-sm text-slate-500 font-medium">Transições</span>
-                </div>
-                <div className={`text-3xl font-bold ${
-                  pendingTransitionsCount > 0 ? 'text-amber-500' : 'text-slate-400'
-                }`}>{pendingTransitionsCount}</div>
-                <p className="text-xs text-slate-400 mt-1">Níveis pendentes</p>
-              </button>
             </div>
 
             {/* Quick Actions */}
@@ -1607,17 +1577,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
             <GradesList classId={selectedGradesClassId} />
           </TabsContent>
 
-          <TabsContent value="transitions" className="mt-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Level Transitions</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Manage student promotions, level repetitions and failures.
-                </p>
-              </div>
-              <LevelTransitionPanel />
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
     </main>

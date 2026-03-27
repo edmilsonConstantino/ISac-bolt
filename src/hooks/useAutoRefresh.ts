@@ -55,11 +55,13 @@ export function useAutoRefresh(
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [onFocus, enabled, safeRefetch]);
 
-  // ── Polling ──────────────────────────────────────────────────────────
+  // ── Polling (skips when tab is hidden) ───────────────────────────────
   useEffect(() => {
     if (!interval || !enabled) return;
 
-    const id = setInterval(safeRefetch, interval);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') safeRefetch();
+    }, interval);
     return () => clearInterval(id);
   }, [interval, enabled, safeRefetch]);
 }
