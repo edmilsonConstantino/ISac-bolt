@@ -82,6 +82,34 @@ export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSi
           </div>
         </div>   
 
+        {/* INFO DO UTILIZADOR */}
+        <div className="px-3 pb-3">
+          {isSidebarOpen ? (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
+              <div className="h-9 w-9 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center shrink-0">
+                <UserCircle2 size={20} className="text-[#F5821F]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate leading-tight">
+                  {userName || 'Utilizador'}
+                </p>
+                <p className="text-[10px] text-white/50 truncate mt-0.5">
+                  {userEmail || ''}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="h-9 w-9 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center" title={userName}>
+                <UserCircle2 size={20} className="text-[#F5821F]" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SEPARADOR */}
+        <div className="mx-3 mb-2 border-t border-white/10" />
+
         {/* NAVEGACAO */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
           {menuItems.map((item, index) => {
@@ -123,32 +151,8 @@ export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSi
           })}
         </nav>
 
-        {/* FOOTER - Utilizador + Botões */}
-        <div className="p-4 border-t border-white/10 space-y-3">
-
-          {/* Info do utilizador autenticado */}
-          {isSidebarOpen ? (
-            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-white/5 border border-white/10">
-              <div className="h-8 w-8 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center shrink-0">
-                <UserCircle2 size={18} className="text-[#F5821F]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white truncate leading-tight">
-                  {userName || 'Utilizador'}
-                </p>
-                <p className="text-[10px] text-white/50 truncate mt-0.5">
-                  {userEmail || ''}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="h-8 w-8 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center" title={userName}>
-                <UserCircle2 size={18} className="text-[#F5821F]" />
-              </div>
-            </div>
-          )}
-
+        {/* FOOTER - Botões */}
+        <div className="p-4 border-t border-white/10">
           <div className="flex items-center justify-between">
             {/* Botão de Configurações (Apenas ícone) */}
             <button
