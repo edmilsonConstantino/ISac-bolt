@@ -6,6 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   UserPlus, Mail, Phone, Calendar, MapPin,
   User, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2,
   Key, Copy, BookOpen, X, ShieldAlert,
@@ -136,6 +141,7 @@ export function InscriptionStudentModal({
   const inscriptionFee = settings.inscriptionFee;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [savedCredentials, setSavedCredentials] = useState<{ username: string; password: string; studentId: number } | null>(null);
   const [copiedField, setCopiedField] = useState<'username' | null>(null);
 
@@ -435,15 +441,29 @@ const validateForm = () => {
     setSavedCredentials(null);
   };
 
+  const hasFormData = () => {
+    if (isEditing) return false; // edição: não perguntar
+    return !!(formData.name || formData.email || formData.phone || formData.bi_number || activeTab !== 'personal');
+  };
+
   const handleClose = () => {
     if (showSuccess) {
-      // Submissão bem-sucedida — reset completo
       resetForm();
+      onClose();
+      return;
+    }
+    if (hasFormData()) {
+      setShowCancelConfirm(true);
     } else {
-      // Fechou sem submeter — limpar apenas erros, preservar dados
       setErrors({});
       setErrorToast(null);
+      onClose();
     }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    resetForm();
     onClose();
   };
 
@@ -1374,10 +1394,10 @@ const validateForm = () => {
               </div>
 
               {/* Footer navigation */}
-              <div className="px-8 py-3 border-t border-slate-100 flex items-center justify-between bg-white">
+              <div className="px-8 py-4 border-t border-slate-100 flex items-center justify-between bg-white">
                 <button
                   onClick={handleClose}
-                  className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                  className="px-6 py-2.5 rounded-full border border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -1388,19 +1408,19 @@ const validateForm = () => {
                     return (
                       <>
                         {currentIdx > 0 && (
-                          <button onClick={handleBack} className="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+                          <button onClick={handleBack} className="px-6 py-2.5 rounded-full border border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
                             <ChevronLeft className="h-4 w-4" /> Anterior
                           </button>
                         )}
                         {activeTab !== 'credentials' ? (
-                          <button onClick={validateAndNext} className="px-6 py-2.5 rounded-xl bg-[#004B87] hover:bg-[#003A6B] text-white font-bold text-sm transition-colors flex items-center gap-2">
+                          <button onClick={validateAndNext} className="px-6 py-2.5 rounded-full bg-[#004B87] hover:bg-[#003A6B] text-white font-bold text-sm transition-colors flex items-center gap-2">
                             Próximo <ChevronRight className="h-4 w-4" />
                           </button>
                         ) : (
                           <button
                             onClick={handleSave}
                             disabled={isSubmitting}
-                            className="px-6 py-2.5 rounded-xl bg-[#F5821F] hover:bg-[#E07318] text-white font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2.5 rounded-full bg-[#F5821F] hover:bg-[#E07318] text-white font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isSubmitting ? (
                               <><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{isEditing ? 'A guardar...' : 'A inscrever...'}</>
@@ -1418,6 +1438,29 @@ const validateForm = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Confirmação de saída ── */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#004B87]">Cancelar inscrição?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os dados preenchidos serão perdidos. Tens a certeza que queres sair?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full border border-slate-300 text-slate-600">
+              Continuar a preencher
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancel}
+              className="rounded-full bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

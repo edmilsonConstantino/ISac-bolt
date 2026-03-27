@@ -164,7 +164,7 @@ export function StudentDashboard({ onLogout }: StudentDashboardProps) {
 
   const hasOverdue     = (financeData?.summary.overdue_count ?? 0) > 0;
   const walletBalance  = financeData?.summary.wallet_balance ?? 0;
-  const totalPaid      = financeData?.summary.total_paid ?? 0;
+  const totalPaid      = financeData?.summary.gross_total_paid ?? financeData?.summary.total_paid ?? 0;
   const totalOverdue   = financeData?.summary.total_overdue ?? 0;
   const overdueCount   = financeData?.summary.overdue_count ?? 0;
   const recentPayments = financeData?.recent_payments ?? [];

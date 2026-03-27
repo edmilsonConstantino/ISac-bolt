@@ -74,6 +74,7 @@ export interface StudentFinanceResponse {
   summary: {
     total_expected: number;
     total_paid: number;
+    gross_total_paid: number; // total efectivamente pago (inclui matrícula/inscrição)
     total_pending: number;
     total_overdue: number;
     total_penalties: number;

@@ -221,24 +221,9 @@ export function StudentProfileModal({
   };
 
   const handlePasswordReset = () => {
-    setPasswordError('');
-    if (!passwordData.password || !passwordData.confirmPassword) {
-      setPasswordError('Preencha ambos os campos de senha');
-      return;
-    }
-    if (passwordData.password.length < 6) {
-      setPasswordError('A senha deve ter no mínimo 6 caracteres');
-      return;
-    }
-    if (passwordData.password !== passwordData.confirmPassword) {
-      setPasswordError('As senhas não coincidem');
-      return;
-    }
     if (student?.id && onResetPassword) {
-      onResetPassword(student.id, passwordData.password);
+      onResetPassword(student.id, '');
       setShowPasswordReset(false);
-      setPasswordData({ password: '', confirmPassword: '' });
-      setPasswordError('');
     }
   };
 
@@ -699,59 +684,32 @@ export function StudentProfileModal({
             </div>
           </div>
 
-          {/* Form Body */}
+          {/* Body */}
           <div className="p-5 space-y-4 bg-slate-50/40">
 
-            <SectionCard icon={Key} title="Nova Senha de Acesso" variant="orange" contentPadding="p-4 space-y-3">
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Nova Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={passwordData.password}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, password: e.target.value }))}
-                    className="h-10 text-sm pl-9 pr-10 rounded-xl border-[#F5821F]/50 focus:border-[#F5821F]"
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+            {/* Fluxo explicado */}
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Como vai funcionar</p>
               </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Confirmar Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="h-10 text-sm pl-9 pr-10 rounded-xl border-[#F5821F]/50 focus:border-[#F5821F]"
-                    placeholder="Repetir senha"
-                  />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors">
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+              <div className="p-4 space-y-3">
+                {[
+                  { step: '1', text: 'A senha é reposta para o mesmo valor que o Username do estudante' },
+                  { step: '2', text: 'O estudante faz login com o Username como senha' },
+                  { step: '3', text: 'O sistema redireciona para a página de definição de senha' },
+                  { step: '4', text: 'O estudante define uma nova senha pessoal e acede normalmente' },
+                ].map(({ step, text }) => (
+                  <div key={step} className="flex items-start gap-3">
+                    <div className="h-5 w-5 rounded-full bg-[#004B87] text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                    <p className="text-sm text-slate-600 leading-snug">{text}</p>
+                  </div>
+                ))}
               </div>
-
-              {passwordError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-200">
-                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <p className="text-xs text-red-600">{passwordError}</p>
-                </div>
-              )}
-
-            </SectionCard>
+            </div>
 
             <SectionCard icon={AlertCircle} title="Atenção" variant="amber" contentPadding="p-4">
               <p className="text-xs text-amber-700 leading-relaxed">
-                O estudante fará login com a senha temporária e será obrigado a criar uma nova senha pessoal antes de aceder ao sistema.
+                Esta acção irá repor a senha de <span className="font-semibold">{student?.name}</span>. O acesso anterior ficará inválido imediatamente.
               </p>
             </SectionCard>
 

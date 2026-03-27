@@ -591,10 +591,10 @@ export function NormalAdmin({ onLogout }: NormalAdminProps) {
     setSelectedStudent(null);
   };
 
-  const handleResetStudentPassword = async (studentId: number, newPassword: string) => {
+  const handleResetStudentPassword = async (studentId: number, _newPassword?: string) => {
     try {
-      await studentService.update({ id: studentId, password: newPassword });
-      toast.success("Senha resetada. O estudante será obrigado a definir uma nova senha no próximo acesso.");
+      await studentService.update({ id: studentId, reset_to_username: true });
+      toast.success("Senha reposta. No próximo acesso o estudante usará o seu Username como senha e será obrigado a definir uma nova.");
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Erro ao resetar senha";
       console.error("Erro ao resetar senha:", error);

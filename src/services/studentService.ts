@@ -67,6 +67,7 @@ export interface UpdateStudentData {
   notes?: string;
   status?: 'ativo' | 'inativo';
   password?: string;
+  reset_to_username?: boolean;
 }
 
 class StudentService {
