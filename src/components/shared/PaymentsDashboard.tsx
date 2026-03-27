@@ -241,9 +241,8 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
       setStudentFinance(null);
       setLoadingFinance(true);
     }
-    // Default tab: overview se tiver atrasos E turma já iniciou; senão calendário
-    const classStarted = cached?.summary?.class_started ?? false;
-    const hasOverdue = classStarted && (overdueMap[student.id] || (cached && (cached.summary?.overdue_count ?? 0) > 0));
+    // Default tab: overview se tiver dívida real; senão calendário
+    const hasOverdue = overdueMap[student.id] || (cached && (cached.summary?.overdue_count ?? 0) > 0);
     setRightTab(hasOverdue ? 'overview' : 'calendar');
     setFinanceDialogOpen(true);
     fetchStudentFinance(student.id);
@@ -566,25 +565,25 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
 
       {/* ── Finance Dialog ────────────────────────────────────────────────── */}
       <Dialog open={financeDialogOpen} onOpenChange={(open) => !open && closeFinanceDialog()}>
-        <DialogContent className="max-w-2xl h-[88vh] overflow-hidden p-0 gap-0 rounded-2xl border-0 shadow-2xl flex flex-col">
+        <DialogContent className="max-w-2xl w-full max-h-[92vh] overflow-hidden p-0 gap-0 rounded-2xl border-0 shadow-2xl flex flex-col [&>button]:hidden">
 
           {/* ── Gradient Header ── */}
-          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-6 pt-5 pb-5 relative shrink-0">
+          <div className="bg-gradient-to-r from-[#004B87] to-[#0066B3] px-5 pt-4 pb-4 relative shrink-0">
             <div className="absolute inset-0 bg-black/5 rounded-t-2xl" />
             <div className="relative">
 
               {/* Top row: avatar + name + actions */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   {selectedStudent && (
-                    <div className="h-11 w-11 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center shrink-0">
-                      <span className="text-white font-bold text-base">
+                    <div className="h-10 w-10 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center shrink-0">
+                      <span className="text-white font-bold text-sm">
                         {selectedStudent.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
                   <div>
-                    <h2 className="font-bold text-white text-base leading-tight">
+                    <h2 className="font-bold text-white text-sm leading-tight">
                       {selectedStudent?.name ?? '—'}
                     </h2>
                     <p className="text-blue-200 text-xs mt-0.5">
@@ -600,62 +599,69 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                     <Button
                       onClick={openAdvanceModal}
                       size="sm"
-                      className="bg-[#F5821F] hover:bg-[#E07318] text-white border-0 h-8 px-3 text-xs font-semibold shadow-md"
+                      className="bg-[#F5821F] hover:bg-[#E07318] text-white border-0 h-7 px-2.5 text-xs font-semibold shadow-md"
                     >
-                      <Wallet className="h-3.5 w-3.5 mr-1.5" />
-                      Adicionar Crédito
+                      <Wallet className="h-3 w-3 mr-1" />
+                      Crédito
                     </Button>
                   )}
                   <button
                     onClick={() => { if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); } }}
                     disabled={loadingFinance}
-                    className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
+                    className="h-7 w-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
                     title="Actualizar"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 text-white ${loadingFinance ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3 w-3 text-white ${loadingFinance ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button
+                    onClick={closeFinanceDialog}
+                    className="h-7 w-7 rounded-lg bg-white/10 hover:bg-red-500/70 border border-white/20 flex items-center justify-center transition-colors"
+                    title="Fechar"
+                  >
+                    <X className="h-3.5 w-3.5 text-white" />
                   </button>
                 </div>
               </div>
 
               {/* Stats row — shown only when data is loaded */}
               {!loadingFinance && summary && (
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Wallet className="h-3 w-3 text-blue-200" />
-                      <span className="text-[10px] text-blue-200 font-medium uppercase tracking-wide">Crédito</span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  <div className="bg-white/10 rounded-lg px-2.5 py-1.5 border border-white/20">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <Wallet className="h-2.5 w-2.5 text-blue-200" />
+                      <span className="text-[9px] text-blue-200 font-medium uppercase tracking-wide">Crédito</span>
                     </div>
-                    <p className={`text-sm font-bold leading-none ${summary.wallet_balance > 0 ? 'text-white' : 'text-white/60'}`}>
+                    <p className={`text-xs font-bold leading-none ${summary.wallet_balance > 0 ? 'text-white' : 'text-white/50'}`}>
                       {formatCurrency(summary.wallet_balance)}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <CheckCircle className="h-3 w-3 text-green-300" />
-                      <span className="text-[10px] text-green-200 font-medium uppercase tracking-wide">Pago</span>
+                  <div className="bg-white/10 rounded-lg px-2.5 py-1.5 border border-white/20">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <CheckCircle className="h-2.5 w-2.5 text-green-300" />
+                      <span className="text-[9px] text-green-200 font-medium uppercase tracking-wide">Pago</span>
                     </div>
-                    <p className="text-sm font-bold text-white leading-none">
+                    <p className="text-xs font-bold text-white leading-none">
                       {formatCurrency(summary.total_paid)}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <AlertTriangle className="h-3 w-3 text-red-300" />
-                      <span className="text-[10px] text-red-200 font-medium uppercase tracking-wide">Atraso</span>
+                  <div className="bg-white/10 rounded-lg px-2.5 py-1.5 border border-white/20">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5 text-red-300" />
+                      <span className="text-[9px] text-red-200 font-medium uppercase tracking-wide">Atraso</span>
                     </div>
-                    <p className={`text-sm font-bold leading-none ${summary.total_overdue > 0 ? 'text-red-300' : 'text-white/60'}`}>
+                    <p className={`text-xs font-bold leading-none ${summary.total_overdue > 0 ? 'text-red-300' : 'text-white/50'}`}>
                       {formatCurrency(summary.total_overdue)}
                     </p>
                     {summary.overdue_count > 0 && (
-                      <p className="text-[10px] text-red-300/80 mt-0.5">{summary.overdue_count} parcela(s)</p>
+                      <p className="text-[9px] text-red-300/80 mt-0.5">{summary.overdue_count}p</p>
                     )}
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <TrendingUp className="h-3 w-3 text-orange-300" />
-                      <span className="text-[10px] text-orange-200 font-medium uppercase tracking-wide">Multas</span>
+                  <div className="bg-white/10 rounded-lg px-2.5 py-1.5 border border-white/20">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <TrendingUp className="h-2.5 w-2.5 text-orange-300" />
+                      <span className="text-[9px] text-orange-200 font-medium uppercase tracking-wide">Multas</span>
                     </div>
-                    <p className={`text-sm font-bold leading-none ${summary.total_penalties > 0 ? 'text-orange-300' : 'text-white/60'}`}>
+                    <p className={`text-xs font-bold leading-none ${summary.total_penalties > 0 ? 'text-orange-300' : 'text-white/50'}`}>
                       {formatCurrency(summary.total_penalties)}
                     </p>
                   </div>
@@ -664,9 +670,9 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
 
               {/* Skeleton stats while loading */}
               {loadingFinance && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-1.5">
                   {[0,1,2,3].map(i => (
-                    <div key={i} className="bg-white/10 rounded-xl px-3 py-2 border border-white/20 h-[52px] animate-pulse" />
+                    <div key={i} className="bg-white/10 rounded-lg px-2.5 py-1.5 border border-white/20 h-10 animate-pulse" />
                   ))}
                 </div>
               )}
@@ -674,7 +680,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
           </div>
 
           {/* ── Body (scrollable) ── */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
             {!studentFinance ? (
               <div className="py-12 text-center px-6">
                 <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-yellow-500" />
@@ -759,7 +765,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                     >
                       <FileText className="h-4 w-4" />
                       Conta
-                      {(summary?.overdue_count ?? 0) > 0 && summary?.class_started && (
+                      {(summary?.overdue_count ?? 0) > 0 && (
                         <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
                           rightTab === 'overview' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600'
                         }`}>
@@ -934,14 +940,6 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
                 </Button>
               )}
             </div>
-            <Button
-              size="sm"
-              className="h-8 px-4 text-xs font-semibold bg-[#004B87] hover:bg-[#003d6e] text-white gap-1.5"
-              onClick={closeFinanceDialog}
-            >
-              <X className="h-3.5 w-3.5" />
-              Fechar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1651,18 +1649,19 @@ function OverviewTab({
   onPay: (p: PaymentPlanItem) => void;
   onGoCalendar: () => void;
 }) {
-  // Dívidas só existem se a turma já iniciou — regra do sistema
   const classStarted = summary?.class_started ?? false;
+  const hasRealOverdue = (summary?.total_overdue ?? 0) > 0 || (summary?.overdue_count ?? 0) > 0;
 
-  const overduePlans = classStarted ? plans.filter(p => p.status === 'overdue' || p.status === 'partial') : [];
+  // Pendentes só mostrar se turma já iniciou (evitar mostrar mensalidades futuras como dívida)
+  const overduePlans = plans.filter(p => p.status === 'overdue' || p.status === 'partial');
   const pendingPlans = classStarted ? plans.filter(p => p.status === 'pending') : [];
-  const paidPlans = plans.filter(p => p.status === 'paid'); // pagas sempre visíveis
+  const paidPlans = plans.filter(p => p.status === 'paid');
 
-  const totalOwed = classStarted ? plans.reduce((s, p) => s + (p.remaining ?? 0), 0) : 0;
-  const totalPenalties = classStarted ? plans.reduce((s, p) => s + (p.penalty_amount ?? 0), 0) : 0;
+  const totalOwed = overduePlans.reduce((s, p) => s + (p.remaining ?? 0), 0);
+  const totalPenalties = overduePlans.reduce((s, p) => s + (p.penalty_amount ?? 0), 0);
 
-  // Se turma não iniciou, mostrar aviso neutro
-  if (!classStarted) {
+  // Mostrar aviso neutro APENAS quando turma não iniciou E não há dívida real
+  if (!classStarted && !hasRealOverdue) {
     return (
       <div className="space-y-3">
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
@@ -1670,22 +1669,18 @@ function OverviewTab({
           <p className="text-sm font-semibold text-amber-700">Sem dívidas activas</p>
           <p className="text-xs text-amber-600 mt-1 max-w-xs mx-auto">
             As propinas e multas só entram em vigor após o início da turma.
-            {!summary?.class_started && plans.length > 0 && ' O calendário de pagamentos está gerado mas ainda não está activo.'}
+            {plans.length > 0 && ' O calendário de pagamentos está gerado mas ainda não está activo.'}
           </p>
         </div>
-        {/* Mostrar pagamentos já efectuados, se houver */}
         {paidPlans.length > 0 && (
           <div className="rounded-xl bg-green-50 border border-green-200 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-700">{paidPlans.length} parcela(s) já paga(s)</span>
             </div>
-            <button onClick={onGoCalendar} className="text-xs text-[#004B87] hover:underline">
-              Ver calendário →
-            </button>
+            <button onClick={onGoCalendar} className="text-xs text-[#004B87] hover:underline">Ver calendário →</button>
           </div>
         )}
-        {/* Saldo/crédito */}
         {summary && summary.wallet_balance > 0 && (
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

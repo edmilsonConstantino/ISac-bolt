@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
   Users, BookOpen, DollarSign, Settings, GraduationCap, Shield,
   ChevronLeft, ChevronRight, Home, FileText,
-  LucideIcon, ClipboardList, ChevronDown, PenLine
+  LucideIcon, ClipboardList, ChevronDown, PenLine, UserCircle2
 } from "lucide-react";
 // --- Tipagens ---
 export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "registrations" | "inscriptions" | "users";
@@ -40,7 +40,7 @@ export const menuItems: MenuItem[] = [
   { id: "users", label: "Usuários", icon: Shield },
 ];
 
-export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings }: AdminSidebarProps) {
+export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, onOpenSettings, userName, userEmail }: AdminSidebarProps) {
   const [openDropdown, setOpenDropdown] = useState<AdminView | null>(null);
 
   const isDropdownActive = (item: MenuItem) => item.dropdownItems?.some((sub) => sub.id === activeView);
@@ -123,8 +123,32 @@ export function AdminSidebar({ activeView, setActiveView, isSidebarOpen, setIsSi
           })}
         </nav>
 
-        {/* FOOTER - Botões independentes */}
-        <div className="p-4 border-t border-white/10">
+        {/* FOOTER - Utilizador + Botões */}
+        <div className="p-4 border-t border-white/10 space-y-3">
+
+          {/* Info do utilizador autenticado */}
+          {isSidebarOpen ? (
+            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-white/5 border border-white/10">
+              <div className="h-8 w-8 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center shrink-0">
+                <UserCircle2 size={18} className="text-[#F5821F]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate leading-tight">
+                  {userName || 'Utilizador'}
+                </p>
+                <p className="text-[10px] text-white/50 truncate mt-0.5">
+                  {userEmail || ''}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="h-8 w-8 rounded-full bg-[#F5821F]/20 border border-[#F5821F]/40 flex items-center justify-center" title={userName}>
+                <UserCircle2 size={18} className="text-[#F5821F]" />
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             {/* Botão de Configurações (Apenas ícone) */}
             <button

@@ -183,11 +183,11 @@ export function LoginForm() {
 
       {/* ========== DESKTOP: Layout ========== */}
       <div className="hidden md:flex min-h-screen items-center justify-center p-6">
-        <Card className="w-full max-w-3xl overflow-hidden shadow-2xl border-0 bg-white">
-          <div className="grid md:grid-cols-[0.9fr_1.1fr]">
+        <Card className="w-full max-w-4xl overflow-hidden shadow-2xl border-0 bg-white">
+          <div className="grid md:grid-cols-[1fr_1.2fr]">
 
             {/* LADO ESQUERDO - LOGO */}
-            <div className="relative bg-gradient-to-br from-[#0066B3] via-[#004B87] to-[#003868] p-8 flex items-center justify-center overflow-hidden">
+            <div className="relative bg-gradient-to-br from-[#0066B3] via-[#004B87] to-[#003868] p-10 flex items-center justify-center overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-[#F5821F]/20 rounded-full blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
 
@@ -195,14 +195,14 @@ export function LoginForm() {
                 <div className="flex justify-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#FF9933] rounded-2xl blur-xl opacity-50"></div>
-                    <div className="relative h-28 w-28 bg-white rounded-2xl flex items-center justify-center shadow-xl p-4">
+                    <div className="relative h-32 w-32 bg-white rounded-2xl flex items-center justify-center shadow-xl p-4">
                       <img src="/image.png" alt="ISAC Logo" className="h-full w-full object-contain" />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <h1 className="text-4xl font-black text-white tracking-tight">ISAC</h1>
+                  <h1 className="text-5xl font-black text-white tracking-tight">ISAC</h1>
                   <p className="text-[#F5821F] font-bold text-sm tracking-widest uppercase">O Futuro é Agora</p>
                   <p className="text-white/70 text-xs font-light">Instituto Superior de Artes e Cultura</p>
                 </div>
@@ -220,11 +220,11 @@ export function LoginForm() {
             </div>
 
             {/* LADO DIREITO - FORMULÁRIO */}
-            <div className="p-8 flex flex-col justify-center bg-white">
+            <div className="p-10 flex flex-col justify-center bg-white">
               <div className="w-full space-y-5">
 
                 <div className="space-y-1">
-                  <h2 className="text-2xl font-black text-[#004B87]">Bem-vindo</h2>
+                  <h2 className="text-3xl font-black text-[#004B87]">Bem-vindo</h2>
                   <p className="text-slate-500 text-sm">Entre com suas credenciais institucionais</p>
                 </div>
 
@@ -252,7 +252,7 @@ export function LoginForm() {
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
                         required
-                        className="h-11 pl-10 pr-4 text-sm border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
+                        className="h-12 pl-10 pr-4 text-sm border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
                         disabled={isLoading}
                         autoComplete="username"
                       />
@@ -270,7 +270,7 @@ export function LoginForm() {
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}
                         required
-                        className="h-11 pl-10 pr-10 text-sm bg-white border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
+                        className="h-12 pl-10 pr-10 text-sm bg-white border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:ring-2 focus:ring-[#F5821F]/20 transition-all"
                         disabled={isLoading}
                         autoComplete="current-password"
                         minLength={5}
@@ -298,7 +298,7 @@ export function LoginForm() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 text-sm bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all group"
+                    className="w-full h-12 text-sm bg-gradient-to-r from-[#F5821F] to-[#FF9933] hover:from-[#E07318] hover:to-[#F58820] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all group"
                     disabled={isLoading}
                   >
                     {isLoading ? (
