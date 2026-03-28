@@ -99,9 +99,10 @@ function PaymentStatusBadge({ status }: { status: string }) {
 
 interface PaymentsDashboardProps {
   initialStudents?: StudentListItem[];
+  onPaymentRecorded?: () => void;
 }
 
-export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
+export function PaymentsDashboard({ initialStudents, onPaymentRecorded }: PaymentsDashboardProps) {
   const [students, setStudents] = useState<StudentListItem[]>(initialStudents ?? []);
   const [loadingStudents, setLoadingStudents] = useState(!initialStudents);
   const [searchTerm, setSearchTerm] = useState("");
@@ -319,6 +320,7 @@ export function PaymentsDashboard({ initialStudents }: PaymentsDashboardProps) {
 
       toast.success(msg);
       closePaymentModal();
+      onPaymentRecorded?.();
       if (selectedStudentId) { financeCache.current.delete(selectedStudentId); fetchStudentFinance(selectedStudentId, true); }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao registar pagamento');

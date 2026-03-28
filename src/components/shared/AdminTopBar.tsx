@@ -10,6 +10,8 @@ interface AdminTopBarProps {
   displayName: string;
   onLogout: () => Promise<void>;
   userRole?: string;
+  unreadCount?: number;
+  onNotificationsClick?: () => void;
 }
 
 const roleLabelMap: Record<string, string> = {
@@ -33,7 +35,9 @@ export function AdminTopBar({
   activeView,
   displayName,
   onLogout,
-  userRole
+  userRole,
+  unreadCount = 0,
+  onNotificationsClick,
 }: AdminTopBarProps) {
   const currentMenuItem = menuItems.find(m => m.id === activeView);
   const shortName = abbreviateName(displayName);
@@ -73,12 +77,16 @@ export function AdminTopBar({
           <Button
             variant="ghost"
             size="icon"
+            onClick={onNotificationsClick}
             className="relative h-9 w-9 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-[#004B87] transition-all"
             title="Notificações"
           >
             <Bell className="h-4 w-4" />
-            {/* Badge de notificações */}
-            <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold ring-2 ring-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Button>
 
           {/* Divisor */}

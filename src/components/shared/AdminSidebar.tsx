@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
   Users, BookOpen, DollarSign, Settings, GraduationCap, Shield,
-  ChevronLeft, ChevronRight, Home, FileText,
+  ChevronLeft, ChevronRight, Home, FileText, BarChart3,
   LucideIcon, ClipboardList, ChevronDown, PenLine, UserCircle2
 } from "lucide-react";
 // --- Tipagens ---
-export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "registrations" | "inscriptions" | "users";
+export type AdminView = "dashboard" | "students" | "teachers" | "classes" | "courses" | "payments" | "reports" | "registrations" | "inscriptions" | "users";
 export interface MenuItem {
   id: AdminView;
   label: string;
@@ -37,6 +37,7 @@ export const menuItems: MenuItem[] = [
   { id: "classes", label: "Turmas", icon: BookOpen },
   { id: "courses", label: "Cursos", icon: BookOpen },
   { id: "payments", label: "Pagamentos", icon: DollarSign },
+  { id: "reports", label: "Relatórios", icon: BarChart3 },
   { id: "users", label: "Usuários", icon: Shield },
 ];
 

@@ -54,6 +54,9 @@ import { AdminSidebar, menuItems, AdminView } from "./shared/AdminSidebar";
 import { InscriptionList } from "./shared/InscriptionList";
 import { InscriptionStudentModal } from "./shared/InscriptionStudentModal";
 import { PaymentsDashboard } from "./shared/PaymentsDashboard";
+import { NotificationsPanel } from "./shared/NotificationsPanel";
+import { ReportsDashboard } from "./shared/ReportsDashboard";
+import { useNotifications } from "@/hooks/useNotifications";
 import { ClassSettingsModal } from "./Classes/ClassSettingsModal";
 import { useSettingsData, GeneralSettings } from "@/hooks/useSettingsData";
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -86,6 +89,10 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     setActiveView(view);
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Notifications hook — polling every 60s
+  const notifications = useNotifications();
 
   // ✅ Estados de dados REAIS
   const [students, setStudents] = useState<Student[]>([]);
@@ -1121,19 +1128,33 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
     {/* ========== MAIN CONTENT ========== */}
     <main className="flex-1 overflow-y-auto">
-      <AdminTopBar
-  activeView={activeView}
-  displayName={displayName}
-  userRole={user?.role}
-  onLogout={async () => {
-    try {
-      await logout();
-      if (onLogout) onLogout();
-    } catch (e) {
-      console.error('Logout falhou', e);
-    }
-  }}
-/>
+      <div className="relative">
+        <AdminTopBar
+          activeView={activeView}
+          displayName={displayName}
+          userRole={user?.role}
+          unreadCount={notifications.unreadCount}
+          onNotificationsClick={() => setShowNotifications((v) => !v)}
+          onLogout={async () => {
+            try {
+              await logout();
+              if (onLogout) onLogout();
+            } catch (e) {
+              console.error('Logout falhou', e);
+            }
+          }}
+        />
+        {showNotifications && (
+          <div className="absolute right-6 top-full z-50">
+            <NotificationsPanel
+              notifications={notifications.notifications}
+              onMarkRead={notifications.markRead}
+              onMarkAllRead={notifications.markAllRead}
+              onClose={() => setShowNotifications(false)}
+            />
+          </div>
+        )}
+      </div>
 
 
       {/* Dashboard Content */}
@@ -1478,7 +1499,12 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
           <TabsContent value="payments" className="mt-0">
             <PaymentsDashboard
               initialStudents={students.map(s => ({ id: s.id, name: s.name, email: s.email }))}
+              onPaymentRecorded={() => notifications.refresh()}
             />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-0">
+            <ReportsDashboard />
           </TabsContent>
 
           <TabsContent value="users" className="mt-0">
