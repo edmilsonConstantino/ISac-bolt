@@ -23,6 +23,14 @@ interface UseNotificationsReturn {
 
 const POLL_INTERVAL_MS = 60_000; // 60 seconds
 
+const authHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem('access_token') || '';
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+};
+
 export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount]     = useState(0);
@@ -31,7 +39,9 @@ export function useNotifications(): UseNotificationsReturn {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res  = await fetch("/api/notifications.php?limit=30");
+      const res  = await fetch("/api/notifications.php?limit=30", {
+        headers: authHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setNotifications(data.notifications ?? []);
@@ -67,7 +77,7 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       await fetch("/api/notifications.php", {
         method:  "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body:    JSON.stringify({ id }),
       });
     } catch {
@@ -83,7 +93,7 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       await fetch("/api/notifications.php", {
         method:  "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body:    JSON.stringify({ mark_all_read: true }),
       });
     } catch {

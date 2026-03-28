@@ -10,18 +10,17 @@ import registrationService from '@/services/registrationService';
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccentStatCard } from "@/components/ui/stat-card";
-import { GradientButton } from "@/components/ui/gradient-button";
 import { RegistrationStudentModal } from "./shared/reusable/RegistrationStudentModal";
 import { EditRegistrationModal } from "./shared/reusable/EditRegistrationModal";
 import { Input } from "@/components/ui/input";
 import {
   Users, BookOpen, DollarSign, UserPlus, GraduationCap,
   LogOut, Shield, BarChart3, AlertTriangle, TrendingUp,
-  FileText, MessageCircle, Copy, Key, CheckCircle, Zap, ArrowRightLeft
+  FileText, Copy, Key, CheckCircle, Zap, ArrowRightLeft
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
@@ -188,8 +187,6 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     studentInfo: null as Student | null
   });
 
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [chatMessage, setChatMessage] = useState("");
 
   // Estados para filtros
   const [paymentSearch, setPaymentSearch] = useState('');
@@ -206,17 +203,10 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     role: string;
   }>({ isOpen: false, username: '', password: '', name: '', role: '' });
 
-  // ✅ Verificar autenticação ao montar
-  useEffect(() => {
-    console.log('🔍 AdminDashboard montado - verificando autenticação...');
-    checkAuth();
-  }, []);
+  useEffect(() => { checkAuth(); }, [checkAuth]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      console.log('❌ Usuário não autenticado, redirecionando...');
-      window.location.href = '/login';
-    }
+    if (!isAuthenticated) window.location.href = '/login';
   }, [isAuthenticated]);
 
   // Carregar dados de usuários da API
@@ -236,8 +226,8 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
         sourceTable: u.source_table,
       }));
       setSystemUsers(mapped);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+    } catch {
+      // silently ignore — UI shows empty state
     }
   };
 
@@ -350,8 +340,8 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
         setRegistrations(mappedRegistrations);
 
 
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+      } catch {
+        // silently ignore — individual sections show empty state
       } finally {
         setIsLoadingStudents(false);
         setIsLoadingCourses(false);
@@ -424,23 +414,17 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     };
   };
 
-  const recordPayment = (studentId: number, amount: number, monthRef: string, method: PaymentMethod, desc?: string) => {
-    console.log('Registrar pagamento:', { studentId, amount, monthRef, method, desc });
+  const recordPayment = (_studentId: number, _amount: number, _monthRef: string, _method: PaymentMethod, _desc?: string) => {
     toast.success('Pagamento registrado!');
   };
 
  const updatePayment = async (paymentId: number, data: any) => {
   try {
-    // TODO: Implementar chamada à API quando disponível
-    // await paymentService.update(paymentId, data);
-    
-    setPayments(prev => prev.map(p => 
+    setPayments(prev => prev.map(p =>
       p.id === paymentId ? { ...p, ...data } : p
     ));
-    
     toast.success('Pagamento atualizado!');
   } catch (error) {
-    console.error('Erro ao atualizar pagamento:', error);
     toast.error(error instanceof Error ? error.message : 'Erro ao atualizar pagamento');
   }
 };
@@ -450,8 +434,7 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
     try {
       await persistSettings(newSettings);
       toast.success('Configurações salvas!');
-    } catch (error) {
-      console.error("Erro ao salvar configurações:", error);
+    } catch {
       toast.error("Erro ao salvar configurações");
     }
   };
@@ -507,50 +490,41 @@ const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
         qualifications: t.observacoes || ''
       }));
       setTeacherStats(mappedTeachers);
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar professores:', error);
+    } catch {
+      // silently ignore
     } finally {
       setIsLoadingTeachers(false);
     }
   };
 
-  // 📥 CARREGAR TURMAS DO BANCO
   const loadClasses = async () => {
     try {
       setIsLoadingClasses(true);
-      console.log('📥 Carregando turmas do banco...');
       const data = await classService.getAll();
-      console.log('✅ Turmas carregadas:', data.length, data);
       setClasses(data);
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar turmas:', error);
+    } catch {
+      // silently ignore — UI shows empty state
     } finally {
       setIsLoadingClasses(false);
     }
   };
 
-  // 📥 CARREGAR CURSOS DO BANCO
   const loadCourses = async () => {
     try {
       setIsLoadingCourses(true);
-      console.log('📥 Carregando cursos do banco...');
       const data = await courseService.getAll();
-      console.log('✅ Cursos carregados:', data.length, data);
       setCourses(data);
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar cursos:', error);
+    } catch {
+      // silently ignore
     } finally {
       setIsLoadingCourses(false);
     }
   };
 
-  // 📥 CARREGAR MATRÍCULAS DO BANCO
 const loadRegistrations = async () => {
   try {
     setIsLoadingRegistrations(true);
-    console.log('📥 Carregando matrículas do banco...');
     const data = await registrationService.getAll();
-    console.log('✅ Matrículas carregadas da API:', data);
     
     // ✅ MAPEAR de INGLÊS (API) para PORTUGUÊS (estado local)
     const mappedRegistrations: Registration[] = data.map((reg: any) => {
@@ -588,10 +562,8 @@ const loadRegistrations = async () => {
     });
 
     setRegistrations(mappedRegistrations);
-    console.log('✅ Matrículas mapeadas:', mappedRegistrations.length);
-
-  } catch (error: any) {
-    console.error('❌ Erro ao carregar matrículas:', error);
+  } catch {
+    // silently ignore
   } finally {
     setIsLoadingRegistrations(false);
   }
@@ -610,7 +582,6 @@ const loadRegistrations = async () => {
   // ─────────────────────────────────────────────────────────────────────
 
 const handleAddRegistration = () => {
-  console.log('Abrindo modal de matrícula');
   setRegistrationModal({
     isOpen: true,
     registrationData: null,
@@ -618,7 +589,6 @@ const handleAddRegistration = () => {
   });
 };
 const handleViewRegistration = (registration: Registration) => {
-  console.log('Visualizando matrícula:', registration);
   setRegistrationModal({
     isOpen: true,
     registrationData: registration,
@@ -632,42 +602,25 @@ const handleEditRegistration = (registration: Registration) => {
 
 const handleSaveRegistration = async (registrationData: any) => {
   try {
-    console.log('💾 Salvando matrícula (dados da API em inglês):', registrationData);
-
     if (registrationModal.isEditing && registrationModal.registrationData?.id) {
-      // ✅ EDITAR matrícula existente
       await registrationService.update(registrationModal.registrationData.id, registrationData);
       toast.success('Matrícula atualizada com sucesso!');
     } else {
-      // ✅ Enviar direto, já está em inglês
-      console.log('📤 Enviando para API:', registrationData);
       const result = await registrationService.create(registrationData);
-      console.log('✅ API retornou:', result);
 
-      // ✅ GERAR PLANO DE PAGAMENTOS AUTOMATICAMENTE
+      // Gerar plano de pagamentos automaticamente
       if (result && result.id) {
         try {
           const token = localStorage.getItem('auth_token');
           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api-login/api';
-
           const planResponse = await fetch(`${API_URL}/student-payment-plans/generate.php`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ registration_id: result.id })
           });
-
-          const planResult = await planResponse.json();
-
-          if (planResult.success) {
-            console.log('✅ Plano de pagamentos gerado:', planResult);
-          } else {
-            console.warn('⚠️ Não foi possível gerar plano de pagamentos:', planResult.message);
-          }
-        } catch (planError) {
-          console.warn('⚠️ Erro ao gerar plano de pagamentos (matrícula criada):', planError);
+          await planResponse.json();
+        } catch {
+          // plano não gerado mas matrícula foi criada
         }
       }
     }
@@ -679,8 +632,6 @@ const handleSaveRegistration = async (registrationData: any) => {
     // o modal de sucesso primeiro e fechar quando o usuário clicar
 
   } catch (error: any) {
-    console.error('❌ Erro ao salvar matrícula:', error);
-    console.error('❌ Dados enviados:', registrationData);
     toast.error(error.message || 'Erro ao salvar matrícula');
     throw error; // Re-throw para que o modal saiba que houve erro
   }
@@ -733,7 +684,6 @@ const handleDeleteRegistration = (registrationId: number) => {
       setIsTeacherProfileModalOpen(false);
       setSelectedTeacher(null);
     } catch (error: any) {
-      console.error("Erro ao atualizar professor:", error);
       toast.error(error.message || "Erro ao atualizar perfil");
     }
   };
@@ -764,7 +714,6 @@ const handleDeleteRegistration = (registrationId: number) => {
       setIsStudentProfileModalOpen(false);
       setSelectedStudent(null);
     } catch (error: any) {
-      console.error("Erro ao atualizar estudante:", error);
       toast.error(error.message || "Erro ao atualizar perfil");
     }
   };
@@ -779,9 +728,7 @@ const handleDeleteRegistration = (registrationId: number) => {
       await studentService.update({ id: studentId, reset_to_username: true });
       toast.success("Senha reposta. No próximo acesso o estudante usará o seu Username como senha e será obrigado a definir uma nova.");
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Erro ao resetar senha";
-      console.error("Erro ao resetar senha:", error);
-      toast.error(msg);
+      toast.error(error instanceof Error ? error.message : "Erro ao resetar senha");
     }
   };
 
@@ -881,26 +828,16 @@ const handleDeleteRegistration = (registrationId: number) => {
 
   const handleSaveClass = async (classData: Partial<APIClass>) => {
     try {
-      console.log('💾 handleSaveClass chamado:', { isCreating: classModal.isCreating, classData });
-
       if (classModal.isCreating) {
-        console.log('📤 Criando turma via API...', classData);
-        const novaTurma = await classService.create(classData);
-        console.log('✅ Turma criada:', novaTurma);
+        await classService.create(classData);
         toast.success("Turma criada com sucesso!");
       } else if (classModal.classData?.id) {
-        console.log('📤 Atualizando turma via API...', classData);
-        const turmaAtualizada = await classService.update(classModal.classData.id, classData);
-        console.log('✅ Turma atualizada:', turmaAtualizada);
+        await classService.update(classModal.classData.id, classData);
         toast.success("Turma atualizada com sucesso!");
       }
-
       await loadClasses();
       setClassModal({ isOpen: false, classData: null, isCreating: false });
-
     } catch (error: any) {
-      console.error('❌ Erro ao salvar turma:', error);
-      console.error('❌ Detalhes do erro:', error.response?.data);
       toast.error(error.message || "Erro ao salvar turma");
     }
   };
@@ -921,25 +858,18 @@ const handleDeleteRegistration = (registrationId: number) => {
   };
 
   const handleSendEmailToAll = () => {
-    console.log("Admin enviando email para todos os estudantes");
+    // TODO: implement email broadcast when messaging backend is available
   };
 
 const handleCreateStudent = async (studentData: any) => {
   try {
-    console.log('📤 Criando estudante:', studentData);
-    
-    // ✅ CHAMAR A API PARA CRIAR O ESTUDANTE
     const result = await studentService.create(studentData);
-    
-    console.log('✅ Estudante criado:', result);
+    void result;
     toast.success("Estudante cadastrado com sucesso!");
     
-    // ✅ RECARREGAR A LISTA ATUALIZADA DO BANCO
     setIsLoadingStudents(true);
     const apiStudents = await studentService.getAll();
-    
-    // ✅ MAPEAMENTO CORRIGIDO - Campos em INGLÊS
-const mappedStudents = apiStudents.map((student: APIStudent) => {
+    const mappedStudents = apiStudents.map((student: APIStudent) => {
   const studentClass = classes.find(c => c.curso === student.curso_id);
   
   return {
@@ -964,10 +894,7 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 });
     
     setStudents(mappedStudents);
-    console.log('✅ Lista de estudantes atualizada');
-    
   } catch (error: any) {
-    console.error("❌ Erro ao criar estudante:", error);
     toast.error(error.message || "Erro ao criar estudante");
   } finally {
     setIsLoadingStudents(false);
@@ -981,15 +908,13 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
       await loadTeachers();
       await loadUsers();
       toast.success("Professor cadastrado com sucesso!");
-    } catch (error: any) {
-      console.error("Erro ao atualizar lista de professores:", error);
+    } catch {
       toast.error("Erro ao atualizar lista");
     }
   };
 
   const handleCreateCourse = async (courseData: APICourse) => {
     try {
-      console.log('📤 Criando curso:', courseData);
 
       if (createCourseModal.isEditing && createCourseModal.courseData?.id) {
         await courseService.update(createCourseModal.courseData.id, courseData);
@@ -1005,7 +930,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
 
       await loadCourses();
     } catch (error: any) {
-      console.error('❌ Erro ao salvar curso:', error);
       toast.error(error.message || "Erro ao salvar curso");
       throw error;
     }
@@ -1034,12 +958,11 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     );
   };
 
-  const handleGenerateReport = (reportType: string, filters: any) => {
-    console.log("Gerando relatório:", reportType, "com filtros:", filters);
+  const handleGenerateReport = (_reportType: string, _filters: unknown) => {
+    // ReportsModal handles its own data fetching
   };
 
   const handleAddStudentToClass = (classItem: Class) => {
-    console.log('🎯 Abrindo SelectStudentModal para turma:', classItem);
     setSelectStudentModal({
       isOpen: true,
       turmaId: classItem.id || 0,
@@ -1139,8 +1062,8 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
             try {
               await logout();
               if (onLogout) onLogout();
-            } catch (e) {
-              console.error('Logout falhou', e);
+            } catch {
+              // ignore
             }
           }}
         />
@@ -1511,8 +1434,8 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
             <UsersList
               users={systemUsers}
               permissions={adminPermissions}
-              onViewUser={(user) => console.log('Ver usuário:', user)}
-              onEditUser={(user) => console.log('Editar usuário:', user)}
+              onViewUser={() => {}}
+              onEditUser={() => {}}
               onDeleteUser={(userId) => {
                 openConfirm(
                   { title: "Remover Utilizador", message: "Tem certeza que deseja remover este utilizador? O acesso ao sistema será revogado imediatamente.", confirmLabel: "Remover" },
@@ -1761,61 +1684,6 @@ const mappedStudents = apiStudents.map((student: APIStudent) => {
     )}
 
     <ConfirmDialog {...dialogProps} />
-
-    {/* FLOATING CHAT BUTTON */}
-    <GradientButton
-      onClick={() => setShowChatModal(true)}
-      className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl hover:scale-110 active:scale-95 z-50"
-      title="Mensagens"
-    >
-      <MessageCircle className="h-7 w-7" />
-    </GradientButton>
-
-    {/* CHAT MODAL */}
-    {showChatModal && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full">
-          <h3 className="text-2xl font-bold text-[#004B87] mb-4">Enviar Mensagem</h3>
-          <p className="text-slate-600 mb-6">
-            Envie uma mensagem para os usuários do sistema
-          </p>
-
-          <textarea
-            className="w-full h-40 p-4 border-2 border-slate-200 rounded-xl focus:border-[#F5821F] focus:outline-none resize-none mb-4 text-sm"
-            placeholder="Digite sua mensagem aqui..."
-            value={chatMessage}
-            onChange={(e) => setChatMessage(e.target.value)}
-          />
-
-          <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setShowChatModal(false);
-                setChatMessage("");
-              }}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <GradientButton
-              onClick={() => {
-                if (chatMessage.trim()) {
-                  toast.success("Mensagem enviada com sucesso!");
-                  setShowChatModal(false);
-                  setChatMessage("");
-                } else {
-                  toast.error("Digite uma mensagem");
-                }
-              }}
-              className="flex-1"
-            >
-              Enviar
-            </GradientButton>
-          </div>
-        </div>
-      </div>
-    )}
 
       {/* Modal de Credenciais do Usuário Criado */}
       <Dialog open={createdCredentials.isOpen} onOpenChange={(open) => {

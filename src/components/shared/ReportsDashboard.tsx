@@ -66,7 +66,10 @@ export function ReportsDashboard() {
   const loadKpis = async () => {
     setLoading(true);
     try {
-      const res  = await fetch("/api/reports.php?type=financial_kpis");
+      const token = localStorage.getItem('access_token') || '';
+      const res  = await fetch("/api/reports.php?type=financial_kpis", {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
       const data = await res.json();
       if (data.success) {
         setKpis(data);
